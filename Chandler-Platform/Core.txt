@@ -1,0 +1,25 @@
+Items and DashboardEntries and Extensions
+--------------------------------------------------------------------------------
+
+At the core of the OCAP data model is the ``Item`` class::
+
+>>> from chandler.core import Item
+>>> item = Item()
+
+Every item has a title:
+
+>>> item.title
+u''
+
+and, of course, you may supply your own title at initialization time:
+
+>>> Item(title=u'Hello, world!').title
+u'Hello, world!'
+
+or after initialization:
+
+>>> item.title = u'No!'
+>>> item.title
+u'No!'
+
+
