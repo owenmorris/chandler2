@@ -27,7 +27,8 @@ setup(
         'DecoratorTools>=1.6', #'Presentable>=0.1a1dev-r2439',
         'Trellis>=0.6a2dev-r2525,==dev',
         'Plugins>=0.5a1dev-r2404,==dev',
-        'Importing>=1.9.2'
+        'Importing>=1.9.2',
+        'AddOns>=0.6'
     ],
     dependency_links=[
         'http://peak.telecommunity.com/snapshots/',
