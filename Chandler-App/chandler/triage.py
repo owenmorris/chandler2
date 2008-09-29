@@ -1,14 +1,14 @@
 import peak.events.trellis as trellis
 from peak.util.addons import AddOn
 
-NOW = 100
-LATER = 200
-DONE = 300
+NOW = 100.0
+LATER = 200.0
+DONE = 300.0
 
 class TriageRangeError(Exception):
     pass
 
-class Triage(AddOn):
+class Triage(AddOn, trellis.Component):
     trellis.attrs(
         manual=None,
         auto=None

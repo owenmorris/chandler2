@@ -7,9 +7,9 @@ Originally, triage status grouped items into one of three states:
   ============ ============
   English Name Numeric code
   ============ ============
-  Now          100
-  Later        200
-  Done         300
+  Now          100.0
+  Later        200.0
+  Done         300.0
   ============ ============
 
 These legacy values are the main fallback states, but arbitrary
@@ -26,7 +26,7 @@ read-only.
 >>> item_triage.manual = NOW
 >>> item_triage.auto = LATER
 >>> item_triage.calculated
-100
+100.0
 
 ``calculated`` is the final, user facing triage status. If ``manual``
 is None (the default), ``calculated`` will be based on ``auto``.
@@ -34,7 +34,7 @@ Otherwise, ``manual`` takes precedence over ``auto``.
 
 >>> item_triage.manual = None
 >>> item_triage.calculated
-200
+200.0
 
 If both ``auto`` and ``manual`` are None, the default, calculated is 100.
 
@@ -43,11 +43,10 @@ If both ``auto`` and ``manual`` are None, the default, calculated is 100.
 >>> item2_triage.manual is item2_triage.auto is None
 True
 >>> item2_triage.calculated
-100
+100.0
 
-Triage status must be either None, or an integer greater than 99.
+Triage status must be either None, or an int or float >= 100.
 
->>> item2_triage.constraints   # this shouldn't be necessary, constraints isn't being run
 >>> item2_triage.manual = 99
 Traceback (most recent call last):
 ...
