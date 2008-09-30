@@ -1,6 +1,6 @@
-===============
- Triage Status
-===============
+==============================
+ Triage Status - Domain Model
+==============================
 
 Originally, triage status grouped items into one of three states:
 
@@ -15,7 +15,7 @@ Originally, triage status grouped items into one of three states:
 These legacy values are the main fallback states, but arbitrary
 additional triage states can be defined.
 
->>> from chandler.triage import Triage, NOW, LATER, DONE
+>>> from chandler.triage import *
 >>> class Item: pass
 >>> item = Item()
 >>> item_triage = Triage(item)
@@ -29,14 +29,15 @@ read-only.
 100.0
 
 ``calculated`` is the final, user facing triage status. If ``manual``
-is None (the default), ``calculated`` will be based on ``auto``.
+is ``None`` (the default), ``calculated`` will be based on ``auto``.
 Otherwise, ``manual`` takes precedence over ``auto``.
 
 >>> item_triage.manual = None
 >>> item_triage.calculated
 200.0
 
-If both ``auto`` and ``manual`` are None, the default, calculated is 100.
+If both ``auto`` and ``manual`` are ``None``, the default, calculated
+is ``NOW``.
 
 >>> item2 = Item()
 >>> item2_triage = Triage(item2)
@@ -45,7 +46,7 @@ True
 >>> item2_triage.calculated
 100.0
 
-Triage status must be either None, or an int or float >= 100.
+Triage status must be either ``None``, or an int or float >= 100.
 
 >>> item2_triage.manual = 99
 Traceback (most recent call last):
@@ -57,3 +58,102 @@ XXX test triage status of 250, calculated falls back to 200
 XXX How do I test:
   assuming no chandler.triage.types entry points
   add entry points in code
+
+====================
+ Triage Positioning
+====================
+
+Triage status is tightly entwined with positioning entries in the
+triage-sorted dashboard view.
+
+``TriagePosition`` of an item has a read-only float ``position`` cell.
+The default value is the item's calculated triage status.
+
+>>> item3 = Item()
+>>> item3_position = TriagePosition(item3)
+>>> item3_position.position
+100.0
+>>> item3_triage = Triage(item3)
+>>> item3_triage.auto = LATER
+>>> item3_position.position
+200.0
+
+``position`` is based on two cells, ``default_position`` and
+``pinned_position``.  ``pinned_position`` is used to hold an item
+visible in a different location than its underlying item's default
+position would be.  This allows item position to be stable as a user
+makes changes that would otherwise move the item.
+
+>>> item3_position.position == item3_position.default_position
+True
+>>> item3_position.pinned_position = 1122334.5
+>>> item3_triage.manual = DONE
+>>> item3_position.position
+1122334.5
+
+When sorted by triage status, items are sorted into different
+sections, determined by ``triage_section``.  This defaults to
+calculated triage status, but can be overridden with
+``pinned_triage``.
+
+>>> item3_position.triage_section
+300.0
+>>> item3_position.pinned_triage_section = NOW
+>>> item3_position.triage_section
+100.0
+
+XXX should recognized custom triage statuses be in their own sections?
+    If not section definition might need an entry point, too.
+
+Shortcut Methods
+----------------
+
+There are a few shortcuts for setting pinned values. ``pin()`` sets
+pinned values to match the current state of their default values, but
+only if no pinned values are set.  ``clear_pinned()`` resets pinned
+values to ``None``.
+
+>>> item3_position.default_position, item3_position.default_triage_section
+(300.0, 300.0)
+>>> item3_position.triage_section, item3_position.position
+(100.0, 1122334.5)
+>>> item3_position.pin()
+>>> item3_position.triage_section, item3_position.position
+(100.0, 1122334.5)
+>>> item3_position.clear_pinned()
+>>> item3_position.triage_section, item3_position.position
+(300.0, 300.0)
+>>> item3_position.pin()
+>>> item3_triage.manual = NOW
+>>> item3_position.triage_section, item3_position.position
+(300.0, 300.0)
+
+``pop_to_now()`` sets ``pinned_triage_section`` to NOW.
+
+>>> item3_triage.manual = LATER
+>>> item3_position.clear_pinned()
+>>> item3_position.triage_section, item3_position.position
+(200.0, 200.0)
+>>> item3_position.pop_to_now()
+>>> item3_position.triage_section, item3_position.position
+(100.0, 200.0)
+
+XXX pop_to_now() should use current timestamp
+XXX doctest pop_to_now(timestamp)
+
+
+Entry Point: chandler.triage_position
+-------------------------------------
+
+The default position values, equal to triage_status, aren't very
+useful except for testing.
+
+Usually, position will be a float measuring seconds since the epoch
+for some time.  It's value is found by applying all chandler.triage_position
+entry points on the item and choosing the largest.
+
+XXX should use, define, explain triage_position entry point
+    triage_position eps should return ``None`` if they don't apply, or
+    (weight, value) if they do apply (the weight is needed because,
+    for instance, both the reminder and event-ness positions might
+    apply to the same item)
