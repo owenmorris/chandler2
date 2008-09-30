@@ -3,7 +3,7 @@ Items,  and Extensions and DashboardEntries
 
 Items
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-At the core of the OCAP data model is the ``Item`` class::
+At the core of the Chandler data model is the ``Item`` class::
 
 >>> from chandler.core import *
 >>> item = Item()
