@@ -3,7 +3,7 @@ Items,  and Extensions and DashboardEntries
 
 Items
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-At the core of the OCAP data model is the `Item` class::
+At the core of the OCAP data model is the ``Item`` class::
 
 >>> from chandler.core import *
 >>> item = Item()
@@ -27,7 +27,7 @@ u'No!'
 Extensions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Of course, a titled object is not particularly interesting. Items support
-having sets of `extensions` installed. These extensions can be used to
+having sets of ``extensions`` installed. These extensions can be used to
 customize object attributes and behaviour (in fact, for reasons of
 extensibility, subclassing item is not recommended).
 
@@ -44,7 +44,7 @@ Note that once you have an Extension, you can't change its item.
 >>> e.item is item
 True
 
-Note that Extension objects, which use the `peak.util.addons` library, are
+Note that Extension objects, which use the ``peak.util.addons`` library, are
 uniqued:
 
 >>> Extension(item) is e
@@ -56,14 +56,14 @@ set of extensions. So, in our current example:
 >>> e in item.extensions
 False
 
-However, if we call the `add()` method, then our extension does get added:
+However, if we call the ``add()`` method, then our extension does get added:
 
 >>> e.add()
 <chandler.core.Extension object at 0x...>
 >>> e in item.extensions
 True
 
-Note that the extension object itself is returned from `add()`; this is
+Note that the extension object itself is returned from ``add()``; this is
 for convenience in setting up and installing extensions.
 
 You can’t add an extension that has already been added:
@@ -73,14 +73,14 @@ Traceback (most recent call last):
 ...
 ValueError: Extension <class 'chandler.core.Extension'> has already been added
 
-However, you can use the `remove()` method to remove an existing extension:
+However, you can use the ``remove()`` method to remove an existing extension:
 
 >>> e.remove()
 >>> e in item.extensions
 False
 
-As you might expect from the `add()` case above, it is an error to try to
-`remove()` an extension that isn’t there:
+As you might expect from the ``add()`` case above, it is an error to try to
+``remove()`` an extension that isn’t there:
 
 >>> e.remove()
 Traceback (most recent call last):
@@ -89,8 +89,8 @@ ValueError: Extension <class 'chandler.core.Extension'> is not present
 
 Subclassing Extension
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-When you extend `Item`, you typically want to add attributes or method.
-The way to do this is to subclass `Extension`:
+When you extend ``Item``, you typically want to add attributes or method.
+The way to do this is to subclass ``Extension``:
 
 >>> import peak.events.trellis as trellis
 >>> class MyExtension(Extension):
@@ -98,7 +98,7 @@ The way to do this is to subclass `Extension`:
 
 >>> my_ext = MyExtension(item)
 
-As usual, your subclass does not start off in the `extensions` for the
+As usual, your subclass does not start off in the ``extensions`` for the
 given Item:
 
 >>> my_ext in item.extensions
@@ -113,14 +113,14 @@ False
 
 There is also a convenience class method for testing if a given extension
 class has been installed on an item. So, the last two tests of
-`item.extensions` can be rephrased as:
+``item.extensions`` can be rephrased as:
 
 >>> Extension.installed_on(item)
 True
 >>> MyExtension.installed_on(item)
 False
 
-The `installed_on` method also works on an arbitrary Extension object:
+The ``installed_on`` method also works on an arbitrary Extension object:
 
 >>> another_extension = MyExtension(Item()).add()
 >>> MyExtension.installed_on(another_extension)
@@ -130,7 +130,7 @@ False
 
 Initializing attributes when adding an extension
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-The `add()` method takes keywords, so you can set up attributes when you
+The ``add()`` method takes keywords, so you can set up attributes when you
 add extensions to an item:
 
 >>> new_my_ext = MyExtension(Item()).add(can_this_be_true=True)
