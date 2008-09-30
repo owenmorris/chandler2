@@ -10,7 +10,7 @@ allow application builders to build different PIMs by reusing
 different pieces of Chandler.
 
 Core Chandler Sub-Projects
-=================
+==========================
 
 Chandler-Platform
     Platform services such as startups, plugin management, Twisted,
