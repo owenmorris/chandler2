@@ -1,5 +1,6 @@
 import peak.events.trellis as trellis
 from peak.util.addons import AddOn
+from chandler.timemachine import nowTimestamp
 
 ### Constants ###
 
@@ -79,5 +80,6 @@ class TriagePosition(AddOn, trellis.Component):
         self.pinned_position = self.pinned_triage_section = None
 
     @trellis.modifier
-    def pop_to_now(self, timestamp=None):
+    def pin_to_now(self):
         self.pinned_triage_section = NOW
+        self.pinned_position = nowTimestamp()

@@ -1,0 +1,35 @@
+==============
+ Time Machine
+==============
+
+Chandler behavior that involves the current time should use the
+timemachine module to determine the current date and time.  This
+allows tests to be written that set the current time to a fixed value.
+
+>>> from chandler.timemachine import *
+>>> oct1 = datetime(2008, 10, 1, 10, tzinfo=pacific)
+>>> setNow(oct1)
+>>> getNow()
+datetime.datetime(2008, 10, 1, 10, 0, tzinfo=<ICUtzinfo: US/Pacific>)
+>>> getNow(eastern)
+datetime.datetime(2008, 10, 1, 13, 0, tzinfo=<ICUtzinfo: US/Eastern>)
+>>> resetNow()
+>>> getNow() > oct1
+True
+
+When setting an artificial now, a timezone is always used.  If your
+supplied datetime doesn't have a timezone, ICUtzinfo.default will be
+used:
+
+>>> ignore = ICUtzinfo.setDefault(eastern)
+>>> setNow(datetime(2008, 9, 30, 10))
+>>> getNow()
+datetime.datetime(2008, 9, 30, 10, 0, tzinfo=<ICUtzinfo: US/Eastern>)
+
+There's also a timemachine-aware function for getting a current
+timestamp (seconds since the UTC epoch).
+
+>>> nowTimestamp()
+1222812000.0
+
+XXX should there be a cell representing the current default timezone?

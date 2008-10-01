@@ -2,7 +2,7 @@
  Triage Status - Domain Model
 ==============================
 
-Originally, triage status grouped items into one of three states:
+Triage status is based on three states:
 
   ============ ============
   English Name Numeric code
@@ -12,8 +12,8 @@ Originally, triage status grouped items into one of three states:
   Done         300.0
   ============ ============
 
-These legacy values are the main fallback states, but arbitrary
-additional triage states can be defined.
+These primary values are the defaults, but arbitrary additional triage
+states can be defined in plugins.
 
 >>> from chandler.triage import *
 >>> class Item: pass
@@ -53,11 +53,12 @@ Traceback (most recent call last):
 ...
 TriageRangeError: Can't set triage status to 99
 
-XXX test triage status of 250, calculated falls back to 200
+XXX test triage status of unrecognized 250, calculated falls back to 200
 
 XXX How do I test:
   assuming no chandler.triage.types entry points
   add entry points in code
+
 
 ====================
  Triage Positioning
@@ -68,6 +69,10 @@ triage-sorted dashboard view.
 
 ``TriagePosition`` of an item has a read-only float ``position`` cell.
 The default value is the item's calculated triage status.
+
+>>> from chandler import timemachine   # set up the current time
+>>> from datetime import datetime
+>>> timemachine.setNow(datetime(2008, 10, 1, 8, tzinfo=timemachine.eastern))
 
 >>> item3 = Item()
 >>> item3_position = TriagePosition(item3)
@@ -105,6 +110,7 @@ calculated triage status, but can be overridden with
 XXX should recognized custom triage statuses be in their own sections?
     If not section definition might need an entry point, too.
 
+
 Shortcut Methods
 ----------------
 
@@ -128,18 +134,16 @@ values to ``None``.
 >>> item3_position.triage_section, item3_position.position
 (300.0, 300.0)
 
-``pop_to_now()`` sets ``pinned_triage_section`` to NOW.
+``pin_to_now()`` sets ``pinned_triage_section`` to NOW and
+``position`` to the timestamp for the current time.
 
 >>> item3_triage.manual = LATER
 >>> item3_position.clear_pinned()
 >>> item3_position.triage_section, item3_position.position
 (200.0, 200.0)
->>> item3_position.pop_to_now()
+>>> item3_position.pin_to_now()
 >>> item3_position.triage_section, item3_position.position
-(100.0, 200.0)
-
-XXX pop_to_now() should use current timestamp
-XXX doctest pop_to_now(timestamp)
+(100.0, 1222891200.0)
 
 
 Entry Point: chandler.triage_position
