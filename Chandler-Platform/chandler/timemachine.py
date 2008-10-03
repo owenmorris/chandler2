@@ -42,14 +42,6 @@ def setNow(dt):
 def resetNow():
     setNow(None)
 
-### Helper constants
-
-pacific = ICUtzinfo.getInstance("US/Pacific")
-eastern = ICUtzinfo.getInstance("US/Eastern")
-utc = ICUtzinfo.getInstance("UTC")
-
-# timestamp function
-
 def nowTimestamp():
     """The number of seconds betwen the UTC epoch and now."""
     # ignoring time.mktime range limits and MAXYEAR/MINYEAR, since a
@@ -58,3 +50,11 @@ def nowTimestamp():
         return mktime(datetime.utcnow().timetuple())
     else:
         return mktime(now.astimezone(utc).timetuple())
+
+
+### Helper constants
+
+floating = ICUtzinfo.floating
+pacific  = ICUtzinfo.getInstance("US/Pacific")
+eastern  = ICUtzinfo.getInstance("US/Eastern")
+utc      = ICUtzinfo.getInstance("UTC")

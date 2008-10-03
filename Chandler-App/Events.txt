@@ -1,0 +1,220 @@
+=======================
+ Events - Domain Model
+=======================
+
+Events represent a period in time, from a ``start`` to an ``end``.  If
+that was all there was to it, programmer's lives would be a lot
+easier.  In fact, there are a variety of additional fields associated
+with events, with varying levels of subtlety.
+
+Most of these fields are modeled on equivalent properties defined in
+the iCalendar_ spec.  Chandler's event model also defined a few custom
+non-iCalendar fields.  For more on these see `Divergence from
+iCalendar`_.
+
+Basic events
+============
+
+To create an event, add the Event Extension to an item.
+
+>>> from chandler.event import *
+>>> from chandler.core import Item
+>>> item = Item()
+>>> event = Event(item).add()
+>>> event.start is None
+True
+
+By default an event's ``start`` and ``end`` are ``None``.  Allowing
+``None`` for start gives items the flexibility to be marked as events
+without assigning more details.  When working with events, be sure to
+check if start is ``None``.
+
+Normally, however, you'll want events to have a start time.
+
+>>> from datetime import datetime
+>>> from chandler.timemachine import pacific, eastern, floating
+>>> cinco_de_mayo = datetime(2008, 5, 5, 18, tzinfo=pacific)
+>>> event.base_start = cinco_de_mayo
+>>> event.start
+datetime.datetime(2008, 5, 5, 18, 0, tzinfo=<ICUtzinfo: US/Pacific>)
+
+You can't set ``end`` directly.  It's calculated from ``start`` and
+``duration``.  The default ``duration`` for an event is one hour.
+
+>>> event.end
+datetime.datetime(2008, 5, 5, 19, 0, tzinfo=<ICUtzinfo: US/Pacific>)
+>>> event.base_duration = timedelta(hours=0)
+>>> event.end
+datetime.datetime(2008, 5, 5, 18, 0, tzinfo=<ICUtzinfo: US/Pacific>)
+
+Notice that you don't work with ``start`` or ``duration`` directly.
+Instead you set ``base_start`` and ``base_duration``.
+
+Timed- vs. full-day- events
+---------------------------
+
+Why the extra base cells?  ``start`` and ``base_start`` are
+identical as long as the read-only ``is_day`` cell is ``False``.
+
+>>> event.is_day
+False
+
+In most calendar applications, timed-events (events with a date `and`
+a time) are distinguished from full-day-events (with a date range, but
+no associated time) by rendering full-day-events in a different way.
+
+Full-day-events could be implemented using timed-events by setting
+``base_start`` to midnight and ``base_duration`` to one or more days,
+but treating full-day-events as semantically different is convenient
+(and it's what most calendar users expect).
+
+Chandler has two attributes that cause events to be treated as
+full-day-events, ``all_day`` and ``any_time``.
+
+>>> event.all_day = True
+>>> event.is_day
+True
+>>> event.start
+datetime.datetime(2008, 5, 5, 0, 0, tzinfo=<FloatingTZ: ...>)
+>>> event.end
+datetime.datetime(2008, 5, 6, 0, 0, tzinfo=<FloatingTZ: ...>)
+>>> event.all_day = False
+>>> event.start
+datetime.datetime(2008, 5, 5, 18, 0, tzinfo=<ICUtzinfo: US/Pacific>)
+
+When ``is_day`` flips on, ``start`` and ``end`` are changed to
+midnight in the "floating" timezone, that is, midnight regardless of
+what timezone the computer is in.  See `Floating times`_ for more
+details.
+
+The duration of a full-day-event is always the number of days of
+``base_duration`` plus one.  This ensures that every full-day-event
+has a duration of at least one day, but beware, whole-day arithmetic
+can be confusing.  There are two gotchas to be aware of.
+
+First, what is the duration of an event that starts on May 5th and ends on
+May 6th?  If the times associated with those dates are both midnight,
+the answer is one day.  But in colloquial English, if no time is
+specified, it's an event lasting through two days.
+
+The second possible stumbling block is that, for full-day-events in
+Chandler, ``end`` represents midnight on the last day, not the last
+full-day of the event.
+
+These issues cancel each other out, in a way.  If a user inputs an
+event starting on May 5 and ending on May 6, ``base_duration`` should
+be set to the difference between those dates (one day), not the actual
+duration of the event.
+
+>>> event.any_time = True
+>>> event.base_duration = timedelta(1)
+>>> event.end
+datetime.datetime(2008, 5, 7, 0, 0, tzinfo=<FloatingTZ: ...>)
+
+Constraints on events
+=====================
+
+Read-only cells
+---------------
+
+``start``, ``duration``, ``is_day`` and ``end`` are all calculated
+from other cells, they shouldn't be set directly.
+
+>>> event.start = cinco_de_mayo
+Traceback (most recent call last):
+ . . .
+AttributeError: can't set attribute
+>>> event.duration = timedelta(hours=1)
+Traceback (most recent call last):
+ . . .
+AttributeError: can't set attribute
+
+Meaningful duration
+-------------------
+
+It would be strange to have an event that lasted for less than no
+time, so ``base_duration`` can't be set to a negative timedelta, or to
+anything that isn't a timedelta.
+
+>>> event.base_duration = None
+Traceback (most recent call last):
+  . . .
+BadDurationError: Can't set base_duration to: None
+>>> event.base_duration = timedelta(days=-1)
+Traceback (most recent call last):
+  . . .
+BadDurationError: Can't set base_duration to: -1 day, 0:00:00
+
+Floating times
+--------------
+
+Python's standard datetime module allows datetimes to have a timezone
+(to have a non-None tzinfo class), or to have be a "naive" datetime,
+with no timezone.
+
+Unfortunately, naive datetimes and timezone-aware datetimes don't play
+well together.
+
+>>> naive = cinco_de_mayo.replace(tzinfo=None)
+>>> cinco_de_mayo == naive
+Traceback (most recent call last):
+  . . .
+TypeError: can't compare offset-naive and offset-aware datetimes
+
+Chandler doesn't allow events to use naive timezones.
+
+>>> event.base_start = None
+>>> event.base_start = naive
+Traceback (most recent call last):
+  . . .
+NaiveTimezoneError: Can't set base_start to: datetime.datetime(2008, 5, 5, 18, 0)
+
+Instead, you should use the PyICU floating tzinfo class.  The floating
+timezone will change any time the PyICU default time changes, and
+datetimes using floating time can be compared to timezoned datetimes.
+
+>>> floater = cinco_de_mayo.replace(year=2007, tzinfo=floating)
+>>> floater < cinco_de_mayo
+True
+>>> event.base_start = floater
+>>> event.end
+datetime.datetime(2007, 5, 7, 0, 0, tzinfo=<FloatingTZ: ...>)
+
+
+Recurrence
+==========
+
+XXX recurrence rule, modifications
+
+Other event fields
+==================
+
+location, transparency
+
+
+
+Divergence from iCalendar
+=========================
+
+any-time
+
+transparency
+
+===========================
+ Events - Interaction Model
+===========================
+
+XXX free-busy weight: entry-point?
+
+XXX automatic triage status: entry point called by triage status,
+    should it live in event.py?
+
+XXX test add/remove/add Extension doesn't lose start time? this
+    can/should eventually be handled at the Extenstion level
+
+Field visibility?
+Location
+is_between
+XXX transparency entry-point?
+
+.. _iCalendar: http://tools.ietf.org/html/rfc2445
