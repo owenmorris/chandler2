@@ -5,7 +5,7 @@ from datetime import datetime
 import osaf.timemachine as timemachine
 import time
 
-__all__ = ('Item', 'Extension', 'Scheduled')
+__all__ = ('Item', 'Extension', 'Scheduled', 'ConstraintError')
 
 class Item(trellis.Component):
 
@@ -76,3 +76,14 @@ class Scheduled(trellis.Component):
         if self._when_to_fire:
             self.callback(self)
 
+class ConstraintError(Exception):
+    """Exception when a cell is set to an inappropriate value."""
+    msg = "Can't set %(cell_description)s to: %(cell_value)s"
+    cell_description = "cell"
+
+    def __init__(self, cell_value):
+        self.cell_value = cell_value
+
+    def __str__(self):
+        return self.msg % {'cell_description' : self.cell_description,
+                           'cell_value'       : self.cell_value}

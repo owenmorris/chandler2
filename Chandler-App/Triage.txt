@@ -50,8 +50,8 @@ Triage status must be either ``None``, or an int or float >= 100.
 
 >>> item2_triage.manual = 99
 Traceback (most recent call last):
-...
-TriageRangeError: Can't set triage status to 99
+ . . .
+TriageRangeError: Can't set triage status to: 99
 
 XXX test triage status of unrecognized 250, calculated falls back to 200
 

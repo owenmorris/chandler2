@@ -1,6 +1,7 @@
 import peak.events.trellis as trellis
 from peak.util.addons import AddOn
 from chandler.timemachine import nowTimestamp
+from chandler.core import ConstraintError
 
 ### Constants ###
 
@@ -9,9 +10,6 @@ LATER = 200.0
 DONE = 300.0
 
 ### Domain model ###
-
-class TriageRangeError(Exception):
-    pass
 
 class Triage(AddOn, trellis.Component):
     trellis.attrs(
@@ -31,8 +29,10 @@ class Triage(AddOn, trellis.Component):
     def constraints(self):
         for cell in (self.manual, self.auto):
             if cell is not None and int(cell) < 100:
-                raise TriageRangeError, "Can't set triage status to %s" % cell
+                raise TriageRangeError(cell)
 
+class TriageRangeError(ConstraintError):
+    cell_description = "triage status"
 
 ### Interaction model ###
 class TriagePosition(AddOn, trellis.Component):
@@ -69,6 +69,7 @@ class TriagePosition(AddOn, trellis.Component):
         else:
             return self.pinned_triage_section
 
+    ### Modifiers ###
     @trellis.modifier
     def pin(self):
         if self.pinned_triage_section is None and self.pinned_position is None:
