@@ -1,12 +1,16 @@
 import peak.events.trellis as trellis
+import peak.events.activity as activity
 import peak.util.addons as addons
+from datetime import datetime
+import osaf.timemachine as timemachine
+import time
 
-__all__ = ('Item', 'Extension')
+__all__ = ('Item', 'Extension', 'Scheduled')
 
 class Item(trellis.Component):
-    
+
     title = trellis.attr(initially=u'')
-    
+
     _extension_types = trellis.make(trellis.Set)
     @trellis.maintain
     def extensions(self):
@@ -14,17 +18,17 @@ class Item(trellis.Component):
 
 class Extension(trellis.Component, addons.AddOn):
     __item = trellis.attr(None)
-    
+
     item = trellis.make(lambda self: self.__item, writable=False)
 
     def __init__(self, item, **kwds):
         self.__item = item
         super(Extension, self).__init__(**kwds)
-        
+
     @trellis.modifier
     def add(self, **kw):
         t = type(self)
-        
+
         if t in self.item._extension_types:
             raise ValueError("Extension %s has already been added" % (t,))
 
@@ -48,3 +52,27 @@ class Extension(trellis.Component, addons.AddOn):
         except AttributeError:
             pass
         return isinstance(obj, Item) and cls in obj._extension_types
+
+class Scheduled(trellis.Component):
+
+    fire_date = trellis.attr(datetime.min)
+    callback = trellis.attr(lambda reminder: None)
+
+    @trellis.compute
+    def _when_to_fire(self):
+        # We want to convert fire_date into an activity.Time object.
+        # To do that, subtract from datetime.now
+        delta = self.fire_date - timemachine.getNow(self.fire_date.tzinfo)
+        delta_seconds = (delta.days * 86400.0) + delta.seconds + (delta.microseconds/1.0e6)
+
+        if delta_seconds >= 0:
+            return activity.Time[delta_seconds]
+        else:
+            return False
+
+    @trellis.perform # @@@ can't be a perform because we don't know if
+                     # callback modifies the trellis or not
+    def fire(self):
+        if self._when_to_fire:
+            self.callback(self)
+

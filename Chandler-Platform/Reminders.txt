@@ -1,0 +1,48 @@
+------------------------------------
+Scheduling and Reminders in Chandler
+------------------------------------
+A ``Scheduled`` in Chandler allows you to schedule operations at future
+times. In this document, we’re also going to be simulating wall-clock
+time, so as to make the tests here repeatable. To do that, we use the
+``chandler.timemachine`` module to imagine we are transported in time
+to March 16, 2009, at 10:55 a.m.:
+
+>>> from datetime import *
+>>> from peak.events.activity import Time
+>>> import osaf.timemachine
+>>> Time.auto_update = False # Repeatable clock increments!
+>>> osaf.timemachine.setNow(datetime(2009, 3, 16, 10, 55))
+
+Scheduling callbacks
+--------------------
+
+``Scheduled`` objects allow you to schedule a callback to happen at
+(or near!) a given date and time.
+
+>>> from chandler.core import Scheduled
+>>> import sys
+
+As an example, let’s create a Scheduled that will fire at 11:00 a.m.:
+
+>>> my_reminder = Scheduled(fire_date=datetime(2009, 3, 16, 11,0),
+...                   callback=sys.stdout.write)
+
+and advance time by 5 minutes:
+
+>>> Time.advance(5 * 60)
+<chandler.core.Scheduled object at 0x...>
+
+You can reset the fire_date of a Scheduled, and it will fire (once time
+advances):
+
+>>> my_reminder.fire_date += timedelta(minutes=5) 
+>>> Time.advance(10 * 60)
+<chandler.core.Scheduled object at 0x...>
+
+However, setting the fire date into the past has no effect:
+>>> my_reminder.fire_date = datetime(2007, 3, 16, 12, 0)
+
+... even when the time advances further!
+
+>>> Time.advance(1)
+

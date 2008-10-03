@@ -36,10 +36,9 @@ An item starts out with no extensions installed:
 >>> list(item.extensions)
 []
 
->>> e = Extension(item)
-
 Note that once you have an Extension, you can't change its item.
 
+>>> e = Extension(item)
 >>> #e.item = Item() # @@@ should raise, but doesn't!
 >>> e.item is item
 True
