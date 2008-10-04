@@ -2,10 +2,10 @@
  Events - Domain Model
 =======================
 
-Events represent a period in time, from a ``start`` to an ``end``.  If
-that was all there was to it, programmer's lives would be a lot
-easier.  In fact, there are a variety of additional fields associated
-with events, with varying levels of subtlety.
+``Event`` objects represent a period in time, from a ``start`` to an
+``end``.  If that was all there was to it, programmer's lives would be
+a lot easier.  In fact, there are a variety of additional fields
+associated with events, with varying levels of subtlety.
 
 Most of these fields are modeled on equivalent properties defined in
 the iCalendar_ spec.  Chandler's event model also defined a few custom
@@ -15,7 +15,7 @@ iCalendar`_.
 Basic events
 ============
 
-To create an event, add the Event Extension to an item.
+To create an event, add the ``Event`` Extension to an item.
 
 >>> from chandler.event import *
 >>> from chandler.core import Item
@@ -163,8 +163,8 @@ TypeError: can't compare offset-naive and offset-aware datetimes
 
 Chandler doesn't allow events to use naive timezones.
 
->>> event.base_start = None
->>> event.base_start = naive
+>>> event.base_start = None           # if base_start isn't None, trellis will raise a TypeError
+>>> event.base_start = naive          # before Event's contraints can raise a NaiveTimezoneError
 Traceback (most recent call last):
   . . .
 NaiveTimezoneError: Can't set base_start to: datetime.datetime(2008, 5, 5, 18, 0)
@@ -180,6 +180,7 @@ True
 >>> event.end
 datetime.datetime(2007, 5, 7, 0, 0, tzinfo=<FloatingTZ: ...>)
 
+XXX require start timezone to be a PyICU timezone?
 
 Recurrence
 ==========

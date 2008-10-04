@@ -16,6 +16,7 @@ class Item(trellis.Component):
     def extensions(self):
         return frozenset(t(self) for t in self._extension_types)
 
+
 class Extension(trellis.Component, addons.AddOn):
     __item = trellis.attr(None)
 
@@ -53,6 +54,7 @@ class Extension(trellis.Component, addons.AddOn):
             pass
         return isinstance(obj, Item) and cls in obj._extension_types
 
+
 class Scheduled(trellis.Component):
 
     fire_date = trellis.attr(datetime.min)
@@ -75,6 +77,7 @@ class Scheduled(trellis.Component):
     def fire(self):
         if self._when_to_fire:
             self.callback(self)
+
 
 class ConstraintError(Exception):
     """Exception when a cell is set to an inappropriate value."""
