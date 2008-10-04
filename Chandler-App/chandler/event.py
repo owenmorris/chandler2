@@ -14,7 +14,11 @@ class Event(Extension):
         base_start = None,          # None, or a datetime with a PyICU tzinfo
         base_duration = one_hour,   # a timedelta
         all_day = False,
-        any_time = False
+        any_time = False,
+
+        # miscellaneous cells unrelated to time
+        location = None,
+        transparency = 'confirmed'
     )
 
     @trellis.compute
@@ -49,8 +53,10 @@ class Event(Extension):
         if not isinstance(self.base_duration, timedelta) or self.base_duration < zero_delta:
             raise BadDurationError(self.base_duration)
 
+
 class NaiveTimezoneError(ConstraintError):
     cell_description = "base_start"
+
 
 class BadDurationError(ConstraintError):
     cell_description = "base_duration"
@@ -58,7 +64,5 @@ class BadDurationError(ConstraintError):
 
 # location
 # transparency
-
-# constraints on base_start and base_duration
 
 # is_between

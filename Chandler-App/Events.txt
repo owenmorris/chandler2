@@ -185,21 +185,38 @@ XXX require start timezone to be a PyICU timezone?
 Recurrence
 ==========
 
-XXX recurrence rule, modifications
+XXX recurrence rule, modifications, probably in a separate .txt file
 
 Other event fields
 ==================
 
-location, transparency
+Chandler events have a few cells not related to time or duration.
 
+>>> event.location is None
+True
+>>> event.location = "El Camino Real"
+>>> event.transparency
+'confirmed'
+>>> event.transparency = 'fyi'
+
+``location`` can be any string, or ``None``.  ``transparency``
+defaults to 'confirmed', but it can be set to 'fyi' or 'tentative'.
+
+XXX transparency entry-point?  Or just restrict to an enum?  Either
+way, constraints should be tested.
 
 
 Divergence from iCalendar
 =========================
 
-any-time
+``any_time`` isn't defined in iCalendar.  For most non-Chandler
+clients, a ``True`` value for ``any_time`` should be treated just like
+``all_day``.  Within Chandler, ``any_time`` events are rendered
+slightly differently and don't have a free-busy weight.
 
-transparency
+XXX link to busy time in interaction model when that's implemented
+
+What Chandler calls ``transparency`` is called STATUS in iCalendar_.  Chandler translates the standard CANCELLED value into 'fyi'.
 
 ===========================
  Events - Interaction Model
@@ -216,6 +233,5 @@ XXX test add/remove/add Extension doesn't lose start time? this
 Field visibility?
 Location
 is_between
-XXX transparency entry-point?
 
 .. _iCalendar: http://tools.ietf.org/html/rfc2445
