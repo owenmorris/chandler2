@@ -50,8 +50,8 @@ datetime.datetime(2008, 5, 5, 18, 0, tzinfo=<ICUtzinfo: US/Pacific>)
 Notice that you don't work with ``start`` or ``duration`` directly.
 Instead you set ``base_start`` and ``base_duration``.
 
-Timed- vs. full-day- events
----------------------------
+Full-day events
+===============
 
 Why the extra base cells?  ``start`` and ``base_start`` are
 identical as long as the read-only ``is_day`` cell is ``False``.
@@ -87,29 +87,119 @@ midnight in the "floating" timezone, that is, midnight regardless of
 what timezone the computer is in.  See `Floating times`_ for more
 details.
 
+Full-day arithmetic
+-------------------
+
+Beware, full-day arithmetic can be confusing.
+
 The duration of a full-day-event is always the number of days of
 ``base_duration`` plus one.  This ensures that every full-day-event
-has a duration of at least one day, but beware, whole-day arithmetic
-can be confusing.  There are two gotchas to be aware of.
+has a duration of at least one day.  This isn't necessarily intuitive,
+and it can cause confusion.  The confusion is hard to dispell
+completely because of two issues with describing events in English.
 
 First, what is the duration of an event that starts on May 5th and ends on
 May 6th?  If the times associated with those dates are both midnight,
 the answer is one day.  But in colloquial English, if no time is
 specified, it's an event lasting through two days.
 
-The second possible stumbling block is that, for full-day-events in
-Chandler, ``end`` represents midnight on the last day, not the last
-full-day of the event.
+Secondly, for full-day-events in Chandler, ``end`` represents midnight
+at the end of the last day.  The date of this value will be the day
+after the event ends, not the date of the event's last full day.
 
-These issues cancel each other out, in a way.  If a user inputs an
-event starting on May 5 and ending on May 6, ``base_duration`` should
-be set to the difference between those dates (one day), not the actual
-duration of the event.
+This means that when displaying ``is_day`` events, if users are shown
+a date and no time, they shouldn't be shown the date associated with
+``end``, but rather the date one day before ``end``.
 
->>> event.any_time = True
+On the other hand, if a user inputs an event starting on May 5 and
+ending on May 6, ``base_duration`` should be set to one day, not the
+actual two-day duration of the event.
+
+>>> event.all_day = True
 >>> event.base_duration = timedelta(1)
 >>> event.end
 datetime.datetime(2008, 5, 7, 0, 0, tzinfo=<FloatingTZ: ...>)
+
+Any-time
+--------
+
+``any_time`` is intended to describe events that are relevant for a
+particular day or days, but don't have a specific time associated with
+them and don't take up much time during the day.
+
+``all_day`` takes precedence over ``any_time``.  To model this,
+``base_any_time`` is writable, ``any_time`` is not.  ``any_time`` will
+be ``True`` as long as ``base_any_time`` is ``True`` and ``all_day``
+is ``False``.
+
+>>> event.base_any_time = True
+>>> event.any_time
+False
+>>> event.all_day = False
+>>> event.any_time
+True
+>>> event.is_day
+True
+>>> event.base_any_time = False
+>>> event.is_day
+False
+
+Recurrence
+==========
+
+XXX recurrence rule, modifications, probably in a separate .txt file
+
+Other event fields
+==================
+
+``Event`` has a few cells that don't affect time or duration.
+
+Location
+--------
+
+``location`` can be any string, or ``None``.
+
+>>> event.location is None
+True
+>>> event.location = "El Camino Real"
+
+Transparency
+------------
+
+At a high level, ``transparency`` is a choice between 'confirmed' (the
+default), 'fyi', and 'tentative'.  However, like various other cells,
+there is a ``base_transparency``, because in a few cases
+``transparency`` isn't equal to ``base_transparency``.
+
+>>> event.transparency == event.base_transparency == 'confirmed'
+True
+>>> event.base_transparency = 'tentative'
+>>> event.transparency
+'tentative'
+
+If an event's ``is_day`` is ``False`` and its ``duration`` is zero, it
+takes up no time on the calendar.  In this case, or if the event is
+``any_time``, the item has an ``implied_transparency``.
+
+``implied_transparency`` overrides whatever ``base_transparency`` is
+set to.
+
+>>> event.base_any_time = True
+>>> event.implied_transparency
+'fyi'
+>>> event.transparency
+'fyi'
+>>> event.base_any_time = False
+>>> event.base_duration = zero_delta
+>>> event.transparency
+'fyi'
+>>> event.base_duration = one_hour
+>>> event.transparency
+'tentative'
+
+
+XXX transparency entry-point?  Or just restrict to an enum?  Either
+way, constraints should be tested.
 
 Constraints on events
 =====================
@@ -117,8 +207,9 @@ Constraints on events
 Read-only cells
 ---------------
 
-``start``, ``duration``, ``is_day`` and ``end`` are all calculated
-from other cells, they shouldn't be set directly.
+``start``, ``duration``, ``end``, ``is_day``, ``any_time`` and
+``transparency`` are all calculated from other cells, they can't be
+set directly.
 
 >>> event.start = cinco_de_mayo
 Traceback (most recent call last):
@@ -178,49 +269,76 @@ datetimes using floating time can be compared to timezoned datetimes.
 True
 >>> event.base_start = floater
 >>> event.end
-datetime.datetime(2007, 5, 7, 0, 0, tzinfo=<FloatingTZ: ...>)
+datetime.datetime(2007, 5, 5, 19, 0, tzinfo=<FloatingTZ: ...>)
 
 XXX require start timezone to be a PyICU timezone?
-
-Recurrence
-==========
-
-XXX recurrence rule, modifications, probably in a separate .txt file
-
-Other event fields
-==================
-
-Chandler events have a few cells not related to time or duration.
-
->>> event.location is None
-True
->>> event.location = "El Camino Real"
->>> event.transparency
-'confirmed'
->>> event.transparency = 'fyi'
-
-``location`` can be any string, or ``None``.  ``transparency``
-defaults to 'confirmed', but it can be set to 'fyi' or 'tentative'.
-
-XXX transparency entry-point?  Or just restrict to an enum?  Either
-way, constraints should be tested.
-
 
 Divergence from iCalendar
 =========================
 
 ``any_time`` isn't defined in iCalendar.  For most non-Chandler
 clients, a ``True`` value for ``any_time`` should be treated just like
-``all_day``.  Within Chandler, ``any_time`` events are rendered
-slightly differently and don't have a free-busy weight.
+``all_day``.  Within Chandler, ``any_time`` events set
+``implied_transparency`` to 'fyi' and are rendered slightly
+differently.
 
-XXX link to busy time in interaction model when that's implemented
+Also, what Chandler calls ``transparency`` is called STATUS in iCalendar_.
+Chandler translates the standard CANCELLED value into 'fyi'.
 
-What Chandler calls ``transparency`` is called STATUS in iCalendar_.  Chandler translates the standard CANCELLED value into 'fyi'.
-
-===========================
+============================
  Events - Interaction Model
-===========================
+============================
+
+XXX Ultimately the interaction model will be working with dashboard
+    entries, not Event(Item) objects.  Is there some way the same
+    Extension can/should apply to both Dashboard Entries and Items?
+    For now these tests are written applying EventFieldVisibility to
+    an item.
+
+Field visibility
+================
+
+XXX Field visibility should definitely be collected via entry points, somehow
+
+When an ``Event`` is displayed in the detail view, fields are hidden
+and shown based on whether that field is applicable to the item.
+
+>>> vis = EventFieldVisibility(item)
+>>> vis.event is event
+True
+
+For ``all_day`` events, there's no time associated with the event, and
+timezone choices aren't relevant.  Transparency choices should be
+available.
+
+>>> event.all_day = True
+>>> vis.show_time, vis.show_timezone, vis.show_transparency
+(False, False, True)
+
+``any_time`` events also have no timezone, but rather than hiding time
+fields, empty time fields are shown to invite users to add more
+specific time information, so ``clear_time`` will be ``True``.
+
+Also, because ``any_time`` events have an ``implied_transparency``,
+transparency choices shouldn't be shown.
+
+>>> event.all_day, event.base_any_time = False, True
+>>> event.any_time
+True
+>>> vis.show_time, vis.show_timezone, vis.show_transparency, vis.clear_time
+(True, False, False, True)
+
+If ``is_day`` isn't set for an event, times and timezones should be shown.
+
+>>> event.base_any_time = False
+>>> vis.show_time, vis.show_timezone, vis.clear_time
+(True, True, False)
+
+XXX recurrence and location should always be visible for events
+
+
+IM todos
+========
 
 XXX free-busy weight: entry-point?
 
@@ -230,8 +348,6 @@ XXX automatic triage status: entry point called by triage status,
 XXX test add/remove/add Extension doesn't lose start time? this
     can/should eventually be handled at the Extenstion level
 
-Field visibility?
-Location
 is_between
 
 .. _iCalendar: http://tools.ietf.org/html/rfc2445

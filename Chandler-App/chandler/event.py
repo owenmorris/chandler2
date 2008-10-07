@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, time
 import peak.events.trellis as trellis
+from peak.util.addons import AddOn
 
 from chandler.core import *
 from chandler.timemachine import floating
@@ -14,11 +15,11 @@ class Event(Extension):
         base_start = None,          # None, or a datetime with a PyICU tzinfo
         base_duration = one_hour,   # a timedelta
         all_day = False,
-        any_time = False,
+        base_any_time = False,
 
-        # miscellaneous cells unrelated to time
+        # miscellaneous cells that don't affect time
         location = None,
-        transparency = 'confirmed'
+        base_transparency = 'confirmed'
     )
 
     @trellis.compute
@@ -41,8 +42,25 @@ class Event(Extension):
                                           else None)
 
     @trellis.compute
+    def any_time(self):
+        return self.base_any_time and not self.all_day
+
+    @trellis.compute
     def is_day(self):
         return self.all_day or self.any_time
+
+    @trellis.compute
+    def transparency(self):
+        if self.implied_transparency:
+            return self.implied_transparency
+        else:
+            return self.base_transparency
+
+    @trellis.compute
+    def implied_transparency(self):
+        if self.any_time or not self.duration:
+            return 'fyi'
+
 
     @trellis.maintain
     def constraints(self):
@@ -61,8 +79,40 @@ class NaiveTimezoneError(ConstraintError):
 class BadDurationError(ConstraintError):
     cell_description = "base_duration"
 
+### Interaction model ###
+class EventFieldVisibility(AddOn, trellis.Component):
+    trellis.attrs(
+        _item=None,
+    )
 
-# location
-# transparency
+    def __init__(self, subject, **kwargs):
+        self._item = subject
+        trellis.Component.__init__(self, **kwargs)
+
+    @trellis.compute
+    def event(self):
+        if self._item is None or not Event.installed_on(self._item):
+            return None
+        else:
+            return Event(self._item)
+
+    @trellis.compute
+    def show_time(self):
+        return bool(self.event and not self.event.all_day)
+
+    @trellis.compute
+    def clear_time(self):
+        return bool(self.event and self.event.any_time)
+
+    @trellis.compute
+    def show_timezone(self):
+        return bool(self.event and not self.event.is_day)
+
+    @trellis.compute
+    def show_transparency(self):
+        return bool(self.event and not self.event.implied_transparency)
+
+
+# implied transparency
 
 # is_between
