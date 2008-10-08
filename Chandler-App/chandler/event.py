@@ -3,12 +3,12 @@ import peak.events.trellis as trellis
 from peak.util.addons import AddOn
 
 from chandler.core import *
-from chandler.timemachine import floating
+from chandler.timemachine import TimeZone
 
 
 one_hour = timedelta(hours=1)
 zero_delta = timedelta(0)
-midnight = time(0, tzinfo=floating)
+midnight = time(0, tzinfo=TimeZone.floating)
 
 class Event(Extension):
     trellis.attrs(

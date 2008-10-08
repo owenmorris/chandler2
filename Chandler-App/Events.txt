@@ -32,8 +32,8 @@ check if start is ``None``.
 Normally, however, you'll want events to have a start time.
 
 >>> from datetime import datetime
->>> from chandler.timemachine import pacific, eastern, floating
->>> cinco_de_mayo = datetime(2008, 5, 5, 18, tzinfo=pacific)
+>>> from chandler.timemachine import TimeZone
+>>> cinco_de_mayo = datetime(2008, 5, 5, 18, tzinfo=TimeZone.pacific)
 >>> event.base_start = cinco_de_mayo
 >>> event.start
 datetime.datetime(2008, 5, 5, 18, 0, tzinfo=<ICUtzinfo: US/Pacific>)
@@ -75,9 +75,9 @@ full-day-events, ``all_day`` and ``any_time``.
 >>> event.is_day
 True
 >>> event.start
-datetime.datetime(2008, 5, 5, 0, 0, tzinfo=<FloatingTZ: ...>)
+datetime.datetime(2008, 5, 5, 0, 0, tzinfo=FloatingTZ(...))
 >>> event.end
-datetime.datetime(2008, 5, 6, 0, 0, tzinfo=<FloatingTZ: ...>)
+datetime.datetime(2008, 5, 6, 0, 0, tzinfo=FloatingTZ(...))
 >>> event.all_day = False
 >>> event.start
 datetime.datetime(2008, 5, 5, 18, 0, tzinfo=<ICUtzinfo: US/Pacific>)
@@ -118,7 +118,7 @@ actual two-day duration of the event.
 >>> event.all_day = True
 >>> event.base_duration = timedelta(1)
 >>> event.end
-datetime.datetime(2008, 5, 7, 0, 0, tzinfo=<FloatingTZ: ...>)
+datetime.datetime(2008, 5, 7, 0, 0, tzinfo=FloatingTZ(...))
 
 Any-time
 --------
@@ -260,11 +260,12 @@ Traceback (most recent call last):
   . . .
 NaiveTimezoneError: Can't set base_start to: datetime.datetime(2008, 5, 5, 18, 0)
 
-Instead, you should use the PyICU floating tzinfo class.  The floating
-timezone will change any time the PyICU default time changes, and
-datetimes using floating time can be compared to timezoned datetimes.
+Instead, you should use the TimeZone service's floating tzinfo class.
+The floating timezone will change any time the PyICU default time changes,
+datetimes using floating time can be compared to timezoned datetimes, and
+changes to the default timezone will be tracked by the Trellis.
 
->>> floater = cinco_de_mayo.replace(year=2007, tzinfo=floating)
+>>> floater = cinco_de_mayo.replace(year=2007, tzinfo=TimeZone.floating)
 >>> floater < cinco_de_mayo
 True
 >>> event.base_start = floater

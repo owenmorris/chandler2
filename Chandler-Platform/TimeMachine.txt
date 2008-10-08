@@ -1,17 +1,127 @@
 ==============
- Time Machine
+ Time Services
 ==============
 
+This manual covers using some of the date, time and timezone
+services available in the ``chandler.timemachine`` module:
+
+>>> from chandler.timemachine import *
+
+.. _toc:
+.. contents:: **Table of Contents**
+
+Using Time Zones
+================
+The ``TimeZone`` service in the ``chandler.timemachine`` module
+is an interface to common operations like setting and getting the
+user’s default time zone, or fetching well-known time zones by
+name. The current implementation uses timezone information from
+the PyICU project, but since ``TimeZone`` is a Contextual service,
+it is possible to swap it out for a different scheme if you prefer.
+
+There are a few standard tzinfos that are pre-defined:
+
+>>> TimeZone.eastern
+<ICUtzinfo: US/Eastern>
+>>> TimeZone.pacific
+<ICUtzinfo: US/Pacific>
+>>> TimeZone.utc
+<ICUtzinfo: UTC>
+
+In addition, you can retrieve well-known timezones (essentially,
+from the Olson database) using the ``[]`` operator:
+
+>>> TimeZone['Africa/Johannesburg']
+<ICUtzinfo: Africa/Johannesburg>
+
+If you pass in a name that doesn’t correspond to a known time zone,
+you get back ``None``:
+
+>>> print TimeZone["I do not exist, therefore I don't think"]
+None
+
+The ``default`` attribute gives the current default tzinfo:
+
+>>> TimeZone.default
+<ICUtzinfo: ...>
+
+This is a writable attribute, so we can go ahead and change it:
+
+>>> TimeZone.default = TimeZone['Europe/Paris']
+>>> TimeZone.default
+<ICUtzinfo: Europe/Paris>
+
+Note that setting the default actually pushes the changes to
+PyICU, too:
+
+>>> TimeZone.default = TimeZone.pacific
+>>> from PyICU import ICUtzinfo; ICUtzinfo.default
+<ICUtzinfo: US/Pacific>
+
+Naive datetimes and the “floating” Time Zone
+============================================
+Sometimes, end users will want alarms or event times to have no
+specific time zone, but to use whatever their current time
+zone is. For instance, imagine you are a frequent international
+traveler, and you are so often confused about the time of day that
+but would like to be reminded that you brush your teeth in the morning
+and evening no matter what timezone you’re in. Then, you might set up
+some kind of repeating event that occurs at 6 a.m. and 6 p.m. in
+whatever your current timezone is.
+
+The `Python datetime module`_ supports this via naive ``datetime``
+(and ``time`` objects), i.e. ones whose ``tzinfo`` field is ``None``.
+This is problematic for Chandler for several reasons:
+
+.. _Python datetime module: http://www.python.org/doc/2.5/lib/datetime-datetime.html
+
++ Comparing a naive datetime to a non-naive one (i.e. by subtracting
+  them, or by using the ``==`` or ``!=`` operators) results in a
+  ``TypeError`` being raised. This makes it difficult to use the two
+  types of ``datetime`` in a Trellis cell, for example, as the
+  Trellis uses ``!=`` to determine if setting a cell’s value has
+  changed.
+
++ Even if you find a way to implement interpreting naive datetimes
+  in the default timezone, if you change default timezone, all these
+  datetimes actually shift. So, updating the state of all alarms
+  and events with naive datetimes becomes a chore. In Chandler 1.0,
+  there was some tricky and time-consuming code that would go and
+  update various indexes in the case of a default timezone change.
+
+For these reasons, Chandler now requires that all ``datetime`` (and
+``time``) cell values have a non-``None`` ``tzinfo`` field. If you
+want to specify the time zone as being the user’s current default, use
+the ``floating`` time zone:
+
+>>> TimeZone.floating
+FloatingTZ(<ICUtzinfo: US/Pacific>)
+
+If you change the default time zone, ``floating`` notices:
+
+>>> TimeZone.default = TimeZone.utc
+>>> TimeZone.floating
+FloatingTZ(<ICUtzinfo: UTC>)
+
+Because ``floating`` refers to ``TimeZone.default`` in time zone
+calculations, using it in a Trellis maintain rule, for example,
+means that that rule will acquire a dependency on ``TimeZone.default``,
+and will therefore be recalculated if ``TimeZone.default`` is changed.
+
+**XXX: Short cell-based example**
+
+Setting the Current Date and Time
+=================================
 Chandler behavior that involves the current time should use the
 timemachine module to determine the current date and time.  This
 allows tests to be written that set the current time to a fixed value.
 
->>> from chandler.timemachine import *
->>> oct1 = datetime(2008, 10, 1, 10, tzinfo=pacific)
+>>> TimeZone.default = TimeZone.pacific
+>>> oct1 = datetime(2008, 10, 1, 10, tzinfo=TimeZone.pacific)
 >>> setNow(oct1)
 >>> getNow()
 datetime.datetime(2008, 10, 1, 10, 0, tzinfo=<ICUtzinfo: US/Pacific>)
->>> getNow(eastern)
+>>> getNow(TimeZone.eastern)
 datetime.datetime(2008, 10, 1, 13, 0, tzinfo=<ICUtzinfo: US/Eastern>)
 >>> resetNow()
 >>> getNow() > oct1
@@ -21,7 +131,7 @@ When setting an artificial now, a timezone is always used.  If your
 supplied datetime doesn't have a timezone, ICUtzinfo.default will be
 used:
 
->>> ignore = ICUtzinfo.setDefault(eastern)
+>>> ignore = ICUtzinfo.setDefault(TimeZone.eastern)
 >>> setNow(datetime(2008, 9, 30, 10))
 >>> getNow()
 datetime.datetime(2008, 9, 30, 10, 0, tzinfo=<ICUtzinfo: US/Eastern>)
@@ -32,4 +142,4 @@ timestamp (seconds since the UTC epoch).
 >>> nowTimestamp()
 1222812000.0
 
-XXX should there be a cell representing the current default timezone?
+**XXX: Make the above work with the trellis.activity.Time service**

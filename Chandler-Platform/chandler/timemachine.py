@@ -12,6 +12,9 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+import peak.events.trellis as trellis
+import peak.context as context
+
 from datetime import datetime
 from time import mktime
 from PyICU import ICUtzinfo
@@ -49,12 +52,39 @@ def nowTimestamp():
     if now is None:
         return mktime(datetime.utcnow().timetuple())
     else:
-        return mktime(now.astimezone(utc).timetuple())
+        return mktime(now.astimezone(TimeZone.utc).timetuple())
+
+class TimeZone(trellis.Component, context.Service):
+
+    default = trellis.attr(ICUtzinfo.default)
+
+    @trellis.perform
+    def save_default(self):
+        ICUtzinfo.setDefault(self.default)
+
+    class _FloatingTZInfo(ICUtzinfo):
+        def __init__(self): pass
+
+        def utcoffset(self, dt):
+            return TimeZone.default.utcoffset(dt)
+
+        def dst(self, dt):
+            return TimeZone.default.dst(dt)
+
+        def __repr__(self):
+            return "FloatingTZ(%r)" % (TimeZone.default,)
+
+    floating = _FloatingTZInfo()
+
+    def __getitem__(self, key):
+        result = ICUtzinfo.getInstance(key)
+        if result.tzid == 'GMT' and key != 'GMT':
+            return None
+        else:
+            return result
 
 
-### Helper constants
-
-floating = ICUtzinfo.floating
-pacific  = ICUtzinfo.getInstance("US/Pacific")
-eastern  = ICUtzinfo.getInstance("US/Eastern")
-utc      = ICUtzinfo.getInstance("UTC")
+    ### Helper constants
+    pacific  = ICUtzinfo.getInstance("US/Pacific")
+    eastern  = ICUtzinfo.getInstance("US/Eastern")
+    utc      = ICUtzinfo.getInstance("UTC")
