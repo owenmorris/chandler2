@@ -9,6 +9,17 @@ Chandler is also a platform for building a PIM.  Chandler aims to
 allow application builders to build different PIMs by reusing
 different pieces of Chandler.
 
+Contents:
+
+.. toctree::
+   :glob:
+   :maxdepth: 1
+
+   Chandler-Platform/*
+   Chandler-App/*
+
+   Entry-Points
+
 Core Chandler Sub-Projects
 ==========================
 
