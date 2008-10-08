@@ -270,7 +270,7 @@ changes to the default timezone will be tracked by the Trellis.
 True
 >>> event.base_start = floater
 >>> event.end
-datetime.datetime(2007, 5, 5, 19, 0, tzinfo=<FloatingTZ: ...>)
+datetime.datetime(2007, 5, 5, 19, 0, tzinfo=FloatingTZ(...))
 
 XXX require start timezone to be a PyICU timezone?
 
