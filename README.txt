@@ -18,7 +18,7 @@ Contents:
    Chandler-Platform/*
    Chandler-App/*
 
-   Entry-Points
+   Hooks
 
 Core Chandler Sub-Projects
 ==========================

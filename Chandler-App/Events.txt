@@ -337,14 +337,20 @@ If ``is_day`` isn't set for an event, times and timezones should be shown.
 
 XXX recurrence and location should always be visible for events
 
+.. index:: hook; triage_position (registered by chandler.event)
+.. _event-triage-position:
+
+Triage status for events
+========================
+
+XXX automatic triage status: entry point called by triage status,
+    should it live in event.py?
+
 
 IM todos
 ========
 
 XXX free-busy weight: entry-point?
-
-XXX automatic triage status: entry point called by triage status,
-    should it live in event.py?
 
 XXX test add/remove/add Extension doesn't lose start time? this
     can/should eventually be handled at the Extenstion level

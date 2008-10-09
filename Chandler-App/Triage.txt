@@ -145,16 +145,18 @@ values to ``None``.
 >>> item3_position.triage_section, item3_position.position
 (100.0, 1222891200.0)
 
+.. index:: hook; triage_position (used by chandler.triage)
+.. _triage-position-hook:
 
-Entry Point: chandler.triage_position
--------------------------------------
+The *triage_position* hook
+--------------------------
 
 The default position values, equal to triage_status, aren't very
 useful except for testing.
 
 Usually, position will be a float measuring seconds since the epoch
-for some time.  It's value is found by applying all chandler.triage_position
-entry points on the item and choosing the largest.
+for some time.  It's value is found by applying all chandler.hooks.triage_position
+hooks on the item and choosing the largest.
 
 XXX should use, define, explain triage_position entry point
     triage_position eps should return ``None`` if they don't apply, or

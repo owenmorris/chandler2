@@ -1,0 +1,53 @@
+=======
+ Hooks
+=======
+
+Chandler aims to offer a high level of customization using Hooks_,
+thin wrappers around `setuptools' entry points`_.
+
+Chandler features that rely on Hooks_ can be extended or changed by
+adding or removing entry points.
+
+Main hooks
+==========
+
+Below are Chandler's most frequently used Hooks.  See the index_ for a
+complete list.
+
+..
+  When documenting a hook, add a Sphinx index directive, like
+  .. index:: hook; hook_name (used by module_name) or
+  .. index:: hook; hook_name (registered by module_name)
+  If the hook is a major part of Chandler's behavior, add a section here,
+  and use :ref: to link to associated use and registration documentation.
+
+
+.. index:: hook; triage_position
+
+Triage position
+---------------
+
+*chandler.hook.triage_position*  provides callables like:
+
+.. describe:: triage_position_callable(entry) -> (weight, position)
+
+   Return (-1, None) if triage_position can't be calculated for the
+   entry, otherwise a float weight and position timestamp.
+
+.. seealso::
+
+   :ref:`triage-position-hook`
+      ..
+
+   :ref:`event-triage-position`
+      ..
+
+Testing
+=======
+
+XXX
+
+.. _setuptools' entry points: http://peak.telecommunity.com/DevCenter/setuptools#entry-points
+.. _Hooks: http://pypi.python.org/pypi/Plugins/
+.. _index: genindex.html#H
+
