@@ -15,13 +15,13 @@ The default value is the item's calculated triage status.
 >>> from datetime import datetime
 >>> timemachine.setNow(datetime(2008, 10, 1, 8, tzinfo=timemachine.TimeZone.eastern))
 
->>> item3 = Item()
->>> item3_position = TriagePosition(item3)
->>> item3_position.position
+>>> item = Item()
+>>> item_position = TriagePosition(item)
+>>> item_position.position
 100.0
->>> item3_triage = Triage(item3)
->>> item3_triage.auto = LATER
->>> item3_position.position
+>>> item_triage = Triage(item)
+>>> item_triage.auto = LATER
+>>> item_position.position
 200.0
 
 ``position`` is based on two cells, ``default_position`` and
@@ -30,11 +30,11 @@ visible in a different location than its underlying item's default
 position would be.  This allows item position to be stable as a user
 makes changes that would otherwise move the item.
 
->>> item3_position.position == item3_position.default_position
+>>> item_position.position == item_position.default_position
 True
->>> item3_position.pinned_position = 1122334.5
->>> item3_triage.manual = DONE
->>> item3_position.position
+>>> item_position.pinned_position = 1122334.5
+>>> item_triage.manual = DONE
+>>> item_position.position
 1122334.5
 
 When sorted by triage status, items are sorted into different
@@ -42,10 +42,10 @@ sections, determined by ``triage_section``.  This defaults to
 calculated triage status, but can be overridden with
 ``pinned_triage``.
 
->>> item3_position.triage_section
+>>> item_position.triage_section
 300.0
->>> item3_position.pinned_triage_section = NOW
->>> item3_position.triage_section
+>>> item_position.pinned_triage_section = NOW
+>>> item_position.triage_section
 100.0
 
 XXX should recognized custom triage statuses be in their own sections?
@@ -60,30 +60,30 @@ pinned values to match the current state of their default values, but
 only if no pinned values are set.  ``clear_pinned()`` resets pinned
 values to ``None``.
 
->>> item3_position.default_position, item3_position.default_triage_section
+>>> item_position.default_position, item_position.default_triage_section
 (300.0, 300.0)
->>> item3_position.triage_section, item3_position.position
+>>> item_position.triage_section, item_position.position
 (100.0, 1122334.5)
->>> item3_position.pin()
->>> item3_position.triage_section, item3_position.position
+>>> item_position.pin()
+>>> item_position.triage_section, item_position.position
 (100.0, 1122334.5)
->>> item3_position.clear_pinned()
->>> item3_position.triage_section, item3_position.position
+>>> item_position.clear_pinned()
+>>> item_position.triage_section, item_position.position
 (300.0, 300.0)
->>> item3_position.pin()
->>> item3_triage.manual = NOW
->>> item3_position.triage_section, item3_position.position
+>>> item_position.pin()
+>>> item_triage.manual = NOW
+>>> item_position.triage_section, item_position.position
 (300.0, 300.0)
 
 ``pin_to_now()`` sets ``pinned_triage_section`` to NOW and
 ``position`` to the timestamp for the current time.
 
->>> item3_triage.manual = LATER
->>> item3_position.clear_pinned()
->>> item3_position.triage_section, item3_position.position
+>>> item_triage.manual = LATER
+>>> item_position.clear_pinned()
+>>> item_position.triage_section, item_position.position
 (200.0, 200.0)
->>> item3_position.pin_to_now()
->>> item3_position.triage_section, item3_position.position
+>>> item_position.pin_to_now()
+>>> item_position.triage_section, item_position.position
 (100.0, 1222891200.0)
 
 .. index:: hook; chandler.interaction.triage_position (used by chandler.triage)
