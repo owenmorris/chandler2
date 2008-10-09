@@ -10,9 +10,13 @@ XXX Ultimately the interaction model will be working with dashboard
 
 >>> from chandler.event import *
 >>> from chandler.core import Item
+>>> from datetime import datetime
+>>> from chandler.timemachine import TimeZone
 >>> item = Item()
 >>> event = Event(item).add()
+>>> event.base_start = datetime(2008, 5, 5, 18, tzinfo=TimeZone.pacific)
 
+XXX Should visibility be different for items with None for start/end?
 
 Field visibility
 ================
