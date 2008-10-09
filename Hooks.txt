@@ -16,18 +16,18 @@ complete list.
 
 ..
   When documenting a hook, add a Sphinx index directive, like
-  .. index:: hook; hook_name (used by module_name) or
-  .. index:: hook; hook_name (registered by module_name)
+  .. index:: hook; chandler.interaction.hook_name (used by module_name) or
+  .. index:: hook; chandler.domain.hook_name (registered by module_name)
   If the hook is a major part of Chandler's behavior, add a section here,
   and use :ref: to link to associated use and registration documentation.
 
 
-.. index:: hook; triage_position
+.. index:: hook; chandler.interaction.triage_position
 
 Triage position
 ---------------
 
-*chandler.hook.triage_position*  provides callables like:
+*chandler.interaction.triage_position*  provides callables like:
 
 .. describe:: triage_position_callable(entry) -> (weight, position)
 
@@ -45,7 +45,8 @@ Triage position
 Testing
 =======
 
-XXX
+XXX Could use a different PluginManager if a Hook needs to be
+    disabled, point to an example if we ever actually need that
 
 .. _setuptools' entry points: http://peak.telecommunity.com/DevCenter/setuptools#entry-points
 .. _Hooks: http://pypi.python.org/pypi/Plugins/

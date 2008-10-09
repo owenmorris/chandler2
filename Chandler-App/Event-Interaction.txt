@@ -59,7 +59,7 @@ If ``is_day`` isn't set for an event, times and timezones should be shown.
 
 XXX recurrence and location should always be visible for events
 
-.. index:: hook; triage_position (registered by chandler.event)
+.. index:: hook; chandler.interaction.triage_position (registered by chandler.event)
 .. _event-triage-position:
 
 Triage status for events

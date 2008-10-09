@@ -9,6 +9,10 @@ The Runtime API
 The Runtime API (``chandler.runtime``) provides services for application startup
 and shutdown hooks, and wx/Twisted main loops.
 
+.. index::
+   single: hook; chandler.launch.reactor
+   single: hook; chandler.launch.wxui
+   single: hook; chandler.launch.app
 
 Startup Hook Names
 ==================
