@@ -1,0 +1,106 @@
+
+====================
+ Triage Positioning
+====================
+
+Triage status is tightly entwined with positioning entries in the
+triage-sorted dashboard view.
+
+``TriagePosition`` of an item has a read-only float ``position`` cell.
+The default value is the item's calculated triage status.
+
+>>> from chandler.triage import *
+>>> from chandler.core import Item
+>>> from chandler import timemachine   # set up the current time
+>>> from datetime import datetime
+>>> timemachine.setNow(datetime(2008, 10, 1, 8, tzinfo=timemachine.TimeZone.eastern))
+
+>>> item3 = Item()
+>>> item3_position = TriagePosition(item3)
+>>> item3_position.position
+100.0
+>>> item3_triage = Triage(item3)
+>>> item3_triage.auto = LATER
+>>> item3_position.position
+200.0
+
+``position`` is based on two cells, ``default_position`` and
+``pinned_position``.  ``pinned_position`` is used to hold an item
+visible in a different location than its underlying item's default
+position would be.  This allows item position to be stable as a user
+makes changes that would otherwise move the item.
+
+>>> item3_position.position == item3_position.default_position
+True
+>>> item3_position.pinned_position = 1122334.5
+>>> item3_triage.manual = DONE
+>>> item3_position.position
+1122334.5
+
+When sorted by triage status, items are sorted into different
+sections, determined by ``triage_section``.  This defaults to
+calculated triage status, but can be overridden with
+``pinned_triage``.
+
+>>> item3_position.triage_section
+300.0
+>>> item3_position.pinned_triage_section = NOW
+>>> item3_position.triage_section
+100.0
+
+XXX should recognized custom triage statuses be in their own sections?
+    If not section definition might need an entry point, too.
+
+
+Shortcut Methods
+----------------
+
+There are a few shortcuts for setting pinned values. ``pin()`` sets
+pinned values to match the current state of their default values, but
+only if no pinned values are set.  ``clear_pinned()`` resets pinned
+values to ``None``.
+
+>>> item3_position.default_position, item3_position.default_triage_section
+(300.0, 300.0)
+>>> item3_position.triage_section, item3_position.position
+(100.0, 1122334.5)
+>>> item3_position.pin()
+>>> item3_position.triage_section, item3_position.position
+(100.0, 1122334.5)
+>>> item3_position.clear_pinned()
+>>> item3_position.triage_section, item3_position.position
+(300.0, 300.0)
+>>> item3_position.pin()
+>>> item3_triage.manual = NOW
+>>> item3_position.triage_section, item3_position.position
+(300.0, 300.0)
+
+``pin_to_now()`` sets ``pinned_triage_section`` to NOW and
+``position`` to the timestamp for the current time.
+
+>>> item3_triage.manual = LATER
+>>> item3_position.clear_pinned()
+>>> item3_position.triage_section, item3_position.position
+(200.0, 200.0)
+>>> item3_position.pin_to_now()
+>>> item3_position.triage_section, item3_position.position
+(100.0, 1222891200.0)
+
+.. index:: hook; triage_position (used by chandler.triage)
+.. _triage-position-hook:
+
+The *triage_position* hook
+--------------------------
+
+The default position values, equal to triage_status, aren't very
+useful except for testing.
+
+Usually, position will be a float measuring seconds since the epoch
+for some time.  It's value is found by applying all chandler.hooks.triage_position
+hooks on the item and choosing the largest.
+
+XXX should use, define, explain triage_position entry point
+    triage_position eps should return ``None`` if they don't apply, or
+    (weight, value) if they do apply (the weight is needed because,
+    for instance, both the reminder and event-ness positions might
+    apply to the same item)
