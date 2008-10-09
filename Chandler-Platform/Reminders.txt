@@ -9,9 +9,9 @@ to March 16, 2009, at 10:55 a.m.:
 
 >>> from datetime import *
 >>> from peak.events.activity import Time
->>> import osaf.timemachine
+>>> from chandler.timemachine import setNow, TimeZone
 >>> Time.auto_update = False # Repeatable clock increments!
->>> osaf.timemachine.setNow(datetime(2009, 3, 16, 10, 55))
+>>> setNow(datetime(2009, 3, 16, 10, 55))
 
 Scheduling callbacks
 --------------------
@@ -24,7 +24,7 @@ Scheduling callbacks
 
 As an example, let’s create a Scheduled that will fire at 11:00 a.m.:
 
->>> my_reminder = Scheduled(fire_date=datetime(2009, 3, 16, 11,0),
+>>> my_reminder = Scheduled(fire_date=datetime(2009, 3, 16, 11, 0, tzinfo=TimeZone.floating),
 ...                   callback=sys.stdout.write)
 
 and advance time by 5 minutes:
@@ -40,7 +40,7 @@ advances):
 <chandler.core.Scheduled object at 0x...>
 
 However, setting the fire date into the past has no effect:
->>> my_reminder.fire_date = datetime(2007, 3, 16, 12, 0)
+>>> my_reminder.fire_date = datetime(2007, 3, 16, 12, 0, tzinfo=TimeZone.floating)
 
 ... even when the time advances further!
 

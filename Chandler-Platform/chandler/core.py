@@ -2,7 +2,7 @@ import peak.events.trellis as trellis
 import peak.events.activity as activity
 import peak.util.addons as addons
 from datetime import datetime
-import osaf.timemachine as timemachine
+import chandler.timemachine as timemachine
 import time
 
 __all__ = ('Item', 'Extension', 'Scheduled', 'ConstraintError')
@@ -57,7 +57,7 @@ class Extension(trellis.Component, addons.AddOn):
 
 class Scheduled(trellis.Component):
 
-    fire_date = trellis.attr(datetime.min)
+    fire_date = trellis.attr(datetime.min.replace(tzinfo=timemachine.TimeZone.floating))
     callback = trellis.attr(lambda reminder: None)
 
     @trellis.compute
