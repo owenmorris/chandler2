@@ -13,13 +13,12 @@
 #   limitations under the License.
 
 import peak.events.trellis as trellis
+import peak.events.activity as activity
 import peak.context as context
 
+from calendar import timegm
 from datetime import datetime
-from time import mktime
 from PyICU import ICUtzinfo
-
-now = None
 
 def getNow(tz=None):
     """
@@ -30,29 +29,30 @@ def getNow(tz=None):
 
     """
     if tz is None:
-        tz = ICUtzinfo.default
-    if now is None:
-        return datetime.now(tz=tz)
-    else:
-        return now.astimezone(tz)
+        tz = TimeZone.default
+    return datetime.fromtimestamp(activity.Time._now, tz)
 
 def setNow(dt):
-    global now
     if dt is not None and dt.tzinfo is None:
         dt = dt.replace(tzinfo=ICUtzinfo.default)
-    now = dt
+
+    timetuple = dt.astimezone(TimeZone.utc).timetuple()
+
+    # this ignores calendar.timegm (or time.mktime) range limits and
+    # MAXYEAR/MINYEAR, since a now timestamp really shouldn't be outside those
+    # ranges
+    new_timestamp = timegm(timetuple)
+
+    activity.Time.auto_update = False
+    activity.Time.advance(new_timestamp - activity.Time._now)
 
 def resetNow():
-    setNow(None)
+    activity.Time.auto_update = True
+    activity.Time.tick()
 
 def nowTimestamp():
     """The number of seconds betwen the UTC epoch and now."""
-    # ignoring time.mktime range limits and MAXYEAR/MINYEAR, since a
-    # now timestamp really shouldn't be outside those ranges
-    if now is None:
-        return mktime(datetime.utcnow().timetuple())
-    else:
-        return mktime(now.astimezone(TimeZone.utc).timetuple())
+    return activity.Time._now
 
 class TimeZone(trellis.Component, context.Service):
 

@@ -128,10 +128,10 @@ datetime.datetime(2008, 10, 1, 13, 0, tzinfo=<ICUtzinfo: US/Eastern>)
 True
 
 When setting an artificial now, a timezone is always used.  If your
-supplied datetime doesn't have a timezone, ICUtzinfo.default will be
+supplied datetime doesn't have a timezone, ``TimeZone.default`` will be
 used:
 
->>> ignore = ICUtzinfo.setDefault(TimeZone.eastern)
+>>> TimeZone.default = TimeZone.eastern
 >>> setNow(datetime(2008, 9, 30, 10))
 >>> getNow()
 datetime.datetime(2008, 9, 30, 10, 0, tzinfo=<ICUtzinfo: US/Eastern>)
@@ -140,6 +140,46 @@ There's also a timemachine-aware function for getting a current
 timestamp (seconds since the UTC epoch).
 
 >>> nowTimestamp()
-1222812000.0
+1222783200.0
 
-**XXX: Make the above work with the trellis.activity.Time service**
+This value is, of course, independent of the default timezone!
+
+>>> TimeZone.default = TimeZone.pacific
+>>> nowTimestamp()
+1222783200.0
+
+The above functions actually work by using the ``Time`` service
+from ``peak.events.activity``. To show this, let’s remind ourselves
+of where (or when, actually) we are:
+
+>>> getNow()
+datetime.datetime(2008, 9, 30, 7, 0, tzinfo=<ICUtzinfo: US/Pacific>)
+
+and now advance time by an hour:
+
+>>> from peak.events.activity import Time
+>>> Time.advance(3600.0)
+>>> getNow()
+datetime.datetime(2008, 9, 30, 8, 0, tzinfo=<ICUtzinfo: US/Pacific>)
+
+Similarly, let’s create a Performer cell to write something once
+30 seconds elapse:
+
+>>> from peak.events.trellis import Performer
+>>> import sys
+>>> timer = Time[30]
+>>> performer = Performer(lambda: sys.stdout.write("Hello, world!\n") if timer else None)
+>>> Time.advance(60)
+Hello, world!
+
+Note that, in cases where ``setNow`` has been called, the ``Time``
+service has its ``auto_update`` flag cleared:
+
+>>> Time.auto_update
+False
+
+Once you call ``resetNow()``, this flag is set:
+
+>>> resetNow()
+>>> Time.auto_update
+True

@@ -84,7 +84,7 @@ values to ``None``.
 (200.0, 200.0)
 >>> item_position.pin_to_now()
 >>> item_position.triage_section, item_position.position
-(100.0, 1222891200.0)
+(100.0, 1222862400.0)
 
 .. index:: hook; chandler.interaction.triage_position (used by chandler.triage)
 .. _triage-position-hook:
