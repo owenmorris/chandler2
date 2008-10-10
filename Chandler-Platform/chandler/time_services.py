@@ -54,6 +54,7 @@ def nowTimestamp():
     """The number of seconds betwen the UTC epoch and now."""
     return activity.Time._now
 
+
 class TimeZone(trellis.Component, context.Service):
 
     default = trellis.attr(ICUtzinfo.default)
@@ -88,3 +89,29 @@ class TimeZone(trellis.Component, context.Service):
     pacific  = ICUtzinfo.getInstance("US/Pacific")
     eastern  = ICUtzinfo.getInstance("US/Eastern")
     utc      = ICUtzinfo.getInstance("UTC")
+
+
+class Scheduled(trellis.Component):
+
+    fire_date = trellis.attr(datetime.min.replace(tzinfo=TimeZone.floating))
+    callback = trellis.attr(lambda reminder: None)
+
+    @trellis.compute
+    def _when_to_fire(self):
+        # We want to convert fire_date into an activity.Time object.
+        # To do that, subtract from datetime.now
+        delta = self.fire_date - getNow(self.fire_date.tzinfo)
+        delta_seconds = (delta.days * 86400.0) + delta.seconds + (delta.microseconds/1.0e6)
+
+        if delta_seconds >= 0:
+            return activity.Time[delta_seconds]
+        else:
+            return False
+
+    @trellis.perform # @@@ can't be a perform because we don't know if
+                     # callback modifies the trellis or not
+    def fire(self):
+        if self._when_to_fire:
+            self.callback(self)
+
+

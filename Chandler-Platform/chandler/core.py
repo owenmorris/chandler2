@@ -5,7 +5,7 @@ from datetime import datetime
 import chandler.time_services as time_services
 import time
 
-__all__ = ('Item', 'Extension', 'Scheduled', 'ConstraintError')
+__all__ = ('Item', 'Extension', 'ConstraintError')
 
 class Item(trellis.Component):
 
@@ -53,30 +53,6 @@ class Extension(trellis.Component, addons.AddOn):
         except AttributeError:
             pass
         return isinstance(obj, Item) and cls in obj._extension_types
-
-
-class Scheduled(trellis.Component):
-
-    fire_date = trellis.attr(datetime.min.replace(tzinfo=time_services.TimeZone.floating))
-    callback = trellis.attr(lambda reminder: None)
-
-    @trellis.compute
-    def _when_to_fire(self):
-        # We want to convert fire_date into an activity.Time object.
-        # To do that, subtract from datetime.now
-        delta = self.fire_date - time_services.getNow(self.fire_date.tzinfo)
-        delta_seconds = (delta.days * 86400.0) + delta.seconds + (delta.microseconds/1.0e6)
-
-        if delta_seconds >= 0:
-            return activity.Time[delta_seconds]
-        else:
-            return False
-
-    @trellis.perform # @@@ can't be a perform because we don't know if
-                     # callback modifies the trellis or not
-    def fire(self):
-        if self._when_to_fire:
-            self.callback(self)
 
 
 class ConstraintError(Exception):

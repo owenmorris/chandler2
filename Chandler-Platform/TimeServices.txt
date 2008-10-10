@@ -6,6 +6,7 @@ This manual covers using some of the date, time and timezone
 services available in the ``chandler.time_services`` module:
 
 >>> from chandler.time_services import *
+>>> from datetime import datetime, timedelta
 
 .. _toc:
 .. contents:: **Table of Contents**
@@ -183,3 +184,41 @@ Once you call ``resetNow()``, this flag is set:
 >>> resetNow()
 >>> Time.auto_update
 True
+
+Scheduling Callbacks
+====================
+
+``Scheduled`` objects allow you to schedule a callback function to be called at
+(or near!) a given date and time.
+
+>>> from chandler.time_services import Scheduled
+>>> import sys
+
+As an example, let’s set the date and time:
+
+>>> setNow(datetime(2009, 3, 16, 10, 55, tzinfo=TimeZone.default))
+
+and create a Scheduled that will fire at 11:00 a.m.:
+
+>>> my_reminder = Scheduled(fire_date=datetime(2009, 3, 16, 11, 0, tzinfo=TimeZone.default),
+...                   callback=sys.stdout.write)
+
+and advance time by 5 minutes:
+
+>>> Time.advance(5 * 60)
+<chandler.time_services.Scheduled object at 0x...>
+
+You can reset the fire_date of a Scheduled, and it will fire (once time
+advances):
+
+>>> my_reminder.fire_date += timedelta(minutes=5) 
+>>> setNow(datetime(2009, 3, 16, 12, tzinfo=TimeZone.default))
+<chandler.time_services.Scheduled object at 0x...>
+
+However, setting the fire date into the past has no effect:
+>>> my_reminder.fire_date = datetime(2007, 3, 16, 12, 0, tzinfo=TimeZone.floating)
+
+... even when the time advances further!
+
+>>> Time.advance(1)
+
