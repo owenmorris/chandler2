@@ -32,16 +32,21 @@ def getNow(tz=None):
         tz = TimeZone.default
     return datetime.fromtimestamp(activity.Time._now, tz)
 
+def timestamp(dt):
+    # timegm returns an int number of seconds, which is probably good
+    # enough for our purposes, but make tests expect a float, in
+    # case we decide to replace it with something with a little more
+    # resolution
+    return float(timegm(dt.astimezone(TimeZone.utc).timetuple()))
+
 def setNow(dt):
     if dt is not None and dt.tzinfo is None:
         dt = dt.replace(tzinfo=ICUtzinfo.default)
 
-    timetuple = dt.astimezone(TimeZone.utc).timetuple()
-
     # this ignores calendar.timegm (or time.mktime) range limits and
     # MAXYEAR/MINYEAR, since a now timestamp really shouldn't be outside those
     # ranges
-    new_timestamp = timegm(timetuple)
+    new_timestamp = timestamp(dt)
 
     activity.Time.auto_update = False
     activity.Time.advance(new_timestamp - activity.Time._now)
@@ -53,7 +58,6 @@ def resetNow():
 def nowTimestamp():
     """The number of seconds betwen the UTC epoch and now."""
     return activity.Time._now
-
 
 class TimeZone(trellis.Component, context.Service):
 

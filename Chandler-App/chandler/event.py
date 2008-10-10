@@ -1,14 +1,16 @@
 from datetime import datetime, timedelta, time
 import peak.events.trellis as trellis
+import peak.events.activity as activity
 from peak.util.addons import AddOn
 
 from chandler.core import *
-from chandler.time_services import TimeZone
-
+from chandler.time_services import TimeZone, timestamp, nowTimestamp
+from chandler.triage import Triage, NOW, LATER
 
 one_hour = timedelta(hours=1)
 zero_delta = timedelta(0)
 midnight = time(0, tzinfo=TimeZone.floating)
+EVENT_TRIAGE_WEIGHT = 2.0
 
 class Event(Extension):
     trellis.attrs(
@@ -28,6 +30,12 @@ class Event(Extension):
             return self.base_start
         else:
             return datetime.combine(self.base_start.date(), midnight)
+
+    @trellis.compute
+    def is_started(self):
+        if self.start is None:
+            return True
+        return bool(activity.Time[timestamp(self.start) - nowTimestamp()])
 
     @trellis.compute
     def duration(self):
@@ -72,6 +80,12 @@ class Event(Extension):
             raise BadDurationError(self.base_duration)
 
 
+def event_triage(item):
+    if not Event.installed_on(item):
+        return (-1, None)
+    status = NOW if Event(item).is_started else LATER
+    return (EVENT_TRIAGE_WEIGHT, status)
+
 class NaiveTimezoneError(ConstraintError):
     cell_description = "base_start"
 
@@ -113,6 +127,7 @@ class EventFieldVisibility(AddOn, trellis.Component):
         return bool(self.event and not self.event.implied_transparency)
 
 
-# implied transparency
+def event_triage_position(item):
+    pass
 
 # is_between

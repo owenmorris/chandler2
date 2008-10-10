@@ -11,8 +11,8 @@ adding or removing entry points.
 Main hooks
 ==========
 
-Below are Chandler's most frequently used Hooks.  See the index_ for a
-complete list.
+Below are Chandler's most frequently used Hooks.  See "hook" in the
+index_ for a complete list.
 
 ..
   When documenting a hook, add a Sphinx index directive, like
@@ -22,17 +22,38 @@ complete list.
   and use :ref: to link to associated use and registration documentation.
 
 
+.. index:: hook; chandler.domain.triage
+.. _triage-hook-central:
+
+Triage
+------
+
+.. describe:: triage_callable(entry) -> (weight, triage_status)
+
+   Return (-1, None) if triage can't be calculated for the entry,
+   otherwise a float weight and :mod:`~chandler.triage` value.
+
+.. seealso::
+
+   :ref:`triage-hook`
+      ..
+
+   :ref:`event-triage-position`
+      ..
+
+
 .. index:: hook; chandler.interaction.triage_position
+.. _triage-position-hook-central:
 
 Triage position
 ---------------
 
-*chandler.interaction.triage_position*  provides callables like:
+"chandler.interaction.triage_position"  provides callables like:
 
-.. describe:: triage_position_callable(entry) -> (weight, position)
+.. describe:: triage_position_callable(entry) -> position
 
-   Return (-1, None) if triage_position can't be calculated for the
-   entry, otherwise a float weight and position timestamp.
+   Return None if triage_position can't be calculated for the
+   entry, otherwise a position timestamp.
 
 .. seealso::
 

@@ -20,9 +20,6 @@ The default value is the item's calculated triage status.
 >>> item_position.position
 100.0
 >>> item_triage = Triage(item)
->>> item_triage.auto = LATER
->>> item_position.position
-200.0
 
 ``position`` is based on two cells, ``default_position`` and
 ``pinned_position``.  ``pinned_position`` is used to hold an item
@@ -96,8 +93,10 @@ The default position values, equal to triage_status, aren't very
 useful except for testing.
 
 Usually, position will be a float measuring seconds since the epoch
-for some time.  It's value is found by applying all chandler.interaction.triage_position
-hooks on the item and choosing the largest.
+for some time.  It's value is found by applying all
+:ref:`chandler.interaction.triage_position
+<triage-position-hook-central>` hooks on the item and choosing the
+largest.
 
 XXX should use, define, explain triage_position entry point
     triage_position eps should return ``None`` if they don't apply, or

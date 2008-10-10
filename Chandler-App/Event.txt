@@ -2,6 +2,8 @@
  Events - Domain Model
 =======================
 
+.. module:: chandler.event
+
 ``Event`` objects represent a period in time, from a ``start`` to an
 ``end``.  If that was all there was to it, programmer's lives would be
 a lot easier.  In fact, there are a variety of additional fields
@@ -18,7 +20,7 @@ Basic events
 To create an event, add the ``Event`` Extension to an item.
 
 >>> from chandler.event import *
->>> from chandler.core import Item
+>>> from chandler.core import Item, Viewer
 >>> item = Item()
 >>> event = Event(item).add()
 >>> event.start is None
@@ -32,7 +34,7 @@ check if start is ``None``.
 Normally, however, you'll want events to have a start time.
 
 >>> from datetime import datetime
->>> from chandler.time_services import TimeZone
+>>> from chandler.time_services import TimeZone, setNow
 >>> cinco_de_mayo = datetime(2008, 5, 5, 18, tzinfo=TimeZone.pacific)
 >>> event.base_start = cinco_de_mayo
 >>> event.start
@@ -143,6 +145,52 @@ True
 >>> event.base_any_time = False
 >>> event.is_day
 False
+
+Passage of time
+===============
+
+Events have an *is_started* cell tracking whether ``start`` has arrived.
+As time passes, these cells are automatically updated by the Trellis.
+
+>>> from peak.events.activity import Time
+>>> next_year = datetime(2009, 3, 16, 10, tzinfo=TimeZone.pacific)
+>>> setNow(next_year)
+>>> item2 = Item()
+>>> event2 = Event(item2).add()
+
+If an event doesn't have a start time, it's considered started:
+
+>>> event2.is_started
+True
+
+We'll use a Viewer_ to display when *is_started* changes values.
+
+XXX document Viewer somewhere more appropriate
+
+>>> viewer = Viewer(component=event2, cell_name="is_started")
+is_started changed to: True
+>>> event2.base_start = next_year + timedelta(minutes=2)
+is_started changed to: False
+>>> Time.advance(180)
+is_started changed to: True
+>>> event2.base_start = next_year + timedelta(minutes=5)
+is_started changed to: False
+>>> event2.all_day = True
+is_started changed to: True
+
+Events and Triage Status
+========================
+
+Events are automatically triaged based on ``is_started``.  If the
+event hasn't started, its triage status will be
+:const:`~chandler.triage.LATER`, otherwise it will be
+:const:`~chandler.triage.NOW`.
+
+>>> viewer.component = Triage(item2)
+>>> viewer.cell_name = 'calculated'
+calculated changed to: 100.0
+>>> event2.all_day = False
+calculated changed to: 200.0
 
 Recurrence
 ==========
@@ -287,3 +335,4 @@ Also, what Chandler calls ``transparency`` is called STATUS in iCalendar_.
 Chandler translates the standard CANCELLED value into 'fyi'.
 
 .. _iCalendar: http://tools.ietf.org/html/rfc2445
+.. _Viewer: http://peak.telecommunity.com/DevCenter/Trellis#model-view-controller-and-the-observer-pattern

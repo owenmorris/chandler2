@@ -137,8 +137,17 @@ used:
 >>> getNow()
 datetime.datetime(2008, 9, 30, 10, 0, tzinfo=<ICUtzinfo: US/Eastern>)
 
+Timestamps
+==========
+
+Timestamps are float values measuring seconds since the UTC epoch.
+timemachine provides a convenience function for getting timestamps:
+
+>>> timestamp(oct1)
+1222880400.0
+
 There's also a time_services-aware function for getting a current
-timestamp (seconds since the UTC epoch).
+timestamp.
 
 >>> nowTimestamp()
 1222783200.0

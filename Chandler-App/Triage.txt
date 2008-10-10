@@ -2,6 +2,8 @@
  Triage Status - Domain Model
 ==============================
 
+.. module:: chandler.triage
+
 Triage status is based on three states:
 
   ============ ============
@@ -19,42 +21,50 @@ states can be defined in plugins.
 >>> from chandler.core import Item
 >>> item = Item()
 >>> item_triage = Triage(item)
-
-``auto`` and ``manual`` are writable cells, ``calculated`` is
-read-only.
-
->>> item_triage.manual = NOW
->>> item_triage.auto = LATER
 >>> item_triage.calculated
 100.0
 
-``calculated`` is the final, user facing triage status. If ``manual``
-is ``None`` (the default), ``calculated`` will be based on ``auto``.
-Otherwise, ``manual`` takes precedence over ``auto``.
+:attr:`~Triage.calculated` is the "real" value that should be used for
+displaying the current triage status. It's read-only, based on
+:attr:`~Triage.manual` and :attr:`~Triage.auto`.
 
->>> item_triage.manual = None
+Triage status can be directly set using :attr:`~Triage.manual`.  If
+set, :attr:`~Triage.manual` overrides triage status from other
+sources.
+
+>>> item_triage.manual = LATER
 >>> item_triage.calculated
 200.0
 
-If both ``auto`` and ``manual`` are ``None``, the default, calculated
-is ``NOW``.
-
->>> item2 = Item()
->>> item2_triage = Triage(item2)
->>> item2_triage.manual is item2_triage.auto is None
-True
->>> item2_triage.calculated
-100.0
-
 Triage status must be either ``None``, or an int or float >= 100.
 
->>> item2_triage.manual = 99
+>>> item_triage.manual = 99
 Traceback (most recent call last):
  . . .
 TriageRangeError: Can't set triage status to: 99
+
+.. index:: hook; chandler.domain.triage
+.. _triage-hook:
+
+Auto triage
+===========
+
+If :attr:`~Triage.manual` is ``None``, :attr:`~Triage.auto` is used to
+determine :attr:`~Triage.calculated`.
+
+The :attr:`~Triage.auto` cell is calculated by taking the highest
+weighted value from applying the :ref:`chandler.domain.triage
+<triage-hook-central>` hook.  If no values are found, :const:`NOW`
+is used.
+
+>>> item_triage.manual = None
+>>> item_triage.calculated
+100.0
+
 
 XXX test triage status of unrecognized 250, calculated falls back to 200
 
 XXX How do I test:
   assuming no chandler.triage.types entry points
   add entry points in code
+

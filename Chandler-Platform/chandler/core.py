@@ -66,3 +66,16 @@ class ConstraintError(Exception):
     def __str__(self):
         return self.msg % {'cell_description' : self.cell_description,
                            'cell_value'       : self.cell_value}
+
+
+#### Utility #####
+
+class Viewer(trellis.Component):
+    component = trellis.attr(None)
+    cell_name = trellis.attr(None)
+
+    @trellis.perform
+    def view_it(self):
+        value = getattr(self.component, self.cell_name, None)
+        if None not in (self.component, self.cell_name, value):
+            print "%s changed to: %s" % (self.cell_name, value)

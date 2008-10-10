@@ -11,5 +11,12 @@ setup(
     install_requires=['Chandler-Platform'],
     test_suite = 'test_suite',
     packages = find_packages(),
-    namespace_packages = ['chandler']
+    namespace_packages = ['chandler'],
+    entry_points = """
+    [chandler.domain.triage]
+    event = chandler.event:event_triage
+
+    [chandler.interaction.triage_position]
+    event = chandler.event:event_triage_position
+    """
 ),
