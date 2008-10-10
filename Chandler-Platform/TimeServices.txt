@@ -3,16 +3,16 @@
 ==============
 
 This manual covers using some of the date, time and timezone
-services available in the ``chandler.timemachine`` module:
+services available in the ``chandler.time_services`` module:
 
->>> from chandler.timemachine import *
+>>> from chandler.time_services import *
 
 .. _toc:
 .. contents:: **Table of Contents**
 
 Using Time Zones
 ================
-The ``TimeZone`` service in the ``chandler.timemachine`` module
+The ``TimeZone`` service in the ``chandler.time_services`` module
 is an interface to common operations like setting and getting the
 user’s default time zone, or fetching well-known time zones by
 name. The current implementation uses timezone information from
@@ -113,7 +113,7 @@ and will therefore be recalculated if ``TimeZone.default`` is changed.
 Setting the Current Date and Time
 =================================
 Chandler behavior that involves the current time should use the
-timemachine module to determine the current date and time.  This
+time_services module to determine the current date and time.  This
 allows tests to be written that set the current time to a fixed value.
 
 >>> TimeZone.default = TimeZone.pacific
@@ -136,7 +136,7 @@ used:
 >>> getNow()
 datetime.datetime(2008, 9, 30, 10, 0, tzinfo=<ICUtzinfo: US/Eastern>)
 
-There's also a timemachine-aware function for getting a current
+There's also a time_services-aware function for getting a current
 timestamp (seconds since the UTC epoch).
 
 >>> nowTimestamp()

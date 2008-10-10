@@ -22,11 +22,11 @@ from PyICU import ICUtzinfo
 
 def getNow(tz=None):
     """
-    Return the current datetime, or the timemachine's pretend time.
+    Return the current datetime, or the peak.events.activity.Time's
+    simulated time.
 
     The timezone is set to ICUtzinfo.default if tz is None, otherwise
     timezone is set to tz.
-
     """
     if tz is None:
         tz = TimeZone.default

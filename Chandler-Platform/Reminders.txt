@@ -4,12 +4,12 @@ Scheduling and Reminders in Chandler
 A ``Scheduled`` in Chandler allows you to schedule operations at future
 times. In this document, we’re also going to be simulating wall-clock
 time, so as to make the tests here repeatable. To do that, we use the
-``chandler.timemachine`` module to imagine we are transported in time
+``chandler.time_services`` module to imagine we are transported in time
 to March 16, 2009, at 10:55 a.m.:
 
 >>> from datetime import *
 >>> from peak.events.activity import Time
->>> from chandler.timemachine import setNow, TimeZone
+>>> from chandler.time_services import setNow, TimeZone
 >>> Time.auto_update = False # Repeatable clock increments!
 >>> setNow(datetime(2009, 3, 16, 10, 55))
 

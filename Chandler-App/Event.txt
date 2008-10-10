@@ -32,7 +32,7 @@ check if start is ``None``.
 Normally, however, you'll want events to have a start time.
 
 >>> from datetime import datetime
->>> from chandler.timemachine import TimeZone
+>>> from chandler.time_services import TimeZone
 >>> cinco_de_mayo = datetime(2008, 5, 5, 18, tzinfo=TimeZone.pacific)
 >>> event.base_start = cinco_de_mayo
 >>> event.start

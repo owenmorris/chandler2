@@ -3,7 +3,7 @@ import peak.events.trellis as trellis
 from peak.util.addons import AddOn
 
 from chandler.core import *
-from chandler.timemachine import TimeZone
+from chandler.time_services import TimeZone
 
 
 one_hour = timedelta(hours=1)

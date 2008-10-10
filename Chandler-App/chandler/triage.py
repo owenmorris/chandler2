@@ -1,6 +1,6 @@
 import peak.events.trellis as trellis
 from peak.util.addons import AddOn
-from chandler.timemachine import nowTimestamp
+from chandler.time_services import nowTimestamp
 from chandler.core import ConstraintError
 
 ### Constants ###

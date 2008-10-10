@@ -11,9 +11,9 @@ The default value is the item's calculated triage status.
 
 >>> from chandler.triage import *
 >>> from chandler.core import Item
->>> from chandler import timemachine   # set up the current time
+>>> from chandler import time_services   # set up the current time
 >>> from datetime import datetime
->>> timemachine.setNow(datetime(2008, 10, 1, 8, tzinfo=timemachine.TimeZone.eastern))
+>>> time_services.setNow(datetime(2008, 10, 1, 8, tzinfo=time_services.TimeZone.eastern))
 
 >>> item = Item()
 >>> item_position = TriagePosition(item)

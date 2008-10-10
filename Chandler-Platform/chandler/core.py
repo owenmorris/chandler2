@@ -2,7 +2,7 @@ import peak.events.trellis as trellis
 import peak.events.activity as activity
 import peak.util.addons as addons
 from datetime import datetime
-import chandler.timemachine as timemachine
+import chandler.time_services as time_services
 import time
 
 __all__ = ('Item', 'Extension', 'Scheduled', 'ConstraintError')
@@ -57,14 +57,14 @@ class Extension(trellis.Component, addons.AddOn):
 
 class Scheduled(trellis.Component):
 
-    fire_date = trellis.attr(datetime.min.replace(tzinfo=timemachine.TimeZone.floating))
+    fire_date = trellis.attr(datetime.min.replace(tzinfo=time_services.TimeZone.floating))
     callback = trellis.attr(lambda reminder: None)
 
     @trellis.compute
     def _when_to_fire(self):
         # We want to convert fire_date into an activity.Time object.
         # To do that, subtract from datetime.now
-        delta = self.fire_date - timemachine.getNow(self.fire_date.tzinfo)
+        delta = self.fire_date - time_services.getNow(self.fire_date.tzinfo)
         delta_seconds = (delta.days * 86400.0) + delta.seconds + (delta.microseconds/1.0e6)
 
         if delta_seconds >= 0:
