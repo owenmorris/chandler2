@@ -220,11 +220,12 @@ and advance time by 5 minutes:
 You can reset the fire_date of a Scheduled, and it will fire (once time
 advances):
 
->>> my_reminder.fire_date += timedelta(minutes=5) 
+>>> my_reminder.fire_date += timedelta(minutes=5)
 >>> setNow(datetime(2009, 3, 16, 12, tzinfo=TimeZone.default))
 <chandler.time_services.Scheduled object at 0x...>
 
 However, setting the fire date into the past has no effect:
+
 >>> my_reminder.fire_date = datetime(2007, 3, 16, 12, 0, tzinfo=TimeZone.floating)
 
 ... even when the time advances further!
