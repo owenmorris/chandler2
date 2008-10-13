@@ -104,8 +104,7 @@ class Scheduled(trellis.Component):
     def _when_to_fire(self):
         # We want to convert fire_date into an activity.Time object.
         # To do that, subtract from datetime.now
-        delta = self.fire_date - getNow(self.fire_date.tzinfo)
-        delta_seconds = (delta.days * 86400.0) + delta.seconds + (delta.microseconds/1.0e6)
+        delta_seconds = timestamp(self.fire_date) - nowTimestamp()
 
         if delta_seconds >= 0:
             return activity.Time[delta_seconds]

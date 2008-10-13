@@ -228,7 +228,74 @@ However, setting the fire date into the past has no effect:
 
 >>> my_reminder.fire_date = datetime(2007, 3, 16, 12, 0, tzinfo=TimeZone.floating)
 
-... even when the time advances further!
+... even when time advances further!
 
 >>> Time.advance(1)
+
+Daylight Savings Time
+=====================
+
+Let’s double-check scheduling a callback across a daylight savings change
+boundary. We start out by transporting ourselves across time and probably
+space, to March of 2006, in Paris:
+
+>>> TimeZone.default = TimeZone['Europe/Paris']
+>>> setNow(datetime(2006, 3, 25, 22, tzinfo=TimeZone.default))
+
+Sleepily, we ignore the bustle of 10 p.m. traffic outside our window
+on the Champs Elysées and head off to bed, making sure our alarm
+clock has been set to go off at eight the next morning:
+
+>>> my_reminder = Scheduled(fire_date=datetime(2006, 3, 26, 8, tzinfo=TimeZone.default),
+...                   callback=sys.stdout.write)
+
+Notice that there is a change to daylight savings due to occur
+during our peaceful slumber:
+
+>>> getNow().dst()
+datetime.timedelta(0)
+>>> my_reminder.fire_date.dst()
+datetime.timedelta(0, 3600)
+
+This means that, despite the misleading nature of ``datetime``
+arithmetic, which says that 10 hours separate our fire date and
+the current time:
+
+>>> (my_reminder.fire_date - getNow()).seconds / 3600.0
+10.0
+
+really only 9 hours will elapse before 8:00 a.m. the next morning. This
+can be confirmed by converting the datetimes to UTC (a timezone with no
+daylight savings change) before subtracting:
+
+>>> (my_reminder.fire_date.astimezone(TimeZone.utc) -
+...  getNow().astimezone(TimeZone.utc)).seconds / 3600.0
+9.0
+
+So, let's advance time by 9 hours:
+
+>>> Time.advance(9 * 3600)
+<chandler.time_services.Scheduled object at ...>
+>>> getNow() - my_reminder.fire_date
+datetime.timedelta(0)
+
+In the same way, we can skip ahead to October of the same year, and
+check what happens when we try the same thing with a shift away from
+DST:
+
+>>> setNow(datetime(2006, 10, 28, 22, tzinfo=TimeZone.default))
+>>> my_reminder.fire_date = datetime(2006, 10, 29, 8, tzinfo=TimeZone.default)
+>>> getNow().dst()
+datetime.timedelta(0, 3600)
+>>> my_reminder.fire_date.dst()
+datetime.timedelta(0)
+
+In this case, advancing the current time by 10 hours has no effect:
+
+>>> Time.advance(10 * 3600)
+
+but advancing one extra hour causes our alarm to go off:
+
+>>> Time.advance(3600)
+<chandler.time_services.Scheduled object at ...>
 
