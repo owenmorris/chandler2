@@ -1,19 +1,22 @@
 Items,  and Extensions and DashboardEntries
---------------------------------------------------------------------------------
+-------------------------------------------
+
+.. module:: chandler.core
 
 Items
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-At the core of the Chandler data model is the ``Item`` class::
+~~~~~
+
+At the core of the Chandler data model is the :class:`Item` class:
 
 >>> from chandler.core import *
 >>> item = Item()
 
-Every item has a title:
+Every item has a :attr:`~Item.title`:
 
 >>> item.title
 u''
 
-and, of course, you may supply your own title at initialization time:
+and, of course, you may supply your own :attr:`~Item.title` at initialization time:
 
 >>> Item(title=u'Hello, world!').title
 u'Hello, world!'
@@ -24,8 +27,28 @@ or after initialization:
 >>> item.title
 u'No!'
 
+Items also automatically have a :attr:`~Item.created` timestamp cell.
+To test it, we'll pretend it's 10AM.
+
+>>> from chandler.time_services import *
+>>> from peak.events.activity import Time
+>>> from datetime import datetime
+>>> setNow(datetime(2008, 10, 1, 10, tzinfo=TimeZone.pacific))
+>>> ten_am = nowTimestamp()
+>>> item = Item()
+
+To make sure the :attr:`~Item.created` cell is immediately set,
+we'll advance time by an hour before checking its value.
+
+>>> Time.advance(3600.0)
+>>> item.created
+1222880400.0
+>>> item.created == ten_am
+True
+
 Extensions
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~
+
 Of course, a titled object is not particularly interesting. Items support
 having sets of ``extensions`` installed. These extensions can be used to
 customize object attributes and behaviour (in fact, for reasons of
@@ -87,7 +110,8 @@ Traceback (most recent call last):
 ValueError: Extension <class 'chandler.core.Extension'> is not present
 
 Subclassing Extension
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
+
 When you extend ``Item``, you typically want to add attributes or method.
 The way to do this is to subclass ``Extension``:
 
@@ -128,7 +152,8 @@ True
 False
 
 Initializing attributes when adding an extension
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 The ``add()`` method takes keywords, so you can set up attributes when you
 add extensions to an item:
 

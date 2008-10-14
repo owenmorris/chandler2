@@ -10,6 +10,8 @@ __all__ = ('Item', 'Extension', 'ConstraintError')
 class Item(trellis.Component):
 
     title = trellis.attr(initially=u'')
+    created = trellis.make(lambda x: time_services.nowTimestamp(),
+                           optional=False)
 
     _extension_types = trellis.make(trellis.Set)
     @trellis.maintain
