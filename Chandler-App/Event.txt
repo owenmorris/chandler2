@@ -334,5 +334,16 @@ differently.
 Also, what Chandler calls ``transparency`` is called STATUS in iCalendar_.
 Chandler translates the standard CANCELLED value into 'fyi'.
 
+Event todos
+===========
+
+XXX free-busy weight: entry-point?
+
+XXX test add/remove/add Extension doesn't lose start time? this
+    can/should eventually be handled at the Extenstion level
+
+is_between
+
 .. _iCalendar: http://tools.ietf.org/html/rfc2445
 .. _Viewer: http://peak.telecommunity.com/DevCenter/Trellis#model-view-controller-and-the-observer-pattern
+
