@@ -1,6 +1,7 @@
 import peak.events.trellis as trellis
 from peak.util import plugins
 from peak.util.addons import AddOn
+import peak.events.activity as activity
 from chandler.time_services import nowTimestamp
 from chandler.core import ConstraintError
 
@@ -11,7 +12,7 @@ LATER = 200.0
 DONE = 300.0
 
 TRIAGE_HOOK  = plugins.Hook('chandler.domain.triage')
-POSITION_HOOK = plugins.Hook('chandler.interaction.triage_position')
+POSITION_HOOK = plugins.Hook('chandler.domain.triage_position')
 
 ### Domain model ###
 
@@ -51,10 +52,16 @@ class Triage(AddOn, trellis.Component):
             if cell is not None and int(cell) < 100:
                 raise TriageRangeError(cell)
 
-class TriageRangeError(ConstraintError):
-    cell_description = "triage status"
+def flatten(objects):
+    """Flatten an iterable of objects, generate a sequence of floats."""
+    for obj in objects:
+        if obj is not None:
+            try:
+                for child in obj:
+                    yield child
+            except TypeError:
+                yield obj
 
-### Interaction model ###
 class TriagePosition(AddOn, trellis.Component):
     trellis.attrs(
         _item=None,
@@ -71,8 +78,16 @@ class TriagePosition(AddOn, trellis.Component):
 
     @trellis.compute
     def default_position(self):
-        ### needs fleshing out with entry points
-        return self._item.created
+        positions = list(flatten(POSITION_HOOK.query(self._item)))
+        now_stamp = nowTimestamp()
+        if self._triage_addon.calculated == LATER:
+            choices = [t for t in positions if not bool(activity.Time[t - now_stamp])]
+            if choices:
+                return min(choices)
+        # no else, fall through to NOW behavior if there's nothing LATER
+        choices = [t for t in positions if bool(activity.Time[t - now_stamp])]
+        choices.append(self._item.created)
+        return max(choices)
 
     @trellis.compute
     def default_triage_section(self):
@@ -107,3 +122,6 @@ class TriagePosition(AddOn, trellis.Component):
     def pin_to_now(self):
         self.pinned_triage_section = NOW
         self.pinned_position = nowTimestamp()
+
+class TriageRangeError(ConstraintError):
+    cell_description = "triage status"

@@ -76,7 +76,7 @@ triage-sorted dashboard view.
 
 :class:`TriagePosition` of an item has a read-only float
 :attr:`~TriagePosition.position` cell.  The default value is the
-item's created timestamp.
+item's :attr:`~chandler.core.Item.created` timestamp.
 
 >>> from chandler import time_services   # set up the current time
 >>> from datetime import datetime
@@ -125,9 +125,9 @@ XXX should recognized custom triage statuses be in their own sections?
 Shortcut Methods
 ----------------
 
-There are a few shortcuts for setting pinned values. ``pin()`` sets
+There are a few shortcuts for setting pinned values. :func:`~TriagePosition.pin` sets
 pinned values to match the current state of their default values, but
-only if no pinned values are set.  ``clear_pinned()`` resets pinned
+only if no pinned values are set.  :func:`~TriagePosition.clear_pinned` resets pinned
 values to ``None``.
 
 >>> item_position.default_triage_section, item_position.default_position
@@ -145,8 +145,10 @@ values to ``None``.
 >>> item_position.triage_section, item_position.position
 (300.0, 1222862400.0)
 
-``pin_to_now()`` sets ``pinned_triage_section`` to NOW and
-``position`` to the timestamp for the current time.
+:func:`~TriagePosition.pin_to_now` sets
+:attr:`~TriagePosition.pinned_triage_section` to :const:`NOW` and
+:attr:`~TriagePosition.position` to the timestamp for the current
+time.
 
 >>> item_triage.manual = LATER
 >>> item_position.clear_pinned()
@@ -155,6 +157,7 @@ values to ``None``.
 >>> item_position.pin_to_now()
 >>> item_position.triage_section, item_position.position
 (100.0, 1222862400.0)
+>>> item_position.clear_pinned()
 
 .. index:: hook; chandler.domain.triage_position (used by chandler.triage)
 .. _triage-position-hook:
@@ -162,17 +165,70 @@ values to ``None``.
 The *triage_position* hook
 --------------------------
 
-The default position values, equal to triage_status, aren't very
-useful except for testing.
+:attr:`~TriagePosition.default_position` will always be a timestamp.
+As we've seen, the simple value is the item's creation timestamp.  In
+general, :attr:`~TriagePosition.default_position` will depend on what
+Extensions have been added to an item.
 
-Usually, position will be a float measuring seconds since the epoch
-for some time.  It's value is found by applying all
-:ref:`chandler.interaction.triage_position
-<triage-position-hook-central>` hooks on the item and choosing the
-largest.
+To calculate :attr:`~TriagePosition.default_position`, first a list of
+timestamps are gathered using the :ref:`triage_position
+<triage-position-hook-central>` hook.
 
-XXX should use, define, explain triage_position entry point
-    triage_position eps should return ``None`` if they don't apply, or
-    (weight, value) if they do apply (the weight is needed because,
-    for instance, both the reminder and event-ness positions might
-    apply to the same item)
+To test this, we'll create a few simple callbacks based on
+:attr:`~chandler.core.Item.created`:
+
+>>> def one_hour_later(item):
+...    return item.created + 3600
+>>> def two_hours_before_and_after(item):
+...    return (item.created - 7200, item.created + 7200)
+>>> from peak.util import plugins
+>>> from peak.events.activity import Time
+>>> position_hook = plugins.Hook('chandler.domain.triage_position')
+>>> position_hook.register(one_hour_later)
+>>> position_hook.register(two_hours_before_and_after)
+
+We need to create a new item now that we've registered new hooks,
+otherwise the Trellis won't include the hook's dependencies when
+determining whether a recalculation is needed.
+
+>>> item = Item()
+>>> item_triage = Triage(item)
+>>> item_position = TriagePosition(item)
+>>> item_triage.calculated == NOW
+True
+
+Next, we'll create a Performer cell to track how far
+:attr:`~TriagePosition.position` is from 8AM.
+
+>>> def diff_from_8am():
+...     delta = item_position.position - time_services.timestamp(eight_am)
+...     print 'position hours from 8am:', delta / 3600
+>>> from peak.events.trellis import Performer
+>>> performer = Performer(diff_from_8am)
+position hours from 8am: 0.0
+
+For :const:`DONE` or :const:`NOW` :attr:`~Triage.calculated` values,
+the last timestamp not in the future is used.  The two-hours-before
+rule doesn't affect the value, because the default (zero-hours-before)
+is greater and not in the future.
+
+>>> item_triage.manual = LATER
+position hours from 8am: 1.0
+
+If :attr:`~Triage.calculated` is :const:`LATER`, the earliest future
+timestamp is used.
+
+>>> Time.advance(3600)
+position hours from 8am: 2.0
+>>> item_triage.manual = DONE
+position hours from 8am: 1.0
+>>> Time.advance(400)
+>>> Time.advance(3600)
+position hours from 8am: 2.0
+
+If no future timestamps are found, the behavior falls back to the
+latest past timestamp, so there's no change in
+:attr:`~TriagePosition.position` if triage is set to :const:`LATER`.
+
+>>> item_triage.manual = LATER
+
