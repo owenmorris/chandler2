@@ -43,11 +43,11 @@ Traceback (most recent call last):
  . . .
 TriageRangeError: Can't set triage status to: 99
 
-.. index:: hook; chandler.domain.triage
+.. index:: hook; chandler.domain.triage (used by chandler.triage)
 .. _triage-hook:
 
-Auto triage
-===========
+Automatically determined triage status
+======================================
 
 If :attr:`~Triage.manual` is ``None``, :attr:`~Triage.auto` is used to
 determine :attr:`~Triage.calculated`.
@@ -162,8 +162,8 @@ time.
 .. index:: hook; chandler.domain.triage_position (used by chandler.triage)
 .. _triage-position-hook:
 
-The *triage_position* hook
---------------------------
+Sorting by triage-status - The *triage_position* hook
+-----------------------------------------------------
 
 :attr:`~TriagePosition.default_position` will always be a timestamp.
 As we've seen, the simple value is the item's creation timestamp.  In

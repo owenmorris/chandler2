@@ -178,19 +178,39 @@ is_started changed to: False
 >>> event2.all_day = True
 is_started changed to: True
 
+
+.. index:: hook; chandler.domain.triage (registered by chandler.event)
+.. _event-triage:
+
 Events and Triage Status
 ========================
 
-Events are automatically triaged based on ``is_started``.  If the
+ Events are automatically triaged based on ``is_started``.  If the
 event hasn't started, its triage status will be
 :const:`~chandler.triage.LATER`, otherwise it will be
 :const:`~chandler.triage.NOW`.
 
+>>> from chandler.triage import *
 >>> viewer.component = Triage(item2)
 >>> viewer.cell_name = 'calculated'
 calculated changed to: 100.0
 >>> event2.all_day = False
 calculated changed to: 200.0
+
+
+.. index:: hook; chandler.domain.triage_position (registered by chandler.event)
+.. _event-triage-position:
+
+Events and Triage Position
+==========================
+
+The default value for triage
+:attr:`~chandler.triage.TriagePosition.position` on an event is the
+timestamp of it's :attr:`~Event.start`.
+
+>>> TriagePosition(item2).position == timestamp(event2.start)
+True
+
 
 Recurrence
 ==========

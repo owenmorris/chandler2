@@ -38,7 +38,7 @@ Triage
    :ref:`triage-hook`
       ..
 
-   :ref:`event-triage-position`
+   :ref:`event-triage`
       ..
 
 
