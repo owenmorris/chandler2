@@ -26,6 +26,8 @@ class Event(Extension):
 
     @trellis.compute
     def start(self):
+        if self.base_start is None:
+            return None
         if not self.is_day:
             return self.base_start
         else:
