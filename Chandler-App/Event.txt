@@ -185,7 +185,7 @@ is_started changed to: True
 Events and Triage Status
 ========================
 
- Events are automatically triaged based on ``is_started``.  If the
+Events are automatically triaged based on ``is_started``.  If the
 event hasn't started, its triage status will be
 :const:`~chandler.triage.LATER`, otherwise it will be
 :const:`~chandler.triage.NOW`.
@@ -206,7 +206,7 @@ Events and Triage Position
 
 The default value for triage
 :attr:`~chandler.triage.TriagePosition.position` on an event is the
-timestamp of it's :attr:`~Event.start`.
+timestamp of its :attr:`~Event.start`.
 
 >>> TriagePosition(item2).position == timestamp(event2.start)
 True
