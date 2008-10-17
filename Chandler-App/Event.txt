@@ -197,18 +197,22 @@ calculated changed to: 100.0
 >>> event2.all_day = False
 calculated changed to: 200.0
 
-
-.. index:: hook; chandler.domain.triage_position (registered by chandler.event)
-.. _event-triage-position:
-
-Events and Triage Position
-==========================
-
 The default value for triage
 :attr:`~chandler.triage.TriagePosition.position` on an event is the
 timestamp of its :attr:`~Event.start`.
 
->>> TriagePosition(item2).position == timestamp(event2.start)
+>>> triage_position2 = TriagePosition(item2)
+>>> triage_position2.position == timestamp(event2.start)
+True
+
+Unless for some reason :attr:`~Event.start` is set before the event's
+creation:
+
+>>> viewer.component = None
+>>> event2.base_start = cinco_de_mayo - timedelta(days=30)
+>>> triage_position2.position == timestamp(event2.start)
+False
+>>> triage_position2.position == item2.created
 True
 
 

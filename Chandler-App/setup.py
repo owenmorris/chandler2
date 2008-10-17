@@ -16,7 +16,5 @@ setup(
     [chandler.domain.triage]
     event = chandler.event:event_triage
 
-    [chandler.domain.triage_position]
-    event = chandler.event:event_triage_position
     """
 ),

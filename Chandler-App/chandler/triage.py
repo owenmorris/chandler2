@@ -12,9 +12,23 @@ LATER = 200.0
 DONE = 300.0
 
 TRIAGE_HOOK  = plugins.Hook('chandler.domain.triage')
-POSITION_HOOK = plugins.Hook('chandler.domain.triage_position')
 
 ### Domain model ###
+
+def triage_status_timeline(item):
+    """Yield all (timestamp, status) pairs for the given item."""
+    yield (0, NOW) # default
+    for iterable in TRIAGE_HOOK.query(item):
+        for pair in iterable:
+            yield pair
+
+def filter_on_time(item, future=True):
+    """Yield all past or future (timestamp, status) pairs for the given item."""
+    now_stamp = nowTimestamp()
+    for timestamp, status in triage_status_timeline(item):
+        if future ^ bool(activity.Time[timestamp - now_stamp]): # ^ means XOR
+            yield timestamp, status
+
 
 class Triage(AddOn, trellis.Component):
     trellis.attrs(
@@ -28,14 +42,8 @@ class Triage(AddOn, trellis.Component):
 
     @trellis.compute
     def auto(self):
-        if self.auto_source:
-            pass # make use of auto_source when reminders have been fleshed out
-        else:
-            positions = list(TRIAGE_HOOK.query(self._item))
-            # default to NOW if nothing else applies
-            positions.append((0, NOW))
-            max_weight, position = max(positions)
-            return position
+        max_timestamp, status = max(filter_on_time(self._item, future=False))
+        return status
 
 
     @trellis.compute
@@ -51,16 +59,6 @@ class Triage(AddOn, trellis.Component):
         for cell in (self.manual, self.auto):
             if cell is not None and int(cell) < 100:
                 raise TriageRangeError(cell)
-
-def flatten(objects):
-    """Flatten an iterable of objects, generate a sequence of floats."""
-    for obj in objects:
-        if obj is not None:
-            try:
-                for child in obj:
-                    yield child
-            except TypeError:
-                yield obj
 
 class TriagePosition(AddOn, trellis.Component):
     trellis.attrs(
@@ -78,16 +76,15 @@ class TriagePosition(AddOn, trellis.Component):
 
     @trellis.compute
     def default_position(self):
-        positions = list(flatten(POSITION_HOOK.query(self._item)))
-        now_stamp = nowTimestamp()
         if self._triage_addon.calculated == LATER:
-            choices = [t for t in positions if not bool(activity.Time[t - now_stamp])]
-            if choices:
-                return min(choices)
-        # no else, fall through to NOW behavior if there's nothing LATER
-        choices = [t for t in positions if bool(activity.Time[t - now_stamp])]
-        choices.append(self._item.created)
-        return max(choices)
+            future_choices = list(filter_on_time(self._item, future=True))
+            if future_choices:
+                return min(future_choices)[0]
+        # if LATER but no known triage change in the future, use NOW behavior
+        last_past = max(filter_on_time(self._item, future=False))
+        # never return a timestamp less than the item's creation timestamp
+        return max(self._item.created, last_past[0])
+
 
     @trellis.compute
     def default_triage_section(self):

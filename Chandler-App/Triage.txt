@@ -64,10 +64,6 @@ is used.
 
 XXX test triage status of unrecognized 250, calculated falls back to 200
 
-XXX How do I test:
-  assuming no chandler.triage.types entry points
-  add entry points in code
-
 Triage Positioning
 ==================
 
@@ -159,33 +155,33 @@ time.
 (100.0, 1222862400.0)
 >>> item_position.clear_pinned()
 
-.. index:: hook; chandler.domain.triage_position (used by chandler.triage)
-.. _triage-position-hook:
 
-Sorting by triage-status - The *triage_position* hook
------------------------------------------------------
+Custom triage status
+--------------------
 
 :attr:`~TriagePosition.default_position` will always be a timestamp.
 As we've seen, the simple value is the item's creation timestamp.  In
-general, :attr:`~TriagePosition.default_position` will depend on what
-Extensions have been added to an item.
+general, :attr:`Triage.auto` and
+:attr:`TriagePosition.default_position` will depend on what Extensions
+have been added to an item.
 
-To calculate :attr:`~TriagePosition.default_position`, first a list of
-timestamps are gathered using the :ref:`triage_position
-<triage-position-hook-central>` hook.
+To calculate these, a list of (timestamp, triage_status) pairs are
+gathered using the :ref:`triage hook <triage-hook-central>`.
+:attr:`~Triage.auto` will be the triage status associated with the
+most recent past timestamp.
 
 To test this, we'll create a few simple callbacks based on
 :attr:`~chandler.core.Item.created`:
 
->>> def one_hour_later(item):
-...    return item.created + 3600
->>> def two_hours_before_and_after(item):
-...    return (item.created - 7200, item.created + 7200)
+>>> def done_one_hour_later(item):
+...    return ((item.created + 3600, DONE),)
+>>> def now_two_hours_before_and_after(item):
+...    return ((item.created - 7200, NOW), (item.created + 7200, NOW))
 >>> from peak.util import plugins
 >>> from peak.events.activity import Time
->>> position_hook = plugins.Hook('chandler.domain.triage_position')
->>> position_hook.register(one_hour_later)
->>> position_hook.register(two_hours_before_and_after)
+>>> triage_hook = plugins.Hook('chandler.domain.triage')
+>>> triage_hook.register(done_one_hour_later)
+>>> triage_hook.register(now_two_hours_before_and_after)
 
 We need to create a new item now that we've registered new hooks,
 otherwise the Trellis won't include the hook's dependencies when
@@ -200,12 +196,14 @@ True
 Next, we'll create a Performer cell to track how far
 :attr:`~TriagePosition.position` is from 8AM.
 
->>> def diff_from_8am():
+>>> def triage_details():
 ...     delta = item_position.position - time_services.timestamp(eight_am)
 ...     print 'position hours from 8am:', delta / 3600
+...     print 'auto triage status:', item_triage.auto
 >>> from peak.events.trellis import Performer
->>> performer = Performer(diff_from_8am)
+>>> performer = Performer(triage_details)
 position hours from 8am: 0.0
+auto triage status: 100.0
 
 For :const:`DONE` or :const:`NOW` :attr:`~Triage.calculated` values,
 the last timestamp not in the future is used.  The two-hours-before
@@ -214,17 +212,21 @@ is greater and not in the future.
 
 >>> item_triage.manual = LATER
 position hours from 8am: 1.0
+auto triage status: 100.0
 
 If :attr:`~Triage.calculated` is :const:`LATER`, the earliest future
 timestamp is used.
 
 >>> Time.advance(3600)
 position hours from 8am: 2.0
+auto triage status: 300.0
 >>> item_triage.manual = DONE
 position hours from 8am: 1.0
+auto triage status: 300.0
 >>> Time.advance(400)
 >>> Time.advance(3600)
 position hours from 8am: 2.0
+auto triage status: 100.0
 
 If no future timestamps are found, the behavior falls back to the
 latest past timestamp, so there's no change in

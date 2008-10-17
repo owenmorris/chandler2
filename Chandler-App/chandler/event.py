@@ -85,17 +85,11 @@ class Event(Extension):
 def event_triage(item):
     """Hook for triage of an event."""
     if not Event.installed_on(item):
-        return (-1, None)
-    status = NOW if Event(item).is_started else LATER
-    return (EVENT_TRIAGE_WEIGHT, status)
-
-def event_triage_position(item):
-    """Hook for triage_position of an event."""
-    if not Event.installed_on(item):
-        return None
-    start = Event(item).start
-    return timestamp(start) if start is not None else None
-
+        return ()
+    else:
+        start = Event(item).start
+        # LATER from distant past until NOW at start time
+        return ((0, LATER), (timestamp(start), NOW))
 
 
 class NaiveTimezoneError(ConstraintError):

@@ -28,10 +28,11 @@ index_ for a complete list.
 Triage
 ------
 
-.. describe:: triage_callable(entry) -> (weight, triage_status)
+.. describe:: triage_callable(entry) -> iterable of (timestamp, triage_status) pairs
 
-   Return (-1, None) if triage can't be calculated for the entry,
-   otherwise a float weight and :mod:`~chandler.triage` value.
+   Return an empty tuple if triage can't be calculated for the entry,
+   otherwise a timestamp when the triage_status should be applied, and
+   a :mod:`~chandler.triage` value.
 
 .. seealso::
 
@@ -41,27 +42,6 @@ Triage
    :ref:`event-triage`
       ..
 
-
-.. index:: hook; chandler.domain.triage_position
-.. _triage-position-hook-central:
-
-Triage position
----------------
-
-"chandler.domain.triage_position"  provides callables like:
-
-.. describe:: triage_position_callable(entry) -> position_timestamp, iterable, or None
-
-   Return None if triage_position can't be calculated for the
-   entry, otherwise a position timestamp or an iterable of timestamps.
-
-.. seealso::
-
-   :ref:`triage-position-hook`
-      ..
-
-   :ref:`event-triage-position`
-      ..
 
 Testing
 =======
