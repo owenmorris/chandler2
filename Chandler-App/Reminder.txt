@@ -1,0 +1,91 @@
+===========
+ Reminders
+===========
+
+.. module:: chandler.reminder
+
+A :class:`Reminder` defines an instant in time when something should
+happen.
+
+>>> from chandler.reminder import *
+>>> rem = Reminder()
+>>> rem.type
+'triage'
+
+What exactly happens when a reminder fires will depend on the
+reminder's :attr:`~Reminder.type`.  The simplest example is to change
+an item's :mod:`~chandler.triage` status.
+
+:attr:`~Reminder.trigger` for a :class:`Reminder` is determined either
+relative to an :mod:`~chandler.event`, by setting a
+:attr:`~Reminder.delta` or with a :attr:`~Reminder.fixed_trigger`.  By
+default, both are None.
+
+>>> rem.delta is None
+True
+>>> rem.fixed_trigger is None
+True
+>>> rem.trigger is None
+True
+
+To associate a :class:`Reminder` with an item, it should be added to
+the item's :class:`ReminderList` AddOn.  Note that
+:class:`ReminderList` isn't an :class:`~chandler.core.Extension`, so
+there's no need to call :func:`~chandler.core.Extension.add`.
+
+>>> from chandler import time_services
+>>> from chandler.core import Item
+>>> from datetime import datetime, timedelta
+>>> april_fools = datetime(2006, 4, 1, 12, tzinfo=time_services.TimeZone.eastern)
+>>> time_services.setNow(april_fools)
+>>> item = Item()
+>>> rem.item = item
+>>> ReminderList(item).reminders.append(rem)
+
+Setting :attr:`~Reminder.delta` for an item that isn't an
+:mod:`~chandler.event` leaves :attr:`~Reminder.trigger` as *None*:
+
+>>> rem.delta = timedelta(hours=1)
+>>> rem.trigger is None
+True
+
+Similarly, if :attr:`~chandler.event.Event.start` is None, trigger will be, too.
+
+>>> from chandler.event import Event
+>>> event = Event(item).add()
+>>> event.start is None
+True
+>>> rem.trigger is None
+True
+
+But if :attr:`~chandler.event.Event.start` is set, :attr:`~Reminder.trigger` will be, too.
+
+>>> event.base_start = april_fools + timedelta(hours=3)
+>>> rem.trigger
+datetime.datetime(2006, 4, 1, 16, 0, tzinfo=<ICUtzinfo: US/Eastern>)
+
+If a :class:`Reminder` has both a :attr:`~Reminder.delta` and a
+:attr:`~Reminder.fixed_start`, the :attr:`~Reminder.fixed_start` takes precedence.
+
+>>> rem.fixed_trigger = april_fools + timedelta(minutes=5)
+>>> rem.trigger
+datetime.datetime(2006, 4, 1, 12, 5, tzinfo=<ICUtzinfo: US/Eastern>)
+
+Shortcut Method
+===============
+
+Rather than creating a :class:`Reminder` and setting its
+:attr:`~Reminder.item`, you can use :func:`ReminderList.add_reminder`.
+
+>>> rem2 = ReminderList(item).add_reminder()
+>>> rem2.item == item
+True
+>>> ReminderList(item).reminders == [rem, rem2]
+True
+
+You can pass in cell values for the new reminder, too:
+
+>>> rem3 = ReminderList(item).add_reminder(delta=timedelta(days=2))
+>>> rem3.delta
+datetime.timedelta(2)
+
