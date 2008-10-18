@@ -42,6 +42,9 @@ Triage
    :ref:`event-triage`
       ..
 
+   :ref:`reminder-triage`
+      ..
+
 
 Testing
 =======

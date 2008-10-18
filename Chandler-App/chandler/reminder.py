@@ -3,6 +3,7 @@ from peak.util.addons import AddOn
 from chandler.core import ConstraintError
 from chandler.event import Event
 from chandler.triage import *
+from chandler.time_services import timestamp
 
 ### Domain model ###
 
@@ -38,3 +39,12 @@ class Reminder(trellis.Component):
                 start = Event(self.item).start
                 if start is not None:
                     return start + self.delta
+
+def reminder_triage(item):
+    got_trigger = False
+    for reminder in ReminderList(item).reminders:
+        if reminder.trigger is not None:
+            got_trigger = True
+            yield (timestamp(reminder.trigger), NOW)
+    if got_trigger:
+        yield (0, LATER)

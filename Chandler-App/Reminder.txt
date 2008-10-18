@@ -89,3 +89,68 @@ You can pass in cell values for the new reminder, too:
 >>> rem3.delta
 datetime.timedelta(2)
 
+.. index:: hook; chandler.domain.triage (registered by chandler.reminder)
+.. _reminder-triage:
+
+Reminders and Triage Status
+===========================
+
+When a reminder is added to an item, its triage status and triage position
+depend on the reminder.
+
+>>> from chandler.triage import *
+>>> item = Item()
+>>> triage = Triage(item)
+>>> triage.calculated == NOW
+True
+>>> triage_position = TriagePosition(item)
+>>> triage_position.position == item.created
+True
+>>> rem = ReminderList(item).add_reminder(fixed_trigger=april_fools + timedelta(days=2))
+>>> triage.calculated == LATER
+True
+>>> triage_position.position == time_services.timestamp(rem.trigger)
+True
+>>> time_services.setNow(april_fools + timedelta(days=3))
+>>> triage.calculated == NOW
+True
+
+An :class:`~chandler.event.Event` with an associated :class:`Reminder`
+may have its triage position depend on either.
+
+>>> rem.fixed_trigger = None
+>>> rem.delta = timedelta(hours=-1)
+>>> event = Event(item).add()
+>>> event.base_start = april_fools
+>>> triage_position.position == time_services.timestamp(event.start)
+True
+
+If both the event and the reminder are in the past, position will be
+the latter of the two.
+
+>>> rem.delta = timedelta(hours=1)
+>>> triage_position.position == time_services.timestamp(event.start)
+False
+>>> triage_position.position == time_services.timestamp(rem.trigger)
+True
+
+If one is in the future, the other in the past, position will depend on :attr:`~chandler.triage.Triage.calculated` triage.
+
+>>> event.base_start = april_fools + timedelta(days=3)
+>>> triage.calculated
+100.0
+>>> triage_position.position == time_services.timestamp(event.start)
+True
+>>> triage.manual = LATER
+>>> triage_position.position == time_services.timestamp(rem.trigger)
+True
+
+XXX Reminder should be a scheduled, test/document reminder fire
+
+XXX should all reminders get the triage behavior?
+
+XXX snooze_until, cleared
+
+XXX Hook for adding different types of reminders?
+
+XXX reversible in time explanation

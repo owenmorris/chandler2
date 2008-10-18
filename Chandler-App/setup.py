@@ -15,6 +15,7 @@ setup(
     entry_points = """
     [chandler.domain.triage]
     event = chandler.event:event_triage
+    reminder = chandler.reminder:reminder_triage
 
     [chandler.domain.item_addon]
     triage = chandler.triage:Triage
