@@ -1,19 +1,25 @@
 import peak.events.trellis as trellis
 import peak.events.activity as activity
-import peak.util.addons as addons
+from peak.util import addons, plugins
 from datetime import datetime
 import chandler.time_services as time_services
 import time
 
 __all__ = ('Item', 'Extension', 'ConstraintError')
 
-class Item(trellis.Component):
+class Item(trellis.Component, plugins.Extensible):
+    extend_with = plugins.Hook('chandler.domain.item_addon')
 
     title = trellis.attr(initially=u'')
     created = trellis.make(lambda x: time_services.nowTimestamp(),
                            optional=False)
 
     _extension_types = trellis.make(trellis.Set)
+
+    def __init__(self, **kwargs):
+        trellis.Component.__init__(self, **kwargs)
+        self.load_extensions() # plugins.Extensible method
+
     @trellis.maintain
     def extensions(self):
         return frozenset(t(self) for t in self._extension_types)

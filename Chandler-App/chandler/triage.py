@@ -63,16 +63,17 @@ class Triage(AddOn, trellis.Component):
 class TriagePosition(AddOn, trellis.Component):
     trellis.attrs(
         _item=None,
-        _triage_addon=None,
         pinned_triage_section=None,
         pinned_position=None
     )
 
     def __init__(self, item, **kwargs):
         self._item = item
-        # AddOn/Components like Triage need to be added outside of rules
-        self._triage_addon = Triage(item)
         trellis.Component.__init__(self, **kwargs)
+
+    @trellis.compute
+    def _triage_addon(self):
+        return Triage(self._item)
 
     @trellis.compute
     def default_position(self):

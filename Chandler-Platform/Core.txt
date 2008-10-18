@@ -160,3 +160,23 @@ add extensions to an item:
 >>> new_my_ext = MyExtension(Item()).add(can_this_be_true=True)
 >>> new_my_ext.can_this_be_true
 True
+
+
+.. index:: hook; chandler.domain.item_addon (used by chandler.core)
+
+Adding attributes to all Items
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Extensions are optional.  To participate in Item initialization for
+**all** items, use the *chandler.domain.item_addon* hook.
+
+>>> from peak.util import plugins
+>>> addon_hook = plugins.Hook('chandler.domain.item_addon')
+>>> def item_initialized(item):
+...     print "Item initialized!"
+>>> addon_hook.register(item_initialized)
+>>> new_item = Item()
+Item initialized!
+
+If code expects an AddOn to be present for all items, it should register
+its class an item_addon.

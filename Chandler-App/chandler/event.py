@@ -88,6 +88,8 @@ def event_triage(item):
         return ()
     else:
         start = Event(item).start
+        if not start:
+            return ()
         # LATER from distant past until NOW at start time
         return ((0, LATER), (timestamp(start), NOW))
 
