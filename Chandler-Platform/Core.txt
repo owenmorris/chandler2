@@ -1,4 +1,4 @@
-Items,  and Extensions and DashboardEntries
+Items, Extensions and DashboardEntries
 -------------------------------------------
 
 .. module:: chandler.core

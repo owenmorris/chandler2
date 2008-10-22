@@ -1,6 +1,6 @@
-=======================
- Events - Domain Model
-=======================
+========
+ Events
+========
 
 .. module:: chandler.event
 

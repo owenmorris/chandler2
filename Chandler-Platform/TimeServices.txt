@@ -3,7 +3,13 @@
 ==============
 
 This manual covers using some of the date, time and timezone
-services available in the ``chandler.time_services`` module:
+services available in the ``chandler.time_services`` module.
+
+``time_services`` relies heavily on TrellisActivity_, which manages
+changes to Trellis_ cells that depend on time.
+
+.. _TrellisActivity: http://peak.telecommunity.com/DevCenter/TrellisActivity
+.. _Trellis: http://peak.telecommunity.com/DevCenter/Trellis
 
 >>> from chandler.time_services import *
 >>> from datetime import datetime, timedelta
@@ -113,6 +119,7 @@ and will therefore be recalculated if ``TimeZone.default`` is changed.
 
 Setting the Current Date and Time
 =================================
+
 Chandler behavior that involves the current time should use the
 time_services module to determine the current date and time.  This
 allows tests to be written that set the current time to a fixed value.
