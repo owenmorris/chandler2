@@ -15,17 +15,20 @@ TRIAGE_HOOK  = plugins.Hook('chandler.domain.triage')
 
 ### Domain model ###
 
-def triage_status_timeline(item):
+def triage_status_timeline(triage):
     """Yield all (timestamp, status) pairs for the given item."""
     yield (0, NOW) # default
-    for iterable in TRIAGE_HOOK.query(item):
+    manual_pair = triage.manual_timestamp, triage.manual
+    if None not in manual_pair:
+        yield manual_pair
+    for iterable in TRIAGE_HOOK.query(triage._item):
         for pair in iterable:
             yield pair
 
-def filter_on_time(item, future=True):
+def filter_on_time(triage, future=True):
     """Yield all past or future (timestamp, status) pairs for the given item."""
     now_stamp = nowTimestamp()
-    for timestamp, status in triage_status_timeline(item):
+    for timestamp, status in triage_status_timeline(triage):
         if future ^ bool(activity.Time[timestamp - now_stamp]): # ^ means XOR
             yield timestamp, status
 
@@ -34,6 +37,7 @@ class Triage(AddOn, trellis.Component):
     trellis.attrs(
         _item=None,
         manual=None,
+        manual_timestamp=None,
         auto_source=None
     )
 
@@ -42,13 +46,13 @@ class Triage(AddOn, trellis.Component):
 
     @trellis.compute
     def auto(self):
-        max_timestamp, status = max(filter_on_time(self._item, future=False))
+        max_timestamp, status = max(filter_on_time(self, future=False))
         return status
 
 
     @trellis.compute
     def calculated(self):
-        if self.manual is not None:
+        if self.manual is not None and self.manual_timestamp is None:
             return self.manual
         if self.auto is not None:
             return self.auto
@@ -77,12 +81,13 @@ class TriagePosition(AddOn, trellis.Component):
 
     @trellis.compute
     def default_position(self):
+        triage = Triage(self._item)
         if self._triage_addon.calculated == LATER:
-            future_choices = list(filter_on_time(self._item, future=True))
+            future_choices = list(filter_on_time(triage, future=True))
             if future_choices:
                 return min(future_choices)[0]
         # if LATER but no known triage change in the future, use NOW behavior
-        last_past = max(filter_on_time(self._item, future=False))
+        last_past = max(filter_on_time(triage, future=False))
         # never return a timestamp less than the item's creation timestamp
         return max(self._item.created, last_past[0])
 

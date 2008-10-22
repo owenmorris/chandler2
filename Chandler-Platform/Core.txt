@@ -167,8 +167,13 @@ True
 Adding attributes to all Items
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Extensions are optional.  To participate in Item initialization for
-**all** items, use the *chandler.domain.item_addon* hook.
+Extensions are optional.  Some items will have a given Extension added,
+others won't.
+
+If an addition to Item should apply to all items, instead of using an
+Extension, create an AddOn class.  The class can be automatically
+added to items when they're initialized by registering the class using
+the *chandler.domain.item_addon* hook.
 
 >>> from peak.util import plugins
 >>> addon_hook = plugins.Hook('chandler.domain.item_addon')
@@ -178,5 +183,3 @@ Extensions are optional.  To participate in Item initialization for
 >>> new_item = Item()
 Item initialized!
 
-If code expects an AddOn to be present for all items, it should register
-its class an item_addon.

@@ -28,15 +28,17 @@ states can be defined in plugins.
 displaying the current triage status. It's read-only, based on
 :attr:`~Triage.manual` and :attr:`~Triage.auto`.
 
-Triage status can be directly set using :attr:`~Triage.manual`.  If
-set, :attr:`~Triage.manual` overrides triage status from other
-sources.
+Triage status can be directly set using :attr:`~Triage.manual`.  In
+the simplest case, if :attr:`~Triage.manual` is set, it overrides
+triage status from other sources (see :ref:`manual-triage` for when
+this doesn't apply).
 
 >>> item_triage.manual = LATER
 >>> item_triage.calculated
 200.0
 
-Triage status must be either ``None``, or an int or float >= 100.
+:attr:`~Triage.manual` triage status must be either ``None``, or a
+float >= 100.
 
 >>> item_triage.manual = 99
 Traceback (most recent call last):
@@ -75,7 +77,7 @@ triage-sorted dashboard view.
 item's :attr:`~chandler.core.Item.created` timestamp.
 
 >>> from chandler import time_services   # set up the current time
->>> from datetime import datetime
+>>> from datetime import datetime, timedelta
 >>> eight_am = datetime(2008, 10, 1, 8, tzinfo=time_services.TimeZone.eastern)
 >>> time_services.setNow(eight_am)
 >>> time_services.timestamp(eight_am)
@@ -118,8 +120,8 @@ XXX should recognized custom triage statuses be in their own sections?
     If not section definition might need an entry point, too.
 
 
-Shortcut Methods
-----------------
+Pin Methods
+-----------
 
 There are a few shortcuts for setting pinned values. :func:`~TriagePosition.pin` sets
 pinned values to match the current state of their default values, but
@@ -155,22 +157,36 @@ time.
 (100.0, 1222862400.0)
 >>> item_position.clear_pinned()
 
+.. _triage-timeline:
 
-Custom triage status
---------------------
+The timeline of triage status changes
+-------------------------------------
 
-:attr:`~TriagePosition.default_position` will always be a timestamp.
-As we've seen, the simple value is the item's creation timestamp.  In
-general, :attr:`Triage.auto` and
-:attr:`TriagePosition.default_position` will depend on what Extensions
-have been added to an item.
+In practice, position and triage status will often depend on the
+current time.  Generally, triage can be thought of as a timeline, with
+certain points in time defining transitions to new triage statuses.
 
-To calculate these, a list of (timestamp, triage_status) pairs are
-gathered using the :ref:`triage hook <triage-hook-central>`.
-:attr:`~Triage.auto` will be the triage status associated with the
-most recent past timestamp.
+An :class:`~chandler.core.Extension` can define any number of
+transition points on the triage timeline.  :attr:`Triage.auto` and
+:attr:`TriagePosition.default_position` will change as time passes
+these transition points.
 
-To test this, we'll create a few simple callbacks based on
+To determine an item's triage timeline, a list of (timestamp,
+triage_status) pairs are gathered using the :ref:`triage hook
+<triage-hook-central>`.  :attr:`~Triage.auto` will be the triage
+status associated with the most recent past timestamp.
+
+:attr:`TriagePosition.default_position` is a little more complicated.
+When :attr:`~Triage.calculated` is :const:`NOW` or :const:`DONE`,
+:attr:`TriagePosition.default_position` is the most recent past
+timestamp.
+
+When :attr:`~Triage.calculated` is :const:`LATER`, however, Chandler
+sorts items by the next time something will happen.  Only if there are
+no future transition points on the triage timeline will the last past
+timestamp be used.
+
+To test all this, we'll create a few simple callbacks based on
 :attr:`~chandler.core.Item.created`:
 
 >>> def done_one_hour_later(item):
@@ -205,17 +221,16 @@ Next, we'll create a Performer cell to track how far
 position hours from 8am: 0.0
 auto triage status: 100.0
 
-For :const:`DONE` or :const:`NOW` :attr:`~Triage.calculated` values,
-the last timestamp not in the future is used.  The two-hours-before
-rule doesn't affect the value, because the default (zero-hours-before)
-is greater and not in the future.
+Since :attr:`~Triage.calculated` is :const:`NOW`, the most recent past
+timestamp is used, which in this case is the default (when the item
+was created).
 
 >>> item_triage.manual = LATER
 position hours from 8am: 1.0
 auto triage status: 100.0
 
-If :attr:`~Triage.calculated` is :const:`LATER`, the earliest future
-timestamp is used.
+When :attr:`~Triage.calculated` changes to :const:`LATER`, the
+earliest future timestamp is used.
 
 >>> Time.advance(3600)
 position hours from 8am: 2.0
@@ -233,4 +248,39 @@ latest past timestamp, so there's no change in
 :attr:`~TriagePosition.position` if triage is set to :const:`LATER`.
 
 >>> item_triage.manual = LATER
+
+.. _manual-triage:
+
+Manual triage, revisited
+------------------------
+
+If :attr:`~Triage.manual` is set by itself, it takes precedence over
+:attr:`~Triage.auto` when determining :attr:`~Triage.calculated`.
+
+More commonly, however, :attr:`~Triage.manual_timestamp` will be set.
+If :attr:`~Triage.manual` and :attr:`~Triage.manual_timestamp` are
+**both** set, together they represent a point on the :ref:`triage
+timeline <triage-timeline>`, and :attr:`~Triage.manual` contributes to
+the calculation of :attr:`~Triage.auto`, rather than overriding it.
+
+>>> item = Item()
+>>> item_triage = Triage(item)
+>>> item_triage.calculated == NOW
+True
+>>> item_triage.auto == NOW
+True
+>>> item_triage.manual = LATER
+>>> item_triage.calculated == LATER
+True
+>>> day_later = time_services.timestamp(eight_am + timedelta(days=1))
+>>> item_triage.manual_timestamp = day_later
+>>> item_triage.calculated == NOW
+True
+>>> time_services.setNow(eight_am + timedelta(days=2))
+>>> item_triage.auto == LATER, item_triage.calculated == LATER
+(True, True)
+>>> TriagePosition(item).position
+1222948800.0
+>>> day_later
+1222948800.0
 
