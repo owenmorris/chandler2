@@ -16,6 +16,10 @@ class Item(trellis.Component, plugins.Extensible):
 
     _extension_types = trellis.make(trellis.Set)
 
+    trellis.make.attrs(
+        dashboard_entries=lambda self: trellis.Set([DashboardEntry(self)])
+    )
+
     def __init__(self, **kwargs):
         trellis.Component.__init__(self, **kwargs)
         self.load_extensions() # plugins.Extensible method
@@ -62,6 +66,22 @@ class Extension(trellis.Component, addons.AddOn):
             pass
         return isinstance(obj, Item) and cls in obj._extension_types
 
+class DashboardEntry(trellis.Component):
+    trellis.attrs(
+        subject_item=None,
+        when=None,
+        what=None,
+    )
+
+    def __init__(self, subject_item, **kw):
+        if not isinstance(subject_item, Item):
+            raise TypeError, "DashboardEntry's subject_item must be an Item"
+        cells = trellis.Cells(subject_item)
+        kw.setdefault("when", cells["created"])
+        kw.setdefault("what", cells["title"])
+        super(DashboardEntry, self).__init__(**kw)
+        self.subject_item = subject_item
+
 
 class ConstraintError(Exception):
     """Exception when a cell is set to an inappropriate value."""
@@ -79,6 +99,11 @@ class ConstraintError(Exception):
 #### Utility #####
 
 class Viewer(trellis.Component):
+    """
+    A utility class, usually used to observe changes to a cell during
+    doctests. This should probably eventually move to a Chandler-Debug
+    plugin.
+    """
     component = trellis.attr(None)
     cell_name = trellis.attr(None)
 

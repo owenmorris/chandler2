@@ -2,6 +2,8 @@
  Time Services
 ==============
 
+.. module:: chandler.time_services
+
 This manual covers using some of the date, time and timezone
 services available in the ``chandler.time_services`` module.
 
@@ -19,12 +21,13 @@ changes to Trellis_ cells that depend on time.
 
 Using Time Zones
 ================
-The ``TimeZone`` service in the ``chandler.time_services`` module
-is an interface to common operations like setting and getting the
-user’s default time zone, or fetching well-known time zones by
-name. The current implementation uses timezone information from
-the PyICU project, but since ``TimeZone`` is a Contextual service,
-it is possible to swap it out for a different scheme if you prefer.
+The :class:`~chandler.time_services.TimeZone` service in the
+``chandler.time_services`` module is an interface to common operations
+like setting and getting the user's default time zone, or fetching
+well-known time zones by name. The current implementation uses
+timezone information from the PyICU_ project, but since
+:class:`~chandler.time_services.TimeZone` is a Contextual_ service, it
+is possible to swap it out for a different scheme if you prefer.
 
 There are a few standard tzinfos that are pre-defined:
 
@@ -41,7 +44,7 @@ from the Olson database) using the ``[]`` operator:
 >>> TimeZone['Africa/Johannesburg']
 <ICUtzinfo: Africa/Johannesburg>
 
-If you pass in a name that doesn’t correspond to a known time zone,
+If you pass in a name that doesn't correspond to a known time zone,
 you get back ``None``:
 
 >>> print TimeZone["I do not exist, therefore I don't think"]
@@ -65,14 +68,14 @@ PyICU, too:
 >>> from PyICU import ICUtzinfo; ICUtzinfo.default
 <ICUtzinfo: US/Pacific>
 
-Naive datetimes and the “floating” Time Zone
-============================================
+Naive datetimes and the ":attr:`~chandler.time_services.TimeZone.floating`" Time Zone
+=====================================================================================
 Sometimes, end users will want alarms or event times to have no
 specific time zone, but to use whatever their current time
 zone is. For instance, imagine you are a frequent international
 traveler, and you are so often confused about the time of day that
 but would like to be reminded that you brush your teeth in the morning
-and evening no matter what timezone you’re in. Then, you might set up
+and evening no matter what timezone you're in. Then, you might set up
 some kind of repeating event that occurs at 6 a.m. and 6 p.m. in
 whatever your current timezone is.
 
@@ -86,7 +89,7 @@ This is problematic for Chandler for several reasons:
   them, or by using the ``==`` or ``!=`` operators) results in a
   ``TypeError`` being raised. This makes it difficult to use the two
   types of ``datetime`` in a Trellis cell, for example, as the
-  Trellis uses ``!=`` to determine if setting a cell’s value has
+  Trellis uses ``!=`` to determine if setting a cell's value has
   changed.
 
 + Even if you find a way to implement interpreting naive datetimes
@@ -98,22 +101,24 @@ This is problematic for Chandler for several reasons:
 
 For these reasons, Chandler now requires that all ``datetime`` (and
 ``time``) cell values have a non-``None`` ``tzinfo`` field. If you
-want to specify the time zone as being the user’s current default, use
-the ``floating`` time zone:
+want to specify the time zone as being the user's current default, use
+the :attr:`~chandler.time_services.TimeZone.floating` time zone:
 
 >>> TimeZone.floating
 FloatingTZ(<ICUtzinfo: US/Pacific>)
 
-If you change the default time zone, ``floating`` notices:
+If you change the default time zone,
+:attr:`~chandler.time_services.TimeZone.floating` notices:
 
 >>> TimeZone.default = TimeZone.utc
 >>> TimeZone.floating
 FloatingTZ(<ICUtzinfo: UTC>)
 
-Because ``floating`` refers to ``TimeZone.default`` in time zone
-calculations, using it in a Trellis maintain rule, for example,
-means that that rule will acquire a dependency on ``TimeZone.default``,
-and will therefore be recalculated if ``TimeZone.default`` is changed.
+Because :attr:`~chandler.time_services.TimeZone.floating` refers to
+``TimeZone.default`` in time zone calculations, using it in a Trellis
+maintain rule, for example, means that that rule will acquire a
+dependency on ``TimeZone.default``, and will therefore be recalculated
+if ``TimeZone.default`` is changed.
 
 **XXX: Short cell-based example**
 
@@ -166,7 +171,7 @@ This value is, of course, independent of the default timezone!
 1222783200.0
 
 The above functions actually work by using the ``Time`` service
-from ``peak.events.activity``. To show this, let’s remind ourselves
+from ``peak.events.activity``. To show this, let's remind ourselves
 of where (or when, actually) we are:
 
 >>> getNow()
@@ -179,7 +184,7 @@ and now advance time by an hour:
 >>> getNow()
 datetime.datetime(2008, 9, 30, 8, 0, tzinfo=<ICUtzinfo: US/Pacific>)
 
-Similarly, let’s create a Performer cell to write something once
+Similarly, let's create a Performer cell to write something once
 30 seconds elapse:
 
 >>> from peak.events.trellis import Performer
@@ -204,19 +209,21 @@ True
 Scheduling Callbacks
 ====================
 
-``Scheduled`` objects allow you to schedule a callback function to be called at
-(or near!) a given date and time.
+:class:`~chandler.time_services.Scheduled` objects allow you to
+schedule a callback function to be called at (or near!) a given date
+and time.
 
 >>> from chandler.time_services import Scheduled
 >>> import sys
 
-As an example, let’s set the date and time:
+As an example, let's set the date and time:
 
 >>> setNow(datetime(2009, 3, 16, 10, 55, tzinfo=TimeZone.default))
 
-and create a Scheduled that will fire at 11:00 a.m.:
+and create a :class:`~chandler.time_services.Scheduled` that will fire
+at 11:00 a.m.:
 
->>> my_reminder = Scheduled(fire_date=datetime(2009, 3, 16, 11, 0, tzinfo=TimeZone.default),
+>>> my_scheduled = Scheduled(fire_date=datetime(2009, 3, 16, 11, 0, tzinfo=TimeZone.default),
 ...                   callback=sys.stdout.write)
 
 and advance time by 5 minutes:
@@ -224,16 +231,17 @@ and advance time by 5 minutes:
 >>> Time.advance(5 * 60)
 <chandler.time_services.Scheduled object at 0x...>
 
-You can reset the fire_date of a Scheduled, and it will fire (once time
-advances):
+You can reset the fire_date of a
+:class:`~chandler.time_services.Scheduled`, and it will fire (once
+time advances):
 
->>> my_reminder.fire_date += timedelta(minutes=5)
+>>> my_scheduled.fire_date += timedelta(minutes=5)
 >>> setNow(datetime(2009, 3, 16, 12, tzinfo=TimeZone.default))
 <chandler.time_services.Scheduled object at 0x...>
 
 However, setting the fire date into the past has no effect:
 
->>> my_reminder.fire_date = datetime(2007, 3, 16, 12, 0, tzinfo=TimeZone.floating)
+>>> my_scheduled.fire_date = datetime(2007, 3, 16, 12, 0, tzinfo=TimeZone.floating)
 
 ... even when time advances further!
 
@@ -242,7 +250,7 @@ However, setting the fire date into the past has no effect:
 Daylight Savings Time
 =====================
 
-Let’s double-check scheduling a callback across a daylight savings change
+Let's double-check scheduling a callback across a daylight savings change
 boundary. We start out by transporting ourselves across time and probably
 space, to March of 2006, in Paris:
 
@@ -253,7 +261,7 @@ Sleepily, we ignore the bustle of 10 p.m. traffic outside our window
 on the Champs Elysées and head off to bed, making sure our alarm
 clock has been set to go off at eight the next morning:
 
->>> my_reminder = Scheduled(fire_date=datetime(2006, 3, 26, 8, tzinfo=TimeZone.default),
+>>> alarm = Scheduled(fire_date=datetime(2006, 3, 26, 8, tzinfo=TimeZone.default),
 ...                   callback=sys.stdout.write)
 
 Notice that there is a change to daylight savings due to occur
@@ -261,21 +269,21 @@ during our peaceful slumber:
 
 >>> getNow().dst()
 datetime.timedelta(0)
->>> my_reminder.fire_date.dst()
+>>> alarm.fire_date.dst()
 datetime.timedelta(0, 3600)
 
 This means that, despite the misleading nature of ``datetime``
 arithmetic, which says that 10 hours separate our fire date and
 the current time:
 
->>> (my_reminder.fire_date - getNow()).seconds / 3600.0
+>>> (alarm.fire_date - getNow()).seconds / 3600.0
 10.0
 
 really only 9 hours will elapse before 8:00 a.m. the next morning. This
 can be confirmed by converting the datetimes to UTC (a timezone with no
 daylight savings change) before subtracting:
 
->>> (my_reminder.fire_date.astimezone(TimeZone.utc) -
+>>> (alarm.fire_date.astimezone(TimeZone.utc) -
 ...  getNow().astimezone(TimeZone.utc)).seconds / 3600.0
 9.0
 
@@ -283,7 +291,7 @@ So, let's advance time by 9 hours:
 
 >>> Time.advance(9 * 3600)
 <chandler.time_services.Scheduled object at ...>
->>> getNow() - my_reminder.fire_date
+>>> getNow() - alarm.fire_date
 datetime.timedelta(0)
 
 In the same way, we can skip ahead to October of the same year, and
@@ -291,10 +299,10 @@ check what happens when we try the same thing with a shift away from
 DST:
 
 >>> setNow(datetime(2006, 10, 28, 22, tzinfo=TimeZone.default))
->>> my_reminder.fire_date = datetime(2006, 10, 29, 8, tzinfo=TimeZone.default)
+>>> alarm.fire_date = datetime(2006, 10, 29, 8, tzinfo=TimeZone.default)
 >>> getNow().dst()
 datetime.timedelta(0, 3600)
->>> my_reminder.fire_date.dst()
+>>> alarm.fire_date.dst()
 datetime.timedelta(0)
 
 In this case, advancing the current time by 10 hours has no effect:
@@ -306,3 +314,5 @@ but advancing one extra hour causes our alarm to go off:
 >>> Time.advance(3600)
 <chandler.time_services.Scheduled object at ...>
 
+.. _PyICU: http://pyicu.osafoundation.org/
+.. _Contextual: http://pypi.python.org/pypi/Contextual

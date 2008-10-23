@@ -1,22 +1,24 @@
 Items, Extensions and DashboardEntries
--------------------------------------------
+--------------------------------------
 
 .. module:: chandler.core
 
 Items
 ~~~~~
 
-At the core of the Chandler data model is the :class:`Item` class:
+At the core of the Chandler data model is the
+:class:`~chandler.core.Item` class:
 
 >>> from chandler.core import *
 >>> item = Item()
 
-Every item has a :attr:`~Item.title`:
+Every item has a :attr:`~chandler.core.Item.title`:
 
 >>> item.title
 u''
 
-and, of course, you may supply your own :attr:`~Item.title` at initialization time:
+and, of course, you may supply your own
+:attr:`~chandler.core.Item.title` at initialization time:
 
 >>> Item(title=u'Hello, world!').title
 u'Hello, world!'
@@ -27,8 +29,8 @@ or after initialization:
 >>> item.title
 u'No!'
 
-Items also automatically have a :attr:`~Item.created` timestamp cell.
-To test it, we'll pretend it's 10AM.
+Items also automatically have a :attr:`~chandler.core.Item.created`
+timestamp cell.  To test it, we'll pretend it's 10AM.
 
 >>> from chandler.time_services import *
 >>> from peak.events.activity import Time
@@ -37,8 +39,9 @@ To test it, we'll pretend it's 10AM.
 >>> ten_am = nowTimestamp()
 >>> item = Item()
 
-To make sure the :attr:`~Item.created` cell is immediately set,
-we'll advance time by an hour before checking its value.
+To make sure the :attr:`~chandler.core.Item.created` cell is
+immediately set, we'll advance time by an hour before checking its
+value.
 
 >>> Time.advance(3600.0)
 >>> item.created
@@ -49,44 +52,50 @@ True
 Extensions
 ~~~~~~~~~~
 
-Of course, a titled object is not particularly interesting. Items support
-having sets of ``extensions`` installed. These extensions can be used to
-customize object attributes and behaviour (in fact, for reasons of
-extensibility, subclassing item is not recommended).
+Of course, a titled object is not particularly interesting. Items
+support having sets of ``extensions`` installed. These extensions can
+be used to customize object attributes and behaviour. In fact, to make
+it possible for different plugins to extend
+:class:`~chandler.core.Item` co-operatively, subclassing
+:class:`~chandler.core.Item` is not recommended.
 
 An item starts out with no extensions installed:
 
 >>> list(item.extensions)
 []
 
-Note that once you have an Extension, you can't change its item.
+Note that once you have an :class:`~chandler.core.Extension`, you
+can't change its item.
 
 >>> e = Extension(item)
 >>> #e.item = Item() # @@@ should raise, but doesn't!
 >>> e.item is item
 True
 
-Note that Extension objects, which use the ``peak.util.addons`` library, are
-uniqued:
+Note that :class:`~chandler.core.Extension` objects, which use the
+``peak.util.addons`` library, are uniqued:
 
 >>> Extension(item) is e
 True
 
-Merely instantiating an extension on an item does not add it to the item’s
-set of extensions. So, in our current example:
+Merely instantiating an :class:`~chandler.core.Extension` on an
+:class:`~chandler.core.Item` does not add it to the item’s set of
+:attr:`chandler.core.Item.extensions`. So, in our current example:
 
 >>> e in item.extensions
 False
 
-However, if we call the ``add()`` method, then our extension does get added:
+However, if we call the ``add()`` method, then our
+:class:`~chandler.core.Extension` does get added:
 
 >>> e.add()
 <chandler.core.Extension object at 0x...>
 >>> e in item.extensions
 True
 
-Note that the extension object itself is returned from ``add()``; this is
-for convenience in setting up and installing extensions.
+Note that the :class:`~chandler.core.Extension` object itself is
+returned from ``add()``; this is for convenience in setting up and
+installing extensions.
 
 You can’t add an extension that has already been added:
 
@@ -95,7 +104,8 @@ Traceback (most recent call last):
 ...
 ValueError: Extension <class 'chandler.core.Extension'> has already been added
 
-However, you can use the ``remove()`` method to remove an existing extension:
+However, you can use the ``remove()`` method to remove an existing
+extension:
 
 >>> e.remove()
 >>> e in item.extensions
@@ -109,11 +119,12 @@ Traceback (most recent call last):
 ...
 ValueError: Extension <class 'chandler.core.Extension'> is not present
 
-Subclassing Extension
-~~~~~~~~~~~~~~~~~~~~~
+Subclassing  :class:`~chandler.core.Extension`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-When you extend ``Item``, you typically want to add attributes or method.
-The way to do this is to subclass ``Extension``:
+When you extend :class:`~chandler.core.Item`, you typically want to
+add attributes or methods.  The way to do this is to subclass
+:class:`~chandler.core.Extension`:
 
 >>> import peak.events.trellis as trellis
 >>> class MyExtension(Extension):
@@ -121,8 +132,9 @@ The way to do this is to subclass ``Extension``:
 
 >>> my_ext = MyExtension(item)
 
-As usual, your subclass does not start off in the ``extensions`` for the
-given Item:
+As usual, your subclass does not start off in the
+:attr:`~chandler.core.Item.extensions` for the given
+:class:`~chandler.core.Item`:
 
 >>> my_ext in item.extensions
 False
@@ -134,16 +146,18 @@ True
 >>> my_ext in item.extensions
 False
 
-There is also a convenience class method for testing if a given extension
-class has been installed on an item. So, the last two tests of
-``item.extensions`` can be rephrased as:
+There is also a convenience class method for testing if a given
+extension class has been installed on an
+:class:`~chandler.core.Item`. So, the last two tests of
+``item.``:attr:`~chandler.core.Item.extensions` can be rephrased as:
 
 >>> Extension.installed_on(item)
 True
 >>> MyExtension.installed_on(item)
 False
 
-The ``installed_on`` method also works on an arbitrary Extension object:
+The ``installed_on`` method also works on an arbitrary
+:class:`~chandler.core.Extension` object:
 
 >>> another_extension = MyExtension(Item()).add()
 >>> MyExtension.installed_on(another_extension)
@@ -151,11 +165,11 @@ True
 >>> Extension.installed_on(another_extension)
 False
 
-Initializing attributes when adding an extension
+Initializing Attributes When Adding an Extension
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The ``add()`` method takes keywords, so you can set up attributes when you
-add extensions to an item:
+The ``add()`` method takes keywords, so you can set up attributes when
+you add extensions to an item:
 
 >>> new_my_ext = MyExtension(Item()).add(can_this_be_true=True)
 >>> new_my_ext.can_this_be_true
@@ -163,6 +177,104 @@ True
 
 
 .. index:: hook; chandler.domain.item_addon (used by chandler.core)
+
+The :class:`~chandler.core.DashboardEntry` Class
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+So, we now have a basic concept of an :class:`~chandler.core.Item`, as
+titled, creation date-stamped, extensible object. In Chandler 1.0,
+such objects could be displayed in a list view, the "All", or
+"Dashboard", view.
+
+One of the issues we ran into in the past was the fact that individual
+Items ended up corresponding to multiple entries in the Chandler
+Dashboard. So, for example, if you had a simple recurring event
+(i.e. no modifications), the Dashboard could end up having to show
+multiple occurrences of this event, corresponding to NOW, LATER and/or
+DONE triage status.
+
+This complexity would be increased if you wanted to model other
+relationships between the Items. Example design concepts are:
+
+  - **Clustering:** Here, the user views multiple, edited versions of
+    an Item in separate rows in the Dashboard, grouped in some kind of
+    hierarchy.
+  - **Sub-tasks:** Here, you could imagine an extension that pulls
+    sub-entries out from a bulleted list in a Note, and makes
+    separately triaged "Items" from them.
+
+There are others, of course, but ideas like this led us to separate
+out the notion of :class:`~chandler.core.DashboardEntry` (row in
+Dashboard table) from :class:`~chandler.core.Item` (unit of user
+information).
+
+A :class:`~chandler.core.DashboardEntry` is a simple data-bearing
+object. To create one, you need to pass in an :class:`~chandler.core.Item`,
+which cannot be ``None``:
+
+>>> from chandler.core import DashboardEntry
+>>> entry = DashboardEntry(None)
+Traceback (most recent call last):
+...
+TypeError: DashboardEntry's subject_item must be an Item
+
+>>> entry = DashboardEntry(item)
+
+Note that :class:`~chandler.core.DashboardEntry` is not an AddOn; it
+is possible to create multiple entries for a given
+:class:`~chandler.core.Item`:
+
+>>> entry == DashboardEntry(item)
+False
+
+Let's have a look at some :class:`~chandler.core.DashboardEntry`
+fields. The :attr:`~chandler.core.DashboardEntry.when` field
+is supposed to indicate a time of interest to the user. By
+default, it has the same value as the :attr:`~chandler.core.Item.created`
+field of its :attr:`~chandler.core.DashboardEntry.subject_item`:
+
+>>> entry.when == item.created
+True
+
+Similarly, :attr:`~chandler.core.DashboardEntry.what` is
+a summary of the entry, and defaults to the subject's
+title:
+
+>>> entry.what == item.title
+True
+>>> item.title = u"Run around aimlessly"
+>>> entry.what
+u'Run around aimlessly'
+
+As with other Trellis attributes, you can override
+these values at initialization time, or later.
+
+>>> another_entry = DashboardEntry(item, what=u'Bake a cake')
+>>> another_entry.what
+u'Bake a cake'
+
+An :class:`~chandler.core.Item` tracks any entries created
+on its behalf via the :attr:`~chandler.core.Item.dashboard_entries`
+attribute. By default, this starts out with a single entry
+corresponding to the item:
+
+>>> new_item = Item(title=u'Hello')
+>>> list(new_item.dashboard_entries)
+[<chandler.core.DashboardEntry object at ...>]
+
+XXX :attr:`~chandler.core.Item.dashboard_entries` doesn't behave like
+a "real" bi-ref; i.e. automatically update when you create a new
+:class:`~chandler.core.DashboardEntry` for an item.
+
+Customizing creation of DashboardEntries
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+For now, if you want to create multiple :class:`~chandler.core.DashboardEntry`
+instances per :attr:`~chandler.core.Item`, there are a couple of routes
+you can take. One is to utilize the ``chandler.domain.item_addon`` hook
+below, assuming you want entries for any created item. Alternatively, if
+your functionality lives in a :class:`~chandler.core.Extension`, a good
+route is to override :meth:Extension.add()`, and do your customization
+there.
 
 Adding attributes to all Items
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
