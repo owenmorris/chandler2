@@ -5,7 +5,7 @@ from datetime import datetime
 import chandler.time_services as time_services
 import time
 
-__all__ = ('Item', 'Extension', 'ConstraintError')
+__all__ = ('Item', 'Extension', 'ConstraintError', 'Collection')
 
 class Item(trellis.Component, plugins.Extensible):
     extend_with = plugins.Hook('chandler.domain.item_addon')
@@ -17,7 +17,8 @@ class Item(trellis.Component, plugins.Extensible):
     _extension_types = trellis.make(trellis.Set)
 
     trellis.make.attrs(
-        dashboard_entries=lambda self: trellis.Set([DashboardEntry(self)])
+        dashboard_entries=lambda self: trellis.Set([DashboardEntry(self)]),
+        collections=trellis.Set
     )
 
     def __init__(self, **kwargs):
@@ -81,6 +82,23 @@ class DashboardEntry(trellis.Component):
         kw.setdefault("what", cells["title"])
         super(DashboardEntry, self).__init__(**kw)
         self.subject_item = subject_item
+
+
+class Collection(trellis.Component):
+    title = trellis.attr(initially=u'')
+
+    items = trellis.make(trellis.Set)
+
+    def __repr__(self):
+        return "<Collection: %s>" % self.title
+
+    def add(self, item):
+        self.items.add(item)
+        item.collections.add(self)
+
+    def remove(self, item):
+        self.items.remove(item)
+        item.collections.remove(self)
 
 
 class ConstraintError(Exception):

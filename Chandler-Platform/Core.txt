@@ -49,6 +49,51 @@ value.
 >>> item.created == ten_am
 True
 
+Collections
+~~~~~~~~~~~
+
+A :class:`Collection` is a thin wrapper around a Trellis Set_
+containing :class:`Item` instances.
+
+>>> houses = Collection(title="Houses")
+>>> houses
+<Collection: Houses>
+>>> houses.items
+Set([])
+
+Collection provides :meth:`~Collection.add` and
+:meth:`~Collection.remove` methods, which affect
+:attr:`Item.collections`.
+
+>>> item.collections
+Set([])
+>>> houses.add(item)
+>>> item in houses.items
+True
+>>> item.collections
+Set([<Collection: Houses>])
+>>> houses.remove(item)
+>>> item in houses.items
+False
+>>> item.collections
+Set([])
+
+More generally, any object is considered_ a collection if it has:
+
+* an :attr:`~Collection.items` attribute whose value is a Trellis
+  Set_ containing Items
+* a readable :attr:`~Collection.title` cell
+* :meth:`~Collection.add` and :meth:`~Collection.remove` methods
+  which accept an :class:`Item` and change :attr:`~Collection.items`
+  appropriately
+
+
+XXX Make item.collections a biref, or (maybe better) just forbid
+    direct manipulation of item.collections
+
+XXX What should add and remove do for read-only collections? Raise an exception?
+
+
 Extensions
 ~~~~~~~~~~
 
@@ -176,8 +221,6 @@ you add extensions to an item:
 True
 
 
-.. index:: hook; chandler.domain.item_addon (used by chandler.core)
-
 The :class:`~chandler.core.DashboardEntry` Class
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -276,6 +319,9 @@ your functionality lives in a :class:`~chandler.core.Extension`, a good
 route is to override :meth:Extension.add()`, and do your customization
 there.
 
+.. index:: hook; chandler.domain.item_addon (used by chandler.core)
+.. _item-addon-hook:
+
 Adding attributes to all Items
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -295,3 +341,5 @@ the *chandler.domain.item_addon* hook.
 >>> new_item = Item()
 Item initialized!
 
+.. _Set: http://peak.telecommunity.com/DevCenter/Trellis#trellis-set
+.. _considered: http://en.wikipedia.org/wiki/Duck_typing
