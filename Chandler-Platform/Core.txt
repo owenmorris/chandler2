@@ -49,6 +49,8 @@ value.
 >>> item.created == ten_am
 True
 
+.. _collections:
+
 Collections
 ~~~~~~~~~~~
 

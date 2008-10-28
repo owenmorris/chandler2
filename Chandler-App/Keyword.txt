@@ -1,0 +1,55 @@
+.. index:: hook; chandler.domain.item_addon (registered by chandler.keyword)
+.. _keyword:
+
+===================
+ Keywords on Items
+===================
+
+.. module:: chandler.keyword
+
+Chandler supports adding keywords (AKA tags_) to items using the
+:class:`Keyword` class and :class:`ItemKeywords` add-on.
+
+>>> from chandler.core import *
+>>> from chandler.keyword import *
+>>> item = Item()
+
+:class:`Keyword` objects are :ref:`collections`.
+
+>>> dog = Keyword('dog')
+>>> dog
+<Keyword: dog>
+>>> dog.add(item)
+>>> item in dog.items
+True
+>>> dog.title
+'Tag: dog'
+
+There will be one global :class:`Keyword` for any given word.
+
+>>> dog == Keyword('dog')
+True
+
+Adding or removing an item from a :class:`Keyword` adds the word to
+:attr:`ItemKeywords.keyword_strings`
+
+>>> item_keywords = ItemKeywords(item)
+>>> item_keywords.keyword_strings
+Set([<Keyword: dog>])
+>>> dog.remove(item)
+>>> item_keywords.keyword_strings
+Set([])
+
+Similarly you can add a word (really, any string) to
+:attr:`~ItemKeywords.keyword_strings` and the related :class:`Keyword`
+will be updated.
+
+>>> item_keywords.keyword_strings.add('dog')
+>>> item in dog.items # well, it would be True if we had bi-refs
+False
+
+XXX do we want to suport something like
+    Keyword('dog').rename('canine') to change keywords on existing
+    items?
+
+.. _tags: http://en.wikipedia.org/wiki/Tag_(metadata)

@@ -21,5 +21,6 @@ setup(
     triage = chandler.triage:Triage
     triage_position = chandler.triage:TriagePosition
     reminder = chandler.reminder:ReminderList
+    keyword = chandler.keyword:ItemKeywords
     """
 ),

@@ -1,3 +1,6 @@
+.. index:: hook; chandler.domain.item_addon (registered by chandler.reminder)
+.. _reminder:
+
 ===========
  Reminders
 ===========

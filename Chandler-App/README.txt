@@ -17,6 +17,7 @@ Domain Model
    Triage
    Event
    Reminder
+   Keyword
 
 Interaction Model
 =================

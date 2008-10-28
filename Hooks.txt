@@ -21,6 +21,30 @@ index_ for a complete list.
   If the hook is a major part of Chandler's behavior, add a section here,
   and use :ref: to link to associated use and registration documentation.
 
+.. index:: hook; chandler.domain.item_addon
+.. _item-addon-hook-central:
+
+Item Add-on
+===========
+
+Registered AddOn_ classes will be added to all items.
+
+.. describe:: addon_class(item) -> return value ignored
+
+.. seealso::
+
+   :ref:`item-addon-hook`
+      ..
+
+   :ref:`triage`
+      ..
+
+   :ref:`reminder`
+      ..
+
+   :ref:`keyword`
+      ..
+
 
 .. index:: hook; chandler.domain.triage
 .. _triage-hook-central:
@@ -46,13 +70,7 @@ Triage
       ..
 
 
-Testing
-=======
-
-XXX Could use a different PluginManager if a Hook needs to be
-    disabled, point to an example if we ever actually need that
-
 .. _setuptools' entry points: http://peak.telecommunity.com/DevCenter/setuptools#entry-points
 .. _Hooks: http://pypi.python.org/pypi/Plugins/
+.. _AddOn: http://pypi.python.org/pypi/AddOns/
 .. _index: genindex.html#H
-
