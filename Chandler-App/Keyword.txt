@@ -35,7 +35,7 @@ Adding or removing an item from a :class:`Keyword` adds the word to
 
 >>> item_keywords = ItemKeywords(item)
 >>> item_keywords.keyword_strings
-Set([<Keyword: dog>])
+Set(['dog'])
 >>> dog.remove(item)
 >>> item_keywords.keyword_strings
 Set([])
@@ -45,8 +45,8 @@ Similarly you can add a word (really, any string) to
 will be updated.
 
 >>> item_keywords.keyword_strings.add('dog')
->>> item in dog.items # well, it would be True if we had bi-refs
-False
+>>> item in dog.items
+True
 
 XXX do we want to suport something like
     Keyword('dog').rename('canine') to change keywords on existing

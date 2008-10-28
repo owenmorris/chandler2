@@ -16,12 +16,10 @@ class _Keyword(trellis.Component):
         return "<Keyword: %s>" % self.word
 
     def add(self, item):
-        self.items.add(item)
-        ItemKeywords(item).keyword_strings.add(self)
+        ItemKeywords(item).keyword_strings.add(self.word)
 
     def remove(self, item):
-        self.items.remove(item)
-        ItemKeywords(item).keyword_strings.remove(self)
+        ItemKeywords(item).keyword_strings.remove(self.word)
 
     @trellis.compute
     def title(self):
@@ -49,3 +47,10 @@ class ItemKeywords(AddOn, trellis.Component):
     def __init__(self, item, **kwargs):
         self._item = item
 
+    @trellis.maintain
+    def maintenance(self):
+        """Observe keyword_strings, maintain inverse links from Keyword objects."""
+        for word in self.keyword_strings.added:
+            Keyword(word).items.add(self._item)
+        for word in self.keyword_strings.removed:
+            Keyword(word).items.remove(self._item)
