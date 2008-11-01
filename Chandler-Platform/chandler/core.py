@@ -5,7 +5,139 @@ from datetime import datetime
 import chandler.time_services as time_services
 import time
 
-__all__ = ('Item', 'Extension', 'ConstraintError', 'Collection')
+__all__ = ('Item', 'Extension', 'ConstraintError', 'Collection', 'One', 'Many')
+
+
+class Role(trellis.CellAttribute):
+    """
+    Superclass for One, Many descriptors, which are used to set up
+    'bi-directional references'.
+    """
+    
+    # These classes work by observing a trellis.Set of 2-element tuples
+    # that contains all values for the relationship (like a "linking table" in
+    # SQL). This interface could be made more abstract: for example, if the
+    # objects in question come from a database, we might want to have primary
+    # keys in the "table", or not populate the entire table at all
+    
+    _tuples = None
+
+    inverted = False
+    
+    # If an instance is initialised with an inverse (i.e. via keyword in
+    # __init__), then we have to access _tuples "backward". The inverted
+    # attribute says whether or not to do that.
+
+    def __init__(self, *args, **kw):
+        inverse = kw.pop('inverse', None)
+        if inverse is None:
+            self._tuples = trellis.Set()
+        else:
+            self._tuples = inverse._tuples
+            self.inverted = True
+        super(Role, self).__init__(*args, **kw)
+
+    def _iter_values(self, obj):
+        """Used to find all values in the _tuples "table" for a given object"""
+        for t in self._tuples:
+            if self.inverted:
+                if t[1] is obj: yield t[0]
+            else:
+                if t[0] is obj: yield t[1]
+
+
+class Many(Role):
+
+    def initial_value(self, obj):
+        # override of trellis.CellAttribute
+        return TupleBackedSet(_tuples=self._tuples, owner=obj,
+                               inverted=self.inverted)
+
+    def __set__(self, obj, iterable):
+        old_values = set(self._iter_values(obj))
+
+        for value in old_values:
+            t = (value, obj) if self.inverted else (obj, value)
+            self._tuples.remove(t)
+
+        for value in iterable:
+            t = (value, obj) if self.inverted else (obj, value)
+            self._tuples.add(t)
+
+    def __delete__(self, obj):
+        self.__set__(obj, ())
+
+
+class One(Role):
+
+    def __init__(self, inverse=None):
+
+        def rule(obj):
+            for val in self._iter_values(obj):
+                return val
+            return None
+
+        return super(One, self).__init__(inverse=inverse, rule=rule, value=None)
+        
+    def __set__(self, obj, value):
+        """Called when you assign to a ``One`` attribute"""
+        
+        # Remove the old value, so that we really are a to-one relationship
+        self.__delete__(obj)
+        if obj is not None:
+            if self.inverted:
+                t = (value, obj)
+            else:
+                t = (obj, value)
+            self._tuples.add(t)
+
+    def __delete__(self, obj):
+        remove = set((value, obj) if self.inverted else (obj, value)
+                     for value in self._iter_values(obj))
+        self._tuples.difference_update(remove)
+
+
+class TupleBackedSet(trellis.Set):
+    """trellis.Set subclass that is used as the value of a Many() attribute."""
+    
+    # In other words, one of these gets instantiated as the value
+    # gets instantiated whenever you create an object whose class has a
+    # Many().
+    #
+    # The idea is that we make changes always by changing our _tuples
+    # instance; by observing that and calling our superclass's methods
+    # to update the Set's contents, we avoid circularity problems and
+    # keep in sync.
+    #
+    # XXX: Currently, only add() and remove() methods work; other standard
+    # set methods (xxx_update, for example, will cause bad things to happen.
+
+    _tuples = trellis.attr(None) # This will be shared amongst instances
+    owner = trellis.attr(None)
+    inverted = False
+    
+    def add(self, obj):
+        t = (obj, self.owner) if self.inverted else (self.owner, obj)
+        self._tuples.add(t)
+
+    def remove(self, obj):
+        t = (obj, self.owner) if self.inverted else (self.owner, obj)
+        self._tuples.remove(t)
+        
+    def iter_matches(self, iterable):
+        for t in iterable:
+            if self.inverted:
+                t = tuple(reversed(t))
+            if t[0] is self.owner:
+                yield t[1]
+
+    @trellis.maintain
+    def maintain_set(self):
+        for obj in self.iter_matches(self._tuples.removed):
+            trellis.Set.remove(self, obj)
+        for obj in self.iter_matches(self._tuples.added):
+            trellis.Set.add(self, obj)
+
 
 class Item(trellis.Component, plugins.Extensible):
     extend_with = plugins.Hook('chandler.domain.item_addon')
