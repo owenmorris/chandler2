@@ -150,8 +150,9 @@ class Item(trellis.Component, plugins.Extensible):
 
     trellis.make.attrs(
         dashboard_entries=lambda self: trellis.Set([DashboardEntry(self)]),
-        collections=trellis.Set
     )
+    
+    collections = Many()
 
     def __init__(self, **kwargs):
         trellis.Component.__init__(self, **kwargs)
@@ -219,18 +220,16 @@ class DashboardEntry(trellis.Component):
 class Collection(trellis.Component):
     title = trellis.attr(initially=u'')
 
-    items = trellis.make(trellis.Set)
+    items = Many(inverse=Item.collections)
 
     def __repr__(self):
         return "<Collection: %s>" % self.title
 
     def add(self, item):
         self.items.add(item)
-        item.collections.add(self)
 
     def remove(self, item):
         self.items.remove(item)
-        item.collections.remove(self)
 
 
 class ConstraintError(Exception):

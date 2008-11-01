@@ -54,31 +54,44 @@ True
 Collections
 ~~~~~~~~~~~
 
-A :class:`Collection` is a thin wrapper around a Trellis Set_
-containing :class:`Item` instances.
+A :class:`Collection` is a thin wrapper around
+:attr:`~Collection.items`, a :class:`Many`-valued attribute that contains :class:`Item` instances.
 
 >>> houses = Collection(title="Houses")
 >>> houses
 <Collection: Houses>
 >>> houses.items
-Set([])
+TupleBackedSet([])
 
-Collection provides :meth:`~Collection.add` and
+You can add Items to a collection via  and
 :meth:`~Collection.remove` methods, which affect
 :attr:`Item.collections`.
 
+The inverse of :attr:`~Collection.items` is :attr:`Item.collections:
+
 >>> item.collections
-Set([])
+TupleBackedSet([])
+
+So, if we use the :meth:`~Collection.add` method to add an item
+to our collection:
+
 >>> houses.add(item)
 >>> item in houses.items
 True
+
+then our collection shows up in the inverse:
+
 >>> item.collections
-Set([<Collection: Houses>])
+TupleBackedSet([<Collection: Houses>])
+
+In the same way, when you remove the item from the :class:`Collection`,
+the collection is removed from the item's :attr:`Item.collections`:
+
 >>> houses.remove(item)
 >>> item in houses.items
 False
 >>> item.collections
-Set([])
+TupleBackedSet([])
 
 More generally, any object is considered_ a collection if it has:
 
@@ -88,10 +101,6 @@ More generally, any object is considered_ a collection if it has:
 * :meth:`~Collection.add` and :meth:`~Collection.remove` methods
   which accept an :class:`Item` and change :attr:`~Collection.items`
   appropriately
-
-
-XXX Make item.collections a biref, or (maybe better) just forbid
-    direct manipulation of item.collections
 
 XXX What should add and remove do for read-only collections? Raise an exception?
 
