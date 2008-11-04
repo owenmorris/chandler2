@@ -15,8 +15,9 @@ Domain Model
    :maxdepth: 2
 
    Triage
-   Event
    Reminder
+   Event
+   Recurrence
    Keyword
 
 Interaction Model

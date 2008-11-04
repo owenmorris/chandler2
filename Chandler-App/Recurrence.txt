@@ -1,0 +1,165 @@
+============
+ Recurrence
+============
+
+.. module:: chandler.recurrence
+
+Recurrence allows a single *master* item to be represented as taking
+place on many different days.  The representation for a particular
+datetime is called an *occurrence*.  The set of all occurrences is
+called the recurrence *series*.
+
+To add recurrence to an Item, use the :class:`Recurrence` extension:
+
+>>> from chandler.core import *
+>>> from chandler.recurrence import Recurrence
+>>> item = Item()
+>>> recur = Recurrence(item).add()
+
+
+Recurrence and Events
+=====================
+
+A recurring item must be associated with a start time.  The default
+:attr:`~Recurrence.start` is None, unless the item is an
+:class:`~chandler.event.Event`, in which case
+:attr:`~Recurrence.start` will match Event's start.
+
+>>> from chandler.event import Event
+>>> from datetime import datetime, timedelta
+>>> from chandler.time_services import TimeZone
+>>> halloween = datetime(2008, 10, 31, 19, tzinfo=TimeZone.pacific)
+>>> print recur.start
+None
+>>> event = Event(item).add(start=halloween)
+>>> print recur.start
+2008-10-31 19:00:00-07:00
+
+
+Recurrence Rules
+================
+
+iCalendar_ defines a system for describing a *recurrence rule* (rrule
+for short).  In the simplest case, an rrule represents a rule like
+"repeat at the same time, once a week".
+
+>>> recur.frequency = 'weekly'
+
+Once you've set a frequency, the read-only
+:attr:`~Recurrence.rruleset` Trellis cell will be a a dateutil_
+rruleset (an rruleset aggregates an rrule with rdates and exdates).
+
+>>> recur.rruleset
+<dateutil.rrule.rruleset instance at ...>
+>>> for dt in recur.rruleset[:3]:
+...     print dt
+2008-10-31 19:00:00-07:00
+2008-11-07 19:00:00-08:00
+2008-11-14 19:00:00-08:00
+
+.. _more-recurrence:
+
+Beyond Recurrence Rules
+=======================
+
+The full recurrence series for an item depends on more than
+:attr:`~Recurrence.start` and :attr:`~Recurrence.frequency`.
+Arbitrary dates can be added to :attr:`~Recurrence.rdates`.
+
+>>> recur.rdates.add(halloween + timedelta(days=1))
+>>> for dt in recur.rruleset[:3]:
+...     print dt
+2008-10-31 19:00:00-07:00
+2008-11-01 19:00:00-07:00
+2008-11-07 19:00:00-08:00
+
+Similarly, individual dates can be excluded by adding them to
+:attr:`~Recurrence.exdates`.
+
+>>> recur.exdates.add(halloween + timedelta(days=1))
+>>> recur.exdates.add(halloween + timedelta(days=7))
+>>> for dt in recur.rruleset[:3]:
+...     print dt
+2008-10-31 19:00:00-07:00
+2008-11-14 19:00:00-08:00
+2008-11-21 19:00:00-08:00
+
+Note that an exdate takes precedence over an rdate.  
+
+Never Ending Story
+==================
+
+Another factor in recurrence is how long the series should repeat.  By
+default, recurrence lasts indefinitely.  Don't iterate over all
+occurrences assuming they're finite!  To limit recurrence, add an
+:attr:`~Recurrence.until` datetime.
+
+>>> recur.until = halloween + timedelta(days=28)
+>>> for dt in recur.rruleset:
+...     print dt
+2008-10-31 19:00:00-07:00
+2008-11-14 19:00:00-08:00
+2008-11-21 19:00:00-08:00
+2008-11-28 19:00:00-08:00
+
+Alternately, you can set :attr:`~Recurrence.count`, which limits the
+rule (ignoring rdates and exdates) to the given number of occurrences.
+
+>>> print recur.count
+None
+>>> recur.count = 3
+>>> for dt in recur.rruleset:
+...     print dt
+2008-10-31 19:00:00-07:00
+2008-11-14 19:00:00-08:00
+
+Because of the exdate, there are only two occurrences, even though
+:attr:`~Recurrence.count` was set to three.
+
+>>> recur.exdates.clear(); recur.rdates.clear()
+>>> for dt in recur.rruleset:
+...     print dt
+2008-10-31 19:00:00-07:00
+2008-11-07 19:00:00-08:00
+2008-11-14 19:00:00-08:00
+
+Note that :attr:`~Recurrence.until` is updated when
+:attr:`~Recurrence.count` is set, so you can watch
+:attr:`~Recurrence.until` without paying attention to
+:attr:`~Recurrence.count`.  Also, :attr:`~Recurrence.count` will be updated by
+changes to :attr:`~Recurrence.until` if :attr:`~Recurrence.count` isn't None.
+
+>>> print recur.until
+2008-11-14 19:00:00-08:00
+>>> recur.count = None
+>>> print recur.until
+2008-11-14 19:00:00-08:00
+>>> recur.until = halloween + timedelta(days=7)
+>>> print recur.count
+None
+>>> recur.count = 12
+>>> print recur.until
+2009-01-16 19:00:00-08:00
+>>> recur.until = halloween + timedelta(days=7)
+>>> recur.count
+2
+
+
+XXX point out (and perhaps separately test) the various rrule facets
+XXX set/read rrule string
+
+- Modifications
+- Multiple RRULEs, EXRULEs: Never seen in the wild, maybe not worth
+  implementing?  Actually, occasionally Monday-Wednesday meetings are
+  expressed as two different RRULEs, so not impossible.  Can add an
+  extra (maybe as string?) and use if necessary
+
+- composite rruleset: moving exdates, modification recurrence-ids,
+  what about RDATEs (ignore)?
+
+XXX forbid secondly, minutely, etc.
+
+.. _iCalendar: http://tools.ietf.org/html/rfc2445
+.. _dateutil: http://www.labix.org/python-dateutil
+
+
