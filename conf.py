@@ -35,7 +35,7 @@ source_suffix = '.txt'
 master_doc = 'README'
 
 # General information about the project.
-project = u'Chandler 2.0'
+project = u'Chandler'
 copyright = u'2008, Open Source Applications Foundation'
 
 # The version info for the project you're documenting, acts as replacement for

@@ -32,6 +32,11 @@ html:
 	@echo
 	@echo "Build finished. The HTML pages are in .build/html."
 
+fix:
+	cd .build/html;ln -s README.html index.html
+
+full: clean html fix
+
 pickle:
 	mkdir -p .build/pickle .build/doctrees
 	$(SPHINXBUILD) -b pickle $(ALLSPHINXOPTS) .build/pickle
