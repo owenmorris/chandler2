@@ -5,7 +5,9 @@ from datetime import datetime
 import chandler.time_services as time_services
 import time
 
-__all__ = ('Item', 'Extension', 'ConstraintError', 'Collection', 'One', 'Many')
+__all__ = ('Item', 'Extension', 'ConstraintError', 'Collection',
+           'One', 'Many',
+           'Feature', 'Command', 'Text')
 
 
 class Role(trellis.CellAttribute):
@@ -243,6 +245,22 @@ class ConstraintError(Exception):
     def __str__(self):
         return self.msg % {'cell_description' : self.cell_description,
                            'cell_value'       : self.cell_value}
+
+
+class Feature(trellis.Component):
+    trellis.attrs(
+        label=u'',
+        enabled=True,
+        visible=True,
+        help=None,
+    )
+    cell = None
+
+class Text(Feature):
+    pass
+
+class Command(Feature):
+    def act(self): pass
 
 
 #### Utility #####
