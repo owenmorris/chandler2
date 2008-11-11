@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 import peak.events.trellis as trellis
+from peak.util import plugins
 from dateutil.rrule import rrule, rruleset
 import dateutil.rrule
 
@@ -39,6 +40,7 @@ class Recurrence(Extension):
         kwds = dict(dtstart=self.start,
                     freq=to_dateutil_frequency(self.frequency),
                     cache=True)
+
         if count is not None:
             kwds['count'] = count
         elif until is not None:
@@ -85,3 +87,30 @@ class Recurrence(Extension):
         for dt in self.exdates:
             rrs.exdate(dt)
         return rrs
+
+    def occurrences_between(self, range_start, range_end):
+        for dt in self.rruleset.between(range_start, range_end, True):
+            yield Occurrence(self.item, dt)
+
+
+class Occurrence(Item):
+    def __init__(self, master, recurrence_id):
+        self.master = master
+        self.recurrence_id = recurrence_id
+        # share all master cells
+        self.__cells__ = master.__cells__
+        # set up add-ons for the occurrence
+        self.load_extensions() # plugins.Extensible method
+
+    def __repr__(self):
+        return "<Occurrence: %s>" % self.recurrence_id
+
+
+def inherit_via_recurrence(item):
+    if isinstance(item, Occurrence):
+        return (item.master, item.recurrence_id)
+    else:
+        return (None, None)
+
+plugins.Hook('chandler.domain.inherit_from').register(inherit_via_recurrence)
+

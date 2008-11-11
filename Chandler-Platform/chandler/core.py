@@ -4,10 +4,12 @@ from peak.util import addons, plugins
 from datetime import datetime
 import chandler.time_services as time_services
 import time
+import sys
 
 __all__ = ('Item', 'Extension', 'ConstraintError', 'Collection',
            'One', 'Many',
-           'Feature', 'Command', 'Text')
+           'Feature', 'Command', 'Text',
+           'InheritedAddOn', 'inherited_attrs',)
 
 
 class Role(trellis.CellAttribute):
@@ -164,8 +166,43 @@ class Item(trellis.Component, plugins.Extensible):
     def extensions(self):
         return frozenset(t(self) for t in self._extension_types)
 
+class InheritedAddOn(addons.AddOn):
+    __inherited__ = () # overridden to set() by calling inherited_attrs()
 
-class Extension(trellis.Component, addons.AddOn):
+    @classmethod
+    def __class_call__(cls, ob, *data):
+        parent = None
+        # look for a parent to inherit from
+        for parent, addon_key in plugins.Hook('chandler.domain.inherit_from').query(ob):
+            if parent is not None:
+                # use parent's dict to store inherited AddOns
+                a = parent.__dict__
+                break
+        else:
+            # normal AddOn behavior
+            a = addons.addons_for(ob)
+            addon_key = cls.addon_key(*data)
+        try:
+            return a[addon_key]
+        except KeyError:
+            ob = a.setdefault(addon_key, super(addons.AddOn, cls).__class_call__(ob, *data))
+            if parent is not None:
+                ob._init_inheritance(parent)
+            return ob
+
+    def _init_inheritance(self, parent):
+        for attr in self.__inherited__:
+            self.__cells__[attr] = self.__class__(parent).__cells__[attr]
+
+
+def inherited_attrs(**attrs):
+    """Like trellis.attrs but add attributes to __inherited__, too."""
+    frame = sys._getframe(1)
+    trellis._make_multi(frame, attrs, arg='initially')
+    frame.f_locals.setdefault('__inherited__', set()).update(attrs)
+
+
+class Extension(trellis.Component, InheritedAddOn):
     __item = trellis.attr(None)
 
     item = trellis.make(lambda self: self.__item, writable=False)

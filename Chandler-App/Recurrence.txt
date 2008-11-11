@@ -13,7 +13,7 @@ To add recurrence to an Item, use the :class:`Recurrence` extension:
 
 >>> from chandler.core import *
 >>> from chandler.recurrence import Recurrence
->>> item = Item()
+>>> item = Item(title="Book Club")
 >>> recur = Recurrence(item).add()
 
 
@@ -27,11 +27,12 @@ A recurring item must be associated with a start time.  The default
 
 >>> from chandler.event import Event
 >>> from datetime import datetime, timedelta
->>> from chandler.time_services import TimeZone
+>>> from chandler.time_services import TimeZone, setNow, timestamp
 >>> halloween = datetime(2008, 10, 31, 19, tzinfo=TimeZone.pacific)
+>>> setNow(halloween + timedelta(days=2))
 >>> print recur.start
 None
->>> event = Event(item).add(start=halloween)
+>>> event = Event(item).add(base_start=halloween, base_duration=timedelta(hours=3))
 >>> print recur.start
 2008-10-31 19:00:00-07:00
 
@@ -84,7 +85,7 @@ Similarly, individual dates can be excluded by adding them to
 2008-11-14 19:00:00-08:00
 2008-11-21 19:00:00-08:00
 
-Note that an exdate takes precedence over an rdate.  
+Note that an exdate takes precedence over an rdate.
 
 Never Ending Story
 ==================
@@ -145,6 +146,58 @@ None
 2
 
 
+Occurrences
+===========
+
+Recurrence aggregates together many different dates.  When you want to
+work with individual dates in a recurring series, you work with
+:class:`Occurrence` instances.
+
+>>> occurrences = list(recur.occurrences_between(halloween, halloween + timedelta(days=7)))
+>>> occurrences
+[<Occurrence: 2008-10-31 19:00:00-07:00>, <Occurrence: 2008-11-07 19:00:00-08:00>]
+>>> first, second = occurrences
+>>> first.recurrence_id == halloween
+True
+>>> first.title
+'Book Club'
+
+An :class:`Occurrence` has a special :attr:`~Occurrence.recurrence_id`
+attribute which specifies which instance of a recurring series it represents.
+
+An :class:`Occurrence` will inherit most of its attributes from the
+master item it's derived from.  The same will be true of
+:class:`~chandler.core.Extension` and :ref:`Item AddOns
+<item-addon-hook>`.  The exception is start-time related attributes,
+which should reflect :attr:`~Occurrence.recurrence_id`, not the master
+item's start time.
+
+>>> Event.installed_on(first), Event.installed_on(second)
+(True, True)
+>>> print Event(first).duration, Event(second).duration
+3:00:00 3:00:00
+>>> Event(first).start == halloween
+True
+>>> Event(second).start == halloween + timedelta(days=7)
+True
+
+
+Triage and Occurrences
+----------------------
+
+>>> from chandler.triage import *
+>>> Triage(first).calculated == NOW
+True
+>>> Triage(second).calculated == LATER
+True
+
+XXX for some reason the above only works if setNow happens before the
+    Occurrences are created, need to track down why
+
+Modifications
+=============
+
+
 XXX point out (and perhaps separately test) the various rrule facets
 XXX set/read rrule string
 
@@ -154,10 +207,21 @@ XXX set/read rrule string
   expressed as two different RRULEs, so not impossible.  Can add an
   extra (maybe as string?) and use if necessary
 
-- composite rruleset: moving exdates, modification recurrence-ids,
+- FUTURE rrule changes: move exdates, modification recurrence-ids,
   what about RDATEs (ignore)?
 
 XXX forbid secondly, minutely, etc.
+
+Dashboard Entries and Recurrence
+================================
+
+XXX move dashboard_entries to an add_on in Chandler-App
+
+Collections and Recurrence
+==========================
+
+future changes?  delete individual occurrences?  add single occurrence?
+
 
 .. _iCalendar: http://tools.ietf.org/html/rfc2445
 .. _dateutil: http://www.labix.org/python-dateutil

@@ -10,11 +10,13 @@ from chandler.triage import Triage, NOW, LATER
 one_hour = timedelta(hours=1)
 zero_delta = timedelta(0)
 midnight = time(0, tzinfo=TimeZone.floating)
-EVENT_TRIAGE_WEIGHT = 2.0
 
 class Event(Extension):
     trellis.attrs(
+        # not inherited, overridden in occurrences
         base_start = None,          # None, or a datetime with a PyICU tzinfo
+    )
+    inherited_attrs(
         base_duration = one_hour,   # a timedelta
         all_day = False,
         base_any_time = False,
@@ -23,6 +25,11 @@ class Event(Extension):
         location = None,
         base_transparency = 'confirmed'
     )
+
+    def _init_inheritance(self, parent):
+        """Initialize cells if self.item is an Occurrence."""
+        self.__cells__['base_start'] = trellis.Constant(self.item.recurrence_id)
+        super(Event, self)._init_inheritance(parent)
 
     @trellis.compute
     def start(self):
@@ -70,7 +77,6 @@ class Event(Extension):
     def implied_transparency(self):
         if self.any_time or not self.duration:
             return 'fyi'
-
 
     @trellis.maintain
     def constraints(self):
