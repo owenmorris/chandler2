@@ -15,17 +15,17 @@ class Role(trellis.CellAttribute):
     Superclass for One, Many descriptors, which are used to set up
     'bi-directional references'.
     """
-    
+
     # These classes work by observing a trellis.Set of 2-element tuples
     # that contains all values for the relationship (like a "linking table" in
     # SQL). This interface could be made more abstract: for example, if the
     # objects in question come from a database, we might want to have primary
     # keys in the "table", or not populate the entire table at all
-    
+
     _tuples = None
 
     inverted = False
-    
+
     # If an instance is initialised with an inverse (i.e. via keyword in
     # __init__), then we have to access _tuples "backward". The inverted
     # attribute says whether or not to do that.
@@ -80,10 +80,10 @@ class One(Role):
             return None
 
         return super(One, self).__init__(inverse=inverse, rule=rule, value=None)
-        
+
     def __set__(self, obj, value):
         """Called when you assign to a ``One`` attribute"""
-        
+
         # Remove the old value, so that we really are a to-one relationship
         self.__delete__(obj)
         if obj is not None:
@@ -101,7 +101,7 @@ class One(Role):
 
 class TupleBackedSet(trellis.Set):
     """trellis.Set subclass that is used as the value of a Many() attribute."""
-    
+
     # In other words, one of these gets instantiated as the value
     # gets instantiated whenever you create an object whose class has a
     # Many().
@@ -117,7 +117,7 @@ class TupleBackedSet(trellis.Set):
     _tuples = trellis.attr(None) # This will be shared amongst instances
     owner = trellis.attr(None)
     inverted = False
-    
+
     def add(self, obj):
         t = (obj, self.owner) if self.inverted else (self.owner, obj)
         self._tuples.add(t)
@@ -125,7 +125,7 @@ class TupleBackedSet(trellis.Set):
     def remove(self, obj):
         t = (obj, self.owner) if self.inverted else (self.owner, obj)
         self._tuples.remove(t)
-        
+
     def iter_matches(self, iterable):
         for t in iterable:
             if self.inverted:
@@ -153,7 +153,7 @@ class Item(trellis.Component, plugins.Extensible):
     trellis.make.attrs(
         dashboard_entries=lambda self: trellis.Set([DashboardEntry(self)]),
     )
-    
+
     collections = Many()
 
     def __init__(self, **kwargs):

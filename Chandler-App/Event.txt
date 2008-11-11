@@ -216,11 +216,6 @@ False
 True
 
 
-Recurrence
-==========
-
-XXX recurrence rule, modifications, probably in a separate .txt file
-
 Other event fields
 ==================
 
