@@ -1,0 +1,170 @@
+==========================
+ Bi-Directional References
+==========================
+
+.. currentmodule:: chandler.core
+
+In a domain model, it's quite common to have one-to-many or
+many-to-many relationships between objects. In these cases,
+it's useful to be able to have updates to one side of such
+a relationship propagate automatically to the other. The
+:class:`One` and :class:`Many` APIs allow you to do this,
+as wel'll see below.
+
+>>> from chandler.core import One, Many
+
+To make the examples a little more readable, we'll
+use the following class:
+
+>>> from peak.events import trellis
+>>> class Person(trellis.Component):
+...     name = trellis.attr('')
+...     def __repr__(self):
+...         "For debug output"
+...         return u"<%s:%s>" % (self.__class__.__name__, self.name,)
+
+One-to-many relationships
+-------------------------
+One common case is a tree of objects of the same
+type. To pursue a somewhat hackneyed example, let's imagine
+we have an ``Employee`` type, and each employee has at
+most one manager. Conversely, each employee that is a
+manager can have one or more direct reports. We can
+model this situation as follows:
+
+>>> class Employee(Person):
+...     manager = One()
+...     reports = Many(inverse=manager)
+
+(It's also possible to create the :class:`Many` first, and then
+make the :class:`One` its inverse).
+
+Now, we can create a couple of high-level employees:
+
+>>> ceo = Employee(name="Big Shot")
+>>> cto = Employee(name="Head Geek", manager=ceo)
+
+Since ``manager`` was assigned to ``ceo``, the ``inverse``
+of this relationship, ``ceo.reports``, will be automatically
+updated to include ``cto``:
+
+>>> ceo.reports
+TupleBackedSet([<Employee:Head Geek>])
+
+Here the value of the :class:`Many` attribute is a ``TupleBackedSet``,
+a :class:`trellis.Set` subclass, which can be observed like other
+trellis structures. For example, we can create a performer cell
+to note any changes to ``ceo``'s ``employees``:
+
+>>> def report_changes():
+...     for obj in ceo.reports.removed: print "removed: %r" % (obj,)
+...     for obj in ceo.reports.added: print "added: %r" % (obj,)
+
+>>> performer = trellis.Performer(report_changes)
+>>> cfo = Employee(name="Bean Counter", manager=ceo)
+added: <Employee:Bean Counter>
+
+For fun, let's have the ``cto`` report to the ``cfo``. Then our
+performer (which is only watching changes to ``ceo``'s ``reports``)
+will be automatically triggered:
+
+>>> cto.manager = cfo
+removed: <Employee:Head Geek>
+>>> ceo.reports
+TupleBackedSet([<Employee:Bean Counter>])
+
+We can also use the :meth:`~TupleBackedSet.add`
+and :meth:`~TupleBackedSet.remove` methods to change
+the :class:`Many` side of a relationship directly:
+
+>>> ceo.reports.add(cto)
+added: <Employee:Head Geek>
+>>> ceo.reports.remove(cfo)
+removed: <Employee:Bean Counter>
+
+You can also assign any iterable value to a ``Many``:
+
+>>> team_lead_one = Employee(name="Team Lead I")
+>>> team_lead_two = Employee(name="Team Lead II")
+>>> cto.reports = (team_lead_one, team_lead_two)
+>>> team_lead_one.manager
+<Employee:Head Geek>
+>>> team_lead_two.manager
+<Employee:Head Geek>
+
+Lastly, deleting a :class:`One` or :class:`Many` just
+clears the attribute. For example:
+
+>>> del cto.reports
+>>> cto.reports
+TupleBackedSet([])
+>>> print team_lead_one.manager
+None
+
+Many-to-many relationships
+--------------------------
+We could set up a ``Person`` subclass with two
+:class:`Many` attributes as in the previous example, but
+a more common example is to have two different types
+linked by a many-to-many attribute. Here's a simple
+example:
+
+>>> class Defendant(Person):
+...    attorneys = Many()
+
+>>> class Attorney(Person):
+...    clients = Many(inverse=Defendant.attorneys)
+
+>>> mr_click = Defendant(name="Click")
+
+As usual, an uninitialized :class:`Many` attribute starts
+out empty:
+>>> mr_click.attorneys
+TupleBackedSet([])
+
+Setting up ``mr_click`` as an attorney's client will cause
+``mr_click.attorneys`` to be updated:
+
+>>> attorney = Attorney(name="Cochran")
+>>> attorney.clients = [mr_click, Defendant(name="Joe the Defendant")]
+>>> mr_click.attorneys
+TupleBackedSet([<Attorney:Cochran>])
+
+It's fine to set up the relationship the other way around. For
+instance, Clack below might require a crack legal team of
+three:
+
+>>> mr_clack = Defendant(name="Clack")
+>>> mr_clack.attorneys = (Attorney(name="Dewey"), Attorney(name="Cheatham"), Attorney(name="Howe"))
+
+As before, we can add or remove from :class:`Many` attributes, e.g.
+
+>>> attorney.clients.add(mr_clack)
+>>> len(mr_clack.attorneys)
+4
+>>> mr_clack in attorney.clients
+True
+
+>>> attorney.clients.remove(mr_click)
+>>> mr_click.attorneys
+TupleBackedSet([])
+
+and, again, we can use delete to clear an attribute:
+
+>>> del mr_clack.attorneys
+>>> mr_clack.attorneys
+TupleBackedSet([])
+>>> attorney.clients
+TupleBackedSet([<Defendant:Joe the Defendant>])
+
+Implementation Notes/To-Dos
+---------------------------
+
+1. The current implementation (binding the attributes to an explicit
+   underlying set of tuples) needs to be customizable; e.g.
+   SQL-persisted relationships will have to initialize themselves via
+   a query.
+2. Along the lines of the previous, the notification mechanism could
+   be a :class:trellis.collections.Hub (to decouple from the underlying
+   storage).
+3. Need to use weakrefs, and make attributes optional.

@@ -8,5 +8,6 @@ The Chandler Platform provides the basic building blocks of a PIM.
 
    Core
    TimeServices
+   Birefs
    Runtime
    Interaction
