@@ -5,11 +5,10 @@
 .. currentmodule:: chandler.core
 
 In a domain model, it's quite common to have one-to-many or
-many-to-many relationships between objects. In these cases,
-it's useful to be able to have updates to one side of such
-a relationship propagate automatically to the other. The
-:class:`One` and :class:`Many` APIs allow you to do this,
-as wel'll see below.
+many-to-many relationships between objects. In these cases, it's
+useful to be able to have updates to one side of such a relationship
+propagate automatically to the other. The :class:`One` and
+:class:`Many` APIs allow you to do this, as we'll see below.
 
 >>> from chandler.core import One, Many
 
@@ -25,36 +24,36 @@ use the following class:
 
 One-to-many relationships
 -------------------------
-One common case is a tree of objects of the same
-type. To pursue a somewhat hackneyed example, let's imagine
-we have an ``Employee`` type, and each employee has at
-most one manager. Conversely, each employee that is a
-manager can have one or more direct reports. We can
+
+One common case is a tree of objects of the same type. To pursue a
+somewhat hackneyed example, let's imagine we have an ``Employee``
+type, and each employee has at most one manager. Conversely, each
+employee that is a manager can have one or more direct reports. We can
 model this situation as follows:
 
 >>> class Employee(Person):
 ...     manager = One()
 ...     reports = Many(inverse=manager)
 
-(It's also possible to create the :class:`Many` first, and then
-make the :class:`One` its inverse).
+(It's also possible to create the :class:`Many` first, and then make
+the :class:`One` its inverse).
 
 Now, we can create a couple of high-level employees:
 
 >>> ceo = Employee(name="Big Shot")
 >>> cto = Employee(name="Head Geek", manager=ceo)
 
-Since ``manager`` was assigned to ``ceo``, the ``inverse``
-of this relationship, ``ceo.reports``, will be automatically
-updated to include ``cto``:
+Since ``manager`` was assigned to ``ceo``, the ``inverse`` of this
+relationship, ``ceo.reports``, will be automatically updated to
+include ``cto``:
 
 >>> ceo.reports
 TupleBackedSet([<Employee:Head Geek>])
 
 Here the value of the :class:`Many` attribute is a ``TupleBackedSet``,
 a :class:`trellis.Set` subclass, which can be observed like other
-trellis structures. For example, we can create a performer cell
-to note any changes to ``ceo``'s ``employees``:
+trellis structures. For example, we can create a performer cell to
+note any changes to ``ceo``'s ``employees``:
 
 >>> def report_changes():
 ...     for obj in ceo.reports.removed: print "removed: %r" % (obj,)
@@ -73,9 +72,9 @@ removed: <Employee:Head Geek>
 >>> ceo.reports
 TupleBackedSet([<Employee:Bean Counter>])
 
-We can also use the :meth:`~TupleBackedSet.add`
-and :meth:`~TupleBackedSet.remove` methods to change
-the :class:`Many` side of a relationship directly:
+We can also use the :meth:`~TupleBackedSet.add` and
+:meth:`~TupleBackedSet.remove` methods to change the :class:`Many`
+side of a relationship directly:
 
 >>> ceo.reports.add(cto)
 added: <Employee:Head Geek>
@@ -92,8 +91,8 @@ You can also assign any iterable value to a ``Many``:
 >>> team_lead_two.manager
 <Employee:Head Geek>
 
-Lastly, deleting a :class:`One` or :class:`Many` just
-clears the attribute. For example:
+Lastly, deleting a :class:`One` or :class:`Many` just clears the
+attribute. For example:
 
 >>> del cto.reports
 >>> cto.reports
@@ -103,11 +102,11 @@ None
 
 Many-to-many relationships
 --------------------------
-We could set up a ``Person`` subclass with two
-:class:`Many` attributes as in the previous example, but
-a more common example is to have two different types
-linked by a many-to-many attribute. Here's a simple
-example:
+
+We could set up a ``Person`` subclass with two :class:`Many`
+attributes as in the previous example, but a more common example is to
+have two different types linked by a many-to-many attribute. Here's a
+simple example:
 
 >>> class Defendant(Person):
 ...    attorneys = Many()
@@ -117,8 +116,8 @@ example:
 
 >>> mr_click = Defendant(name="Click")
 
-As usual, an uninitialized :class:`Many` attribute starts
-out empty:
+As usual, an uninitialized :class:`Many` attribute starts out empty:
+
 >>> mr_click.attorneys
 TupleBackedSet([])
 
@@ -131,8 +130,7 @@ Setting up ``mr_click`` as an attorney's client will cause
 TupleBackedSet([<Attorney:Cochran>])
 
 It's fine to set up the relationship the other way around. For
-instance, Clack below might require a crack legal team of
-three:
+instance, Clack below might require a crack legal team of three:
 
 >>> mr_clack = Defendant(name="Clack")
 >>> mr_clack.attorneys = (Attorney(name="Dewey"), Attorney(name="Cheatham"), Attorney(name="Howe"))
@@ -149,11 +147,16 @@ True
 >>> mr_click.attorneys
 TupleBackedSet([])
 
-and, again, we can use delete to clear an attribute:
+The ``del`` operator will allow Clack to fire his entire legal
+team (i.e. clear the ``attorneys`` attribute):
 
 >>> del mr_clack.attorneys
 >>> mr_clack.attorneys
 TupleBackedSet([])
+
+After our spate of firings, only Joe the Defendant has legal
+representation:
+
 >>> attorney.clients
 TupleBackedSet([<Defendant:Joe the Defendant>])
 
