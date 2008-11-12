@@ -81,7 +81,8 @@ added: <Employee:Head Geek>
 >>> ceo.reports.remove(cfo)
 removed: <Employee:Bean Counter>
 
-You can also assign any iterable value to a ``Many``:
+Rather than adding or removing values one by one, you can also assign
+any iterable value to a ``Many``:
 
 >>> team_lead_one = Employee(name="Team Lead I")
 >>> team_lead_two = Employee(name="Team Lead II")
@@ -90,6 +91,14 @@ You can also assign any iterable value to a ``Many``:
 <Employee:Head Geek>
 >>> team_lead_two.manager
 <Employee:Head Geek>
+
+If you're observing changes to the :class:`TupleBackedSet`, and you
+do an assignment like this, then you won't get an
+:attr:`~trellis.Set.removed`/:attr:`~trellis.Set.added` pair for
+objects already in the set:
+
+>>> ceo.reports = (cto, Employee(name="Body Guard"))
+added: <Employee:Body Guard>
 
 Lastly, deleting a :class:`One` or :class:`Many` just clears the
 attribute. For example:

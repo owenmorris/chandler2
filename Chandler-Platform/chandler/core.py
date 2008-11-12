@@ -59,8 +59,11 @@ class Many(Role):
 
     def __set__(self, obj, iterable):
         old_values = set(self._iter_values(obj))
+        new_values = set(iterable)
+        remove = old_values.difference(new_values)
+        new_values.difference_update(old_values)
 
-        for value in old_values:
+        for value in remove:
             t = (value, obj) if self.inverted else (obj, value)
             self._tuples.remove(t)
 
