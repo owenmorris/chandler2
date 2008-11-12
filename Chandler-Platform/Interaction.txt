@@ -2,33 +2,34 @@
  Building Interaction Models in Chandler
 ========================================
 
-.. module:: chandler.core
+.. currentmodule:: chandler.core
 
 This document discusses the core components of Chandler's Interaction
-Model, or IM. You can think of an Interaction Model (sometimes called an
-Application Model) as a representation of an application's user interface,
-without any of the specifics of layout or rendering. (These specifics are left
-to a different, as yet unwritten layer, called Presentation).
+Model, or IM. You can think of an Interaction Model (sometimes called
+an Application Model) as a representation of an application's user
+interface, without any of the specifics of layout or rendering. (These
+specifics are left to a different, as yet unwritten layer, called
+Presentation).
 
-The main reason we want to do this is to make the code unit testable: In
-cases where the user interaction side of things is entwined in the
-user interface, it becomes difficult to write small, fast-running, isolated
-tests in most GUI frameworks. Like the domain model, the IM is
-implemented in terms of Trellis_ components. This allows us to track
-(and test!) typical application dependency behaviour, like disabling
-or hiding parts of the interface, depending on the state of objects the user
-has selected.
+The main reason we want to do this is to make the code unit testable:
+In cases where the user interaction side of things is entwined in the
+user interface, it becomes difficult to write small, fast-running,
+isolated tests in most GUI frameworks. Like the domain model, the IM
+is implemented in terms of Trellis_ components. This allows us to
+track (and test!) typical application dependency behaviour, like
+disabling or hiding parts of the interface, depending on the state of
+objects the user has selected.
 
-A side benefit of the above approach is that it makes applications scriptable,
-by specifying an API that is free of the specifics of the UI rendering
-engine.
+A side benefit of the above approach is that it makes applications
+scriptable, by specifying an API that is free of the specifics of the
+UI rendering engine.
 
-We'll illustrate how the IM works by building up a simple example.
-In real-world code, you're likely to have a data layer that is represented
-by some kind of domain model, but to keep things simple, we are going to
-stick to a simple "domain", that of Celsius to Fahrenheit temperature
-conversion. The following code should be familiar if you've read the Trellis_
-documentation:
+We'll illustrate how the IM works by building up a simple example.  In
+real-world code, you're likely to have a data layer that is
+represented by some kind of domain model, but to keep things simple,
+we are going to stick to a simple "domain", that of Celsius to
+Fahrenheit temperature conversion. The following code should be
+familiar if you've read the Trellis_ documentation:
 
 >>> from peak.events import trellis
 
@@ -60,7 +61,8 @@ are modelled by :class:`Text` objects:
 >>> f_text = Text(label='Fahrenheit', cell=trellis.Cells(tc)['F'])
 >>> c_text = Text(label='Celsius', cell=trellis.Cells(tc)['C'])
 
-So, we can now check that our fields got wired up correctly. We can simulate the user typing "41" into the Fahrenheit field:
+So, we can now check that our fields got wired up correctly. We can
+simulate the user typing "41" into the Fahrenheit field:
 
 >>> f_text.cell.value = 41
 
@@ -78,21 +80,25 @@ the :class:`Text` objects:
 >>> c_text.cell.value
 100.0
 
-Of course, at this point we haven't really accomplish anything earth-shattering:
-all the example shows is that sharing Trellis cells between components works properly!
+Of course, at this point we haven't really accomplish anything
+earth-shattering: all the example shows is that sharing Trellis cells
+between components works properly!
 
 As an aside, in this simple case, we can imagine what the presentation
-layer will have to do to build a user interface: It will create some kind
-of text widget (depending on what API we are using to display things), and
-have an event handler that is called to let us know when the user has changed
-the text in the widget. This handler will set the cell's value. In the reverse
-case, there will probably be a :class:`trellis.Performer` cell to observe the changes in :attr:`Text.cell`, and push them to the widget.
+layer will have to do to build a user interface: It will create some
+kind of text widget (depending on what API we are using to display
+things), and have an event handler that is called to let us know when
+the user has changed the text in the widget. This handler will set the
+cell's value. In the reverse case, there will probably be a
+:class:`trellis.Performer` cell to observe the changes in
+:attr:`Text.cell`, and push them to the widget.
 
 Command objects
 ---------------
-A :class:`Command` represents an action a user can take. Typically, these
-would be rendered in a user interface as buttons, or menu items. Let's
-add a couple of Commands, then:
+
+A :class:`Command` represents an action a user can take. Typically,
+these would be rendered in a user interface as buttons, or menu
+items. Let's add a couple of Commands, then:
 
 >>> class Increment(Command):
 ...    increment = 1
@@ -103,9 +109,9 @@ add a couple of Commands, then:
 >>> c_minus_command = Increment(label='-', cell=c_text.cell, increment=-1)
 
 The :meth:`~Action.act` method specifies what happens when the user
-clicks the button or menu item. (In more complex cases, this method might
-well be a :func:`trellis.modifier`). So, let's see what happens if we
-"click" on the "+" button:
+clicks the button or menu item. (In more complex cases, this method
+might well be a :func:`trellis.modifier`). So, let's see what happens
+if we "click" on the "+" button:
 
 >>> c_plus_command.act()
 >>> tc.C
@@ -115,20 +121,21 @@ well be a :func:`trellis.modifier`). So, let's see what happens if we
 
 Features
 --------
-Both :class:`Command` and :class:`Text` are examples of a :class:`Feature`.
-A :class:`Feature` represents a user-visible, application-independent
-element of the IM. For example, our ``f_text`` component above has no idea
-that it has been wired up to a ``TempConverter`` instance; it just knows
-that has a label and a cell. The goal of an IM, then, is to assemble a set
-of features, making sure they are wired up correctly to domain model
-components.
+
+Both :class:`Command` and :class:`Text` are examples of a
+:class:`Feature`.  A :class:`Feature` represents a user-visible,
+application-independent element of the IM. For example, our ``f_text``
+component above has no idea that it has been wired up to a
+``TempConverter`` instance; it just knows that has a label and a
+cell. The goal of an IM, then, is to assemble a set of features,
+making sure they are wired up correctly to domain model components.
 
 We'll explore how this wiring occurs below, but for now, let's look
 at some attributes common to all :class:`Feature` instances.
 
-The :attr:`~Feature.enabled` attribute tells the Presentation layer whether
-or not the feature's widget should be enabled in the user interface. By
-default, features are enabled:
+The :attr:`~Feature.enabled` attribute tells the Presentation layer
+whether or not the feature's widget should be enabled in the user
+interface. By default, features are enabled:
 
 >>> f_text.enabled
 True
@@ -138,30 +145,32 @@ Similarly, :attr:`~Feature.visible` defaults to ``True``:
 >>> c_minus_command.visible
 True
 
-Unsetting this would tell the Presentation layer to hide the corresponding
-widget, of course.
+Unsetting this would tell the Presentation layer to hide the
+corresponding widget, of course.
 
 We've already encountered :attr:`~Feature.label` above, but it's worth
-noting that this is a user-visible string, and should therefore be localizable
-(assuming you're writing a localizable application). A similar attribute is
-:attr:`~Feature.help`. This would often be presented as some kind of tooltip,
-and defaults to ``None``:
+noting that this is a user-visible string, and should therefore be
+localizable (assuming you're writing a localizable application). A
+similar attribute is :attr:`~Feature.help`. This would often be
+presented as some kind of tooltip, and defaults to ``None``:
 
 >>> print f_text.help
 None
 
-The above attributes can all be specified via rules. For example, imagine a
-consumer safety commission has required us to remove the "+" button whenever
-the temperature gets too high. Ordinarily, we could specify this at the
-point we instantiated ``c_plus_command``, but we can also do this on the
-fly by changing the :attr:`~Feature.visible` to be a rule cell:
+The above attributes can all be specified via rules. For example,
+imagine a consumer safety commission has required us to remove the "+"
+button whenever the temperature gets too high. Ordinarily, we could
+specify this at the point we instantiated ``c_plus_command``, but we
+can also do this on the fly by changing the :attr:`~Feature.visible`
+to be a rule cell:
 
 >>> trellis.Cells(c_plus_command)['visible'] = trellis.Cell(lambda: tc.C <= 200.0)
 >>> c_plus_command.visible
 True
 
-At this point, ``visible`` will be updated whether we change ``tc`` directly,
-or simulate the user entering a value in one of the :class:`Text` features:
+At this point, ``visible`` will be updated whether we change ``tc``
+directly, or simulate the user entering a value in one of the
+:class:`Text` features:
 
 >>> c_text.cell.value = 250.0
 >>> c_plus_command.visible
@@ -175,8 +184,14 @@ Styling and Tags
 
 Further Reading
 ---------------
-XXX: References to MVP, evolution of GUI frameworks, PJE's peak-list posting
-with design for this API.
 
+The `basic design`_ of this API was originally laid out by Phillip
+J. Eby, drawing on ideas from the Model View Presenter pattern, for
+example in `Taligent`_ and `Dolphin Smalltalk`_. Martin Fowler has an
+interesting overview and some history of `GUI architectures`_.
 
 .. _Trellis: http://peak.telecommunity.com/DevCenter/Trellis
+.. _basic design: <http://www.eby-sarna.com/pipermail/peak/2007-November/002799.html>
+.. _Taligent: <http://www.wildcrest.com/Potel/Portfolio/mvp.pdf>
+.. _Dolphin Smalltalk: <http://www.object-arts.com/papers/TwistingTheTriad.PDF>
+.. _GUI architectures: <http://martinfowler.com/eaaDev/uiArchs.html>
