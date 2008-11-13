@@ -25,7 +25,7 @@ index_ for a complete list.
 .. _item-addon-hook-central:
 
 Item Add-on
-===========
+-----------
 
 Registered AddOn_ classes will be added to all items.
 
@@ -46,15 +46,31 @@ Registered AddOn_ classes will be added to all items.
       ..
 
 
+.. index:: hook; chandler.domain.dashboard_cell
+.. _dashboard-cell-hook-central:
+
+Dashboard Cell
+--------------
+
+.. describe:: dashboard_cell_callable(item) -> (cell_name, shared_cell) pair
+
+   Return a cell name and cell which should be added to every
+   :class:`~chandler.core.DashboardEntry`.
+
+.. seealso::
+
+   :ref:`dashboard-cell-hook`
+      ..
+
 .. index:: hook; chandler.domain.triage
 .. _triage-hook-central:
 
 Triage
 ------
 
-.. describe:: triage_callable(entry) -> iterable of (timestamp, triage_status) pairs
+.. describe:: triage_callable(item) -> iterable of (timestamp, triage_status) pairs
 
-   Return an empty tuple if triage can't be calculated for the entry,
+   Return an empty tuple if triage can't be calculated for the item,
    otherwise a timestamp when the triage_status should be applied, and
    a :mod:`~chandler.triage` value.
 

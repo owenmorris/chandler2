@@ -1,10 +1,10 @@
 Items, Extensions and DashboardEntries
---------------------------------------
+======================================
 
 .. module:: chandler.core
 
 Items
-~~~~~
+-----
 
 At the core of the Chandler data model is the
 :class:`~chandler.core.Item` class:
@@ -34,6 +34,7 @@ timestamp cell.  To test it, we'll pretend it's 10AM.
 
 >>> from chandler.time_services import *
 >>> from peak.events.activity import Time
+>>> from peak.util import plugins
 >>> from datetime import datetime
 >>> setNow(datetime(2008, 10, 1, 10, tzinfo=TimeZone.pacific))
 >>> ten_am = nowTimestamp()
@@ -52,7 +53,7 @@ True
 .. _collections:
 
 Collections
-~~~~~~~~~~~
+-----------
 
 A :class:`Collection` is a thin wrapper around
 :attr:`~Collection.items`, a :class:`Many`-valued attribute that
@@ -109,7 +110,7 @@ exception?
 
 
 Extensions
-~~~~~~~~~~
+----------
 
 Of course, a titled object is not particularly interesting. Items
 support having sets of ``extensions`` installed. These extensions can
@@ -240,7 +241,7 @@ True
 
 
 The :class:`~chandler.core.DashboardEntry` Class
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+------------------------------------------------
 
 So, we now have a basic concept of an :class:`~chandler.core.Item`, as
 titled, creation date-stamped, extensible object. In Chandler 1.0,
@@ -327,6 +328,28 @@ XXX :attr:`~chandler.core.Item.dashboard_entries` doesn't behave like
 a "real" bi-ref; i.e. automatically update when you create a new
 :class:`~chandler.core.DashboardEntry` for an item.
 
+XXX But in the case of recurrence, a master's entries might have
+    subject_item be something other than the master, so perhaps it
+    really *shouldn't* be a bi-ref?
+
+.. index:: hook; chandler.domain.dashboard_cell (used by chandler.core)
+.. _dashboard-cell-hook:
+
+Adding cells to all DashboardEntries
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Different applications will need different columns in a list view.  A
+new list view column corresponds to a new cell in
+:class:`~DashboardEntry`.  To create one, use the
+``chandler.domain.dashboard_cell`` hook.
+
+>>> def ministry(item):
+...     return "ministry", trellis.Constant("Ministry of Silly Walks")
+>>> plugins.Hook('chandler.domain.dashboard_cell').register(ministry)
+>>> DashboardEntry(item).ministry
+'Ministry of Silly Walks'
+
+
 Customizing creation of DashboardEntries
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 For now, if you want to create multiple :class:`~chandler.core.DashboardEntry`
@@ -341,7 +364,7 @@ there.
 .. _item-addon-hook:
 
 Adding attributes to all Items
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+------------------------------
 
 Extensions are optional.  Some items will have a given Extension added,
 others won't.
@@ -351,7 +374,6 @@ Extension, create an AddOn class.  The class can be automatically
 added to items when they're initialized by registering the class using
 the *chandler.domain.item_addon* hook.
 
->>> from peak.util import plugins
 >>> addon_hook = plugins.Hook('chandler.domain.item_addon')
 >>> def item_initialized(item):
 ...     print "Item initialized!"

@@ -256,6 +256,12 @@ class DashboardEntry(trellis.Component):
         cells = trellis.Cells(subject_item)
         kw.setdefault("when", cells["created"])
         kw.setdefault("what", cells["title"])
+        # XXX there is surely a more foolproof/efficient way to do this
+        dashboard_hook = plugins.Hook('chandler.domain.dashboard_cell')
+        for cell_name, new_cell in dashboard_hook.query(subject_item):
+            if not hasattr(self.__class__, cell_name):
+                setattr(self.__class__, cell_name, trellis.attr())
+            kw[cell_name] = new_cell
         super(DashboardEntry, self).__init__(**kw)
         self.subject_item = subject_item
 
