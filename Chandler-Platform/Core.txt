@@ -55,7 +55,8 @@ Collections
 ~~~~~~~~~~~
 
 A :class:`Collection` is a thin wrapper around
-:attr:`~Collection.items`, a :class:`Many`-valued attribute that contains :class:`Item` instances.
+:attr:`~Collection.items`, a :class:`Many`-valued attribute that
+contains :class:`Item` instances.
 
 >>> houses = Collection(title="Houses")
 >>> houses
@@ -67,7 +68,7 @@ You can add Items to a collection via  and
 :meth:`~Collection.remove` methods, which affect
 :attr:`Item.collections`.
 
-The inverse of :attr:`~Collection.items` is :attr:`Item.collections:
+The inverse of :attr:`~Collection.items` is :attr:`Item.collections`:
 
 >>> item.collections
 TupleBackedSet([])
@@ -84,8 +85,9 @@ then our collection shows up in the inverse:
 >>> item.collections
 TupleBackedSet([<Collection: Houses>])
 
-In the same way, when you remove the item from the :class:`Collection`,
-the collection is removed from the item's :attr:`Item.collections`:
+In the same way, when you remove the item from the
+:class:`Collection`, the collection is removed from the item's
+:attr:`Item.collections`:
 
 >>> houses.remove(item)
 >>> item in houses.items
@@ -102,7 +104,8 @@ More generally, any object is considered_ a collection if it has:
   which accept an :class:`Item` and change :attr:`~Collection.items`
   appropriately
 
-XXX What should add and remove do for read-only collections? Raise an exception?
+XXX What should add and remove do for read-only collections? Raise an
+exception?
 
 
 Extensions
@@ -124,11 +127,15 @@ Note that once you have an :class:`~chandler.core.Extension`, you
 can't change its item.
 
 >>> e = Extension(item)
->>> #e.item = Item() # @@@ should raise, but doesn't!
+>>> e.item = Item()
+Traceback (most recent call last):
+...
+AttributeError: Constants can't be changed
+
 >>> e.item is item
 True
 
-Note that :class:`~chandler.core.Extension` objects, which use the
+:class:`~chandler.core.Extension` objects, which use the
 ``peak.util.addons`` library, are uniqued:
 
 >>> Extension(item) is e

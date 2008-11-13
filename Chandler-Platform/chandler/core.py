@@ -208,7 +208,7 @@ def inherited_attrs(**attrs):
 class Extension(trellis.Component, InheritedAddOn):
     __item = trellis.attr(None)
 
-    item = trellis.make(lambda self: self.__item, writable=False)
+    item = trellis.make(lambda self: self.__item, optional=False)
 
     def __init__(self, item, **kwds):
         self.__item = item
@@ -286,6 +286,7 @@ class ConstraintError(Exception):
         return self.msg % {'cell_description' : self.cell_description,
                            'cell_value'       : self.cell_value}
 
+#### Interaction Components #####
 
 class Feature(trellis.Component):
     trellis.attrs(
