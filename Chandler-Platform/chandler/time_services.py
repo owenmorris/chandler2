@@ -21,7 +21,7 @@ from datetime import datetime
 from PyICU import ICUtzinfo
 
 __all__ = ('getNow', 'timestamp', 'setNow', 'resetNow', 'nowTimestamp',
-           'TimeZone', 'Scheduled')
+           'TimeZone', 'Scheduled', 'is_past_timestamp')
 
 def getNow(tz=None):
     """
@@ -61,6 +61,9 @@ def resetNow():
 def nowTimestamp():
     """The number of seconds betwen the UTC epoch and now."""
     return activity.Time._now
+
+def is_past_timestamp(stamp):
+    return bool(activity.Time[stamp - nowTimestamp()])
 
 class TimeZone(trellis.Component, context.Service):
 

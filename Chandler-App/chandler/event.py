@@ -4,7 +4,7 @@ import peak.events.activity as activity
 from peak.util.addons import AddOn
 
 from chandler.core import *
-from chandler.time_services import TimeZone, timestamp, nowTimestamp
+from chandler.time_services import TimeZone, timestamp, is_past_timestamp
 from chandler.triage import Triage, NOW, LATER
 
 one_hour = timedelta(hours=1)
@@ -44,7 +44,7 @@ class Event(Extension):
     def is_started(self):
         if self.start is None:
             return True
-        return bool(activity.Time[timestamp(self.start) - nowTimestamp()])
+        return is_past_timestamp(timestamp(self.start))
 
     @trellis.compute
     def duration(self):

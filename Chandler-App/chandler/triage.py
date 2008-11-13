@@ -2,7 +2,7 @@ import peak.events.trellis as trellis
 from peak.util import plugins
 from peak.util.addons import AddOn
 import peak.events.activity as activity
-from chandler.time_services import nowTimestamp
+from chandler.time_services import nowTimestamp, is_past_timestamp
 from chandler.core import ConstraintError
 
 ### Constants ###
@@ -27,9 +27,8 @@ def triage_status_timeline(triage):
 
 def filter_on_time(triage, future=True):
     """Yield all past or future (timestamp, status) pairs for the given item."""
-    now_stamp = nowTimestamp()
     for timestamp, status in triage_status_timeline(triage):
-        if future ^ bool(activity.Time[timestamp - now_stamp]): # ^ means XOR
+        if future ^ is_past_timestamp(timestamp): # ^ means XOR
             yield timestamp, status
 
 
