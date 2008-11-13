@@ -17,6 +17,7 @@ Domain Model
    Triage
    Reminder
    Event
+   Dashboard
    Recurrence
    Keyword
 

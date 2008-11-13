@@ -46,21 +46,24 @@ Registered AddOn_ classes will be added to all items.
       ..
 
 
-.. index:: hook; chandler.domain.dashboard_cell
-.. _dashboard-cell-hook-central:
+.. index:: hook; chandler.domain.dashboard_entry_addon
+.. _entry-addon-hook-central:
 
-Dashboard Cell
---------------
+Dashboard Entry Add-on
+----------------------
 
-.. describe:: dashboard_cell_callable(item) -> (cell_name, shared_cell) pair
+Registered AddOn_ classes will be added to all :class:`~chandler.core.DashboardEntries`.
 
-   Return a cell name and cell which should be added to every
-   :class:`~chandler.core.DashboardEntry`.
+.. describe:: addon_class(entry) -> return value ignored
 
 .. seealso::
 
-   :ref:`dashboard-cell-hook`
+   :ref:`entry-addon-hook`
       ..
+
+   :ref:`app-dashboard-entry`
+      ..
+
 
 .. index:: hook; chandler.domain.triage
 .. _triage-hook-central:

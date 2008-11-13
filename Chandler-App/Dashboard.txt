@@ -1,0 +1,60 @@
+.. index:: hook; chandler.domain.dashboard_entry_addon (registered by chandler.dashboard)
+.. _app-dashboard-entry:
+
+===================
+ AppDashboardEntry
+===================
+
+.. module:: chandler.dashboard
+
+Chandler's Application code expands on :ref:`basic dashboard entries
+<dashboard-entries>` by defining a Chandler Application
+:ref:`entry-addon-hook-central`, :class:`AppDashboardEntry`.
+
+>>> from chandler.dashboard import *
+>>> from chandler.core import *
+>>> from chandler.event import Event
+>>> from chandler.reminder import ReminderList
+>>> from chandler.time_services import *
+>>> from datetime import datetime, timedelta
+>>> november_first = datetime(2008, 11, 1, 16, tzinfo=TimeZone.eastern)
+>>> setNow(november_first)
+>>> item = Item()
+>>> entry = list(item.dashboard_entries)[0]
+>>> app_entry = AppDashboardEntry(entry)
+
+:class:`AppDashboardEntry` defines
+:attr:`~AppDashboardEntry.is_event`,
+:attr:`~AppDashboardEntry.triage_status`,
+:attr:`~AppDashboardEntry.triage_position` and
+:attr:`~AppDashboardEntry.reminder_scheduled` cells.
+
+>>> app_entry.is_event
+False
+>>> event = Event(item).add()
+>>> app_entry.is_event
+True
+>>> app_entry.triage_status
+100.0
+>>> app_entry.triage_position == nowTimestamp()
+True
+>>> app_entry.reminder_scheduled
+False
+
+:attr:`~AppDashboardEntry.reminder_scheduled` will be ``True`` if the entry has a reminder scheduled in the **future**.
+
+>>> reminder = ReminderList(item).add_reminder()
+>>> app_entry.reminder_scheduled
+False
+>>> reminder.fixed_trigger = november_first + timedelta(days=1)
+>>> app_entry.reminder_scheduled
+True
+>>> reminder.fixed_trigger = november_first - timedelta(days=1)
+>>> app_entry.reminder_scheduled
+False
+
+XXX when should probably be moved here
+
+XXX add created/edited/new/updated
+XXX add starred
+XXX add status (unread, mainly)

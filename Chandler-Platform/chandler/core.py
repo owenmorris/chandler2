@@ -243,7 +243,9 @@ class Extension(trellis.Component, InheritedAddOn):
             pass
         return isinstance(obj, Item) and cls in obj._extension_types
 
-class DashboardEntry(trellis.Component):
+class DashboardEntry(trellis.Component, plugins.Extensible):
+    extend_with = plugins.Hook('chandler.domain.dashboard_entry_addon')
+
     trellis.attrs(
         subject_item=None,
         when=None,
@@ -256,14 +258,9 @@ class DashboardEntry(trellis.Component):
         cells = trellis.Cells(subject_item)
         kw.setdefault("when", cells["created"])
         kw.setdefault("what", cells["title"])
-        # XXX there is surely a more foolproof/efficient way to do this
-        dashboard_hook = plugins.Hook('chandler.domain.dashboard_cell')
-        for cell_name, new_cell in dashboard_hook.query(subject_item):
-            if not hasattr(self.__class__, cell_name):
-                setattr(self.__class__, cell_name, trellis.attr())
-            kw[cell_name] = new_cell
         super(DashboardEntry, self).__init__(**kw)
         self.subject_item = subject_item
+        self.load_extensions() # plugins.Extensible methods
 
 
 class Collection(trellis.Component):

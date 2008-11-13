@@ -239,6 +239,7 @@ you add extensions to an item:
 >>> new_my_ext.can_this_be_true
 True
 
+.. _dashboard-entries:
 
 The :class:`~chandler.core.DashboardEntry` Class
 ------------------------------------------------
@@ -282,7 +283,7 @@ TypeError: DashboardEntry's subject_item must be an Item
 
 >>> entry = DashboardEntry(item)
 
-Note that :class:`~chandler.core.DashboardEntry` is not an AddOn; it
+Note that :class:`~chandler.core.DashboardEntry` is not an AddOn_; it
 is possible to create multiple entries for a given
 :class:`~chandler.core.Item`:
 
@@ -332,23 +333,6 @@ XXX But in the case of recurrence, a master's entries might have
     subject_item be something other than the master, so perhaps it
     really *shouldn't* be a bi-ref?
 
-.. index:: hook; chandler.domain.dashboard_cell (used by chandler.core)
-.. _dashboard-cell-hook:
-
-Adding cells to all DashboardEntries
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Different applications will need different columns in a list view.  A
-new list view column corresponds to a new cell in
-:class:`~DashboardEntry`.  To create one, use the
-``chandler.domain.dashboard_cell`` hook.
-
->>> def ministry(item):
-...     return "ministry", trellis.Constant("Ministry of Silly Walks")
->>> plugins.Hook('chandler.domain.dashboard_cell').register(ministry)
->>> DashboardEntry(item).ministry
-'Ministry of Silly Walks'
-
 
 Customizing creation of DashboardEntries
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -360,19 +344,26 @@ your functionality lives in a :class:`~chandler.core.Extension`, a good
 route is to override :meth:Extension.add()`, and do your customization
 there.
 
+Extending All Items and DashboardEntries
+----------------------------------------
+
+Most applications will need additional fields associated with items
+and dashboard entries.  To achieve this, either can be extended with
+an AddOn_.
+
 .. index:: hook; chandler.domain.item_addon (used by chandler.core)
 .. _item-addon-hook:
 
 Adding attributes to all Items
-------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Extensions are optional.  Some items will have a given Extension added,
 others won't.
 
 If an addition to Item should apply to all items, instead of using an
-Extension, create an AddOn class.  The class can be automatically
+Extension, create an AddOn_ class.  The class can be automatically
 added to items when they're initialized by registering the class using
-the *chandler.domain.item_addon* hook.
+the :ref:`chandler.domain.item_addon <item-addon-hook-central>` hook.
 
 >>> addon_hook = plugins.Hook('chandler.domain.item_addon')
 >>> def item_initialized(item):
@@ -381,5 +372,25 @@ the *chandler.domain.item_addon* hook.
 >>> new_item = Item()
 Item initialized!
 
+
+.. index:: hook; chandler.domain.dashboard_entry_addon (used by chandler.core)
+.. _entry-addon-hook:
+
+Adding cells to all DashboardEntries
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Similar to :class:`Item` add-ons, :class:`DashboardEntry` add-ons can
+be created using the ref:`chandler.domain.dashboard_entry_addon
+<entry-addon-hook-central>` hook.
+
+>>> entry_hook = plugins.Hook('chandler.domain.dashboard_entry_addon')
+>>> def entry_initialized(item):
+...     print "Entry initialized!"
+>>> entry_hook.register(entry_initialized)
+>>> new_item.dashboard_entries
+Entry initialized!
+Set([<chandler.core.DashboardEntry object at ...>])
+
+.. _AddOn: http://pypi.python.org/pypi/AddOns/
 .. _Set: http://peak.telecommunity.com/DevCenter/Trellis#trellis-set
 .. _considered: http://en.wikipedia.org/wiki/Duck_typing
