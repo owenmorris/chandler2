@@ -176,10 +176,11 @@ class InheritedAddOn(addons.AddOn):
     def __class_call__(cls, ob, *data):
         parent = None
         # look for a parent to inherit from
-        for parent, addon_key in plugins.Hook('chandler.domain.inherit_from').query(ob):
+        for parent, child_key in plugins.Hook('chandler.domain.inherit_from').query(ob):
             if parent is not None:
                 # use parent's dict to store inherited AddOns
                 a = parent.__dict__
+                addon_key = cls.addon_key(child_key, *data)
                 break
         else:
             # normal AddOn behavior
