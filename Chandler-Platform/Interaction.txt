@@ -179,6 +179,111 @@ False
 Scopes
 ------
 
+So, how does data make its way from the domain model into the
+application?  To start, we'll need to beef up our one-object "domain
+model" a little to make it somewhat realistic. Instead of one single
+temperature, let's imagine we're writing a program to monitor the
+thermostats in a conference center. We can model this situation
+via:
+
+>>> class Thermostat(TempConverter):
+...     room_name = trellis.attr('')
+
+Let's make a list of ``Thermostat`` instances:
+
+>>> thermostats = trellis.List([
+...     Thermostat(room_name='Reykjavik', C=2),
+...     Thermostat(room_name='Baguio City', C=25),
+...     Thermostat(room_name='Moscow', C=5),
+... ])
+
+Our application will be slightly more complicated now: we will have
+some kind of list control to display all of our Thermostats, and we'll
+just edit the selected one using our previous :class:`Feature`
+objects. The way we model this is using the concept of a Scope, which
+binds together model data to one or more :class:`Feature` instances.
+
+>>> list_scope = Scope(
+...     model=thermostats,
+...     features=(
+...         Table(items=thermostats, display_name=lambda item:item.room_name),
+...     ),
+... )
+
+Note the presence of the :attr:`~Scope.model` attribute. This is an
+arbitrary object that each :class:`Scope` can use to connect up its
+various features (to appropriate cells).
+
+We'll discuss the :class:`Table` component later, but let's note for
+now this :class:`Feature` is what we're using to handle our list of
+thermostats. It has a :attr:`~Table.selected_item` attribute that
+defaults to the first item in its list:
+
+>>> table = iter(list_scope.features).next()
+>>> table.display_name(table.selected_item)
+'Reykjavik'
+
+Now, we can create a second :class:`Scope`, which is the area where we
+can edit the Celsius and Fahrenheit temperatures for the selected
+thermostat:
+
+>>> detail_scope = Scope(
+...     model=trellis.Cells(table)['selected_item'],
+...     features=(c_text, f_text)
+... )
+
+Of course, we need the ``cell`` attributes of our two :attr:`Text`
+features to point to the correct field in the currently selected item.
+The most straightforward way to do this is to use the
+:meth:`~Scope.make_model_cell` API.
+
+>>> c_text.cell = detail_scope.make_model_cell('C')
+
+This returned cell is bound to the 'C' attribute of whatever the
+:class:`Scope`'s :attr:`~Feature.model` happens to be (i.e. it
+updates correctly if :attr:`~Feature.model` changes).
+
+We can go ahead and create the same kind of cell for f_text:
+
+>>> f_text.cell = detail_scope.make_model_cell('F')
+
+To observe what's happening to the two :class:`Text` values here, let's
+create a performer cell, which will print the values whenever they
+change:
+
+>>> def watch_texts():
+...     print "C:", c_text.cell.value
+...     print "F:", f_text.cell.value
+>>> perf = trellis.Performer(watch_texts)
+C: 2
+F: 35.6
+
+At this point, we can double-check that the Celsius text has the
+correct value:
+
+>>> thermostats[0].C
+2
+>>> c_text.cell.value == 2 == thermostats[0].C
+True
+>>> c_text.scope is detail_scope
+True
+
+Let's imagine the user selects the second item, "Baguio City", in the
+table. Then, c_text and f_text will update accordingly:
+
+>>> table.selected_item = thermostats[1]
+C: 25
+F: 77.0
+
+Altering one of the :class:`Text`'s cells (i.e. simulating entering a
+new value in the user interface) also causes both displayed values to change:
+
+>>> f_text.cell.value = 86
+C: 30.0
+F: 86
+>>> table.selected_item.C
+30.0
+
 Styling and Tags
 ----------------
 

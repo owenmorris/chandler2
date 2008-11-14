@@ -8,7 +8,7 @@ import sys
 
 __all__ = ('Item', 'Extension', 'ConstraintError', 'Collection',
            'One', 'Many',
-           'Feature', 'Command', 'Text',
+           'Feature', 'Command', 'Text', 'Table', 'Scope',
            'InheritedAddOn', 'inherited_attrs',)
 
 
@@ -300,12 +300,40 @@ class Feature(trellis.Component):
         help=None,
     )
     cell = None
+    scope = One()
 
 class Text(Feature):
     pass
 
 class Command(Feature):
     def act(self): pass
+
+class Table(Feature):
+    items = trellis.make(trellis.List)
+
+    @trellis.maintain(initially=None)
+    def selected_item(self):
+        if self.selected_item is None or not self.selected_item in self.items:
+            return self.items[0] or None
+        return self.selected_item
+
+    def display_name(self, item):
+        """Hook for customizing item display"""
+        return unicode(item)
+
+class _RuleCell(trellis.Cell):
+     def get_value(self):
+         return self.rule().get_value()
+     def set_value(self, value):
+         return self.rule().set_value(value)
+     value = property(get_value, set_value)
+
+class Scope(trellis.Component):
+    model = trellis.attr(None)
+    features = Many(inverse=Feature.scope)
+
+    def make_model_cell(self, attr):
+        return _RuleCell(lambda: trellis.Cells(self.model)[attr])
 
 
 #### Utility #####
