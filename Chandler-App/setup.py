@@ -22,5 +22,11 @@ setup(
     triage_position = chandler.triage:TriagePosition
     reminder = chandler.reminder:ReminderList
     keyword = chandler.keyword:ItemKeywords
+    [chandler.launch.app]
+    interaction = chandler.main:load_interaction
+    [chandler.launch.wxui]
+    wxui = chandler.wxui:load_wxui
+    [console_scripts]
+    chandler-demo = chandler.main:main
     """
 ),
