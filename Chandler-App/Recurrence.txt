@@ -257,7 +257,52 @@ XXX forbid secondly, minutely, etc.
 Dashboard Entries and Recurrence
 ================================
 
-XXX move dashboard_entries to an add_on in Chandler-App
+When recurrence is added to an item,
+:attr:`~chandler.core.Item.dashboard_entries` changes. Each
+:class:`~chandler.core.DashboardEntry` will be associated with an
+:class:`Occurrence`.  A single recurring item could have many
+associated dashboard entries.
+
+Because a recurring item could have an unlimited number of associated
+occurrences, dashboard entries are only created for an occurrence if:
+
+- its triage status is :const:`~chandler.triage.NOW`, or
+- it has a modification, or
+- it's the "nearest" :const:`~chandler.triage.LATER` or
+  :const:`~chandler.triage.DONE` occurrence
+
+>>> recur.count = 5
+
+:meth:`Recurrence.pick_dashboard_entry` will give the
+:class:`~chandler.core.DashboardEntry` associated with a particular
+recurrence-id, if it exists.
+
+>>> len(item.dashboard_entries)
+2
+>>> recur.pick_dashboard_entry(halloween) is None
+True
+>>> recur.pick_dashboard_entry(halloween + timedelta(days=7)) in item.dashboard_entries
+True
+>>> recur.pick_dashboard_entry(halloween + timedelta(days=14)) in item.dashboard_entries
+True
+
+There's one occurrence for the most recent
+:const:`~chandler.triage.DONE`, and one for the next
+:const:`~chandler.triage.LATER`.  Note that there's *not* an entry for
+the first occurrence, or one representing the master.
+
+If time moves forward, we'll have three dashboard entries, as the
+:const:`~chandler.triage.LATER` occurrence becomes :const:`~chandler.triage.NOW`:
+
+>>> setNow(halloween + timedelta(days=15))
+>>> len(item.dashboard_entries)
+3
+
+
+Reminders and Recurrence
+========================
+
+
 
 Collections and Recurrence
 ==========================

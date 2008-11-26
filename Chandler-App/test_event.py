@@ -8,7 +8,7 @@ class EventTestCase(unittest.TestCase):
 
     def setUp(self):
         self.item = Item()
-        self.event = Event(self.item)
+        self.event = Event(self.item).add()
         self.event.start
 
     def test_None_start(self):

@@ -6,11 +6,11 @@ import chandler.time_services as time_services
 import time
 import sys
 
-__all__ = ('Item', 'Extension', 'ConstraintError', 'Collection',
+__all__ = ('Item', 'Extension', 'DashboardEntry', 'Collection',
            'One', 'Many',
            'Feature', 'Command', 'Text', 'Table', 'Scope',
            'InheritedAddOn', 'inherited_attrs',
-           'Viewer',)
+           'ConstraintError', 'Viewer',)
 
 
 class Role(trellis.CellAttribute):
@@ -157,7 +157,8 @@ class Item(trellis.Component, plugins.Extensible):
     _extension_types = trellis.make(trellis.Set)
 
     trellis.make.attrs(
-        dashboard_entries=lambda self: trellis.Set([DashboardEntry(self)]),
+        _default_dashboard_entry=lambda self: DashboardEntry(self),
+        dashboard_entries=lambda self: trellis.Set([self._default_dashboard_entry]),
     )
 
     collections = Many()

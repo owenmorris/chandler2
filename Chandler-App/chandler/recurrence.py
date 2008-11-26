@@ -6,8 +6,8 @@ import dateutil.rrule
 
 from chandler.core import *
 from chandler.event import Event
-from chandler.time_services import timestamp
-from chandler.triage import DONE
+from chandler.time_services import timestamp, getNow
+from chandler.triage import DONE, LATER, NOW, Triage
 
 def to_dateutil_frequency(freq):
     """Return the dateutil constant associated with the given frequency."""
@@ -16,14 +16,16 @@ def to_dateutil_frequency(freq):
 
 class Recurrence(Extension):
     trellis.attrs(
-        freqeuncy=None,
+        frequency=None,
         triaged_done_before=None,
         start_extension=Event,
         start_extension_cellname='start'
     )
     triaged_recurrence_ids=trellis.make(trellis.Dict)
+    _recurrence_dashboard_entries=trellis.make(trellis.Dict)
     rdates=trellis.make(trellis.Set)
     exdates=trellis.make(trellis.Set)
+    _occurrence_cache = {}
 
     @trellis.compute
     def start(self):
@@ -91,10 +93,87 @@ class Recurrence(Extension):
             rrs.exdate(dt)
         return rrs
 
+    def get_occurrence(self, recurrence_id):
+        """Return Occurrence for recurrence_id, cache it for later."""
+        occ = self._occurrence_cache.get(recurrence_id)
+        if not occ:
+            occ = Occurrence(self.item, recurrence_id)
+            self._occurrence_cache[recurrence_id] = occ
+        return occ
+
+    @trellis.maintain
+    def dashboard_recurrence_ids(self):
+        """The set of recurrence_ids which should have DashboardEntries.
+
+        Updates self._recurrence_dashboard_entries when re-calculated.
+
+        """
+        old_set = self.dashboard_recurrence_ids
+        if old_set is None:
+            old_set = frozenset()
+
+        if not self in self.item.extensions or not self.start or not self.rruleset:
+            new_set = frozenset()
+        else:
+            now_dt = getNow()
+            past_done = None
+            future_later = None
+            new_set = set()
+            for recurrence_id in self.rruleset:
+                # XXX inefficient, creating an Occurrence for every past recurrence-id,
+                # probably should be optimized by walking backwards from triaged_done_before
+                triage = Triage(self.get_occurrence(recurrence_id)).calculated
+                if triage not in (LATER, DONE):
+                    new_set.add(recurrence_id)
+                else:
+                    if triage == DONE and recurrence_id < now_dt:
+                        past_done = recurrence_id
+                    elif triage == LATER and recurrence_id > now_dt:
+                        future_later = recurrence_id
+                        break
+
+            for recurrence_id in past_done, future_later:
+                if recurrence_id is not None:
+                    new_set.add(recurrence_id)
+
+            new_set.update(self.triaged_recurrence_ids)
+            # XXX add modifications
+
+        for recurrence_id in old_set - new_set:
+            del self._recurrence_dashboard_entries[recurrence_id]
+        for recurrence_id in new_set - old_set:
+            entry = DashboardEntry(Occurrence(self.item, recurrence_id))
+            self._recurrence_dashboard_entries[recurrence_id] = entry
+
+        return new_set
+
+    @trellis.maintain
+    def _update_dashboard_entries(self):
+        """Keep Item.dashboard_entries in sync with self._recurrence_dashboard_entries."""
+        recurrence_entries = self._recurrence_dashboard_entries
+        entries = self.item.dashboard_entries
+        # keep the master in entries iff there's no recurrence
+        if len(recurrence_entries) > 0:
+            entries.discard(self.item._default_dashboard_entry)
+        else:
+            entries.add(self.item._default_dashboard_entry)
+
+        for recurrence_id, entry in recurrence_entries.deleted.iteritems():
+            entries.discard(entry)
+        for recurrence_id, entry in recurrence_entries.added.iteritems():
+            entries.add(entry)
+        if recurrence_entries.changed:
+            msg = "a value in recurrence_dashboard_entries changed: %s"
+            raise Exception, msg % recurrence_entries.changed
+
+
     def occurrences_between(self, range_start, range_end):
         for dt in self.rruleset.between(range_start, range_end, True):
-            yield Occurrence(self.item, dt)
+            yield self.get_occurrence(dt)
 
+    def pick_dashboard_entry(self, recurrence_id):
+        """Return the DashboardEntry associated with recurrence_id, or None."""
+        return self._recurrence_dashboard_entries.get(recurrence_id)
 
 class Occurrence(Item):
     def __init__(self, master, recurrence_id):
