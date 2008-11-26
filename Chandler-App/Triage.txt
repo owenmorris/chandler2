@@ -122,6 +122,8 @@ defaults to calculated triage status, but can be overridden with
 XXX should recognized custom triage statuses be in their own sections?
     If not section definition might need an entry point, too.
 
+XXX "someday, maybe" items aren't separated into their own section,
+    and they aren't currently sorted after event/reminders :(
 
 Pin Methods
 -----------

@@ -185,14 +185,56 @@ True
 Triage and Occurrences
 ----------------------
 
->>> from chandler.triage import *
->>> Triage(first).calculated == NOW
-True
->>> Triage(second).calculated == LATER
-True
+Triage for recurring events applies to each :class:`Occurrence`
+separately.  Like a single :class:`~chandler.event.Event`,
+:attr:`~chandler.triage.Triage.auto` triage status will be
+:const:`~chandler.triage.LATER` if start time is in the future,
+otherwise :const:`~chandler.triage.NOW`.
 
-XXX for some reason the above only works if setNow happens before the
-    Occurrences are created, need to track down why
+>>> from chandler.triage import *
+>>> first_viewer = Viewer(component=Triage(first),
+...                       cell_name="calculated", formatted_name="first")
+first changed to: 100.0
+>>> second_viewer = Viewer(component=Triage(second),
+...                        cell_name="calculated", formatted_name="second")
+second changed to: 200.0
+
+Usually, only a few Occurrences should be
+:const:`~chandler.triage.NOW`.  To express this common case,
+:class:`Recurrence` has a :attr:`~Recurrence.triaged_done_before`
+attribute.  By default, this is None.  If set to a datetime,
+:attr:`~chandler.triage.Triage.auto` triage will be
+:const:`~chandler.triage.DONE` for Occurrences in the past.
+
+>>> recur.triaged_done_before is None
+True
+>>> recur.triaged_done_before = halloween
+first changed to: 300.0
+>>> setNow(halloween + timedelta(days=10))
+second changed to: 100.0
+>>> recur.triaged_done_before = halloween + timedelta(days=7)
+second changed to: 300.0
+
+Note that "before" includes the date given.
+
+Exceptions to the pattern of :const:`~chandler.triage.DONE` before a
+certain date, :const:`~chandler.triage.LATER` in the future,
+:const:`~chandler.triage.NOW` otherwise are expressed by adding to
+:attr:`Recurrence.triaged_recurrence_ids`, which is a Trellis Dict_ of
+(timestamp, status) tuples for particular recurrence-id keys.
+
+>>> recur.triaged_recurrence_ids
+{}
+>>> pair = (timestamp(halloween + timedelta(days=2)), LATER)
+>>> recur.triaged_recurrence_ids[halloween] = pair
+first changed to: 200.0
+>>> del recur.triaged_recurrence_ids[halloween]
+first changed to: 300.0
+
+XXX for some reason Triage doesn't recalculate unless setNow happens
+    before the Occurrences are created.  Need to track down why, seems
+    like maybe moving backwards in time is being a problem, but it seems
+    to work in other cirumstances
 
 Modifications
 =============
@@ -225,5 +267,5 @@ future changes?  delete individual occurrences?  add single occurrence?
 
 .. _iCalendar: http://tools.ietf.org/html/rfc2445
 .. _dateutil: http://www.labix.org/python-dateutil
-
+.. _Dict: http://peak.telecommunity.com/DevCenter/Trellis#trellis-dict
 

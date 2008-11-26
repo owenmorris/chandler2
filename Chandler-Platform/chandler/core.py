@@ -9,7 +9,8 @@ import sys
 __all__ = ('Item', 'Extension', 'ConstraintError', 'Collection',
            'One', 'Many',
            'Feature', 'Command', 'Text', 'Table', 'Scope',
-           'InheritedAddOn', 'inherited_attrs',)
+           'InheritedAddOn', 'inherited_attrs',
+           'Viewer',)
 
 
 class Role(trellis.CellAttribute):
@@ -347,8 +348,12 @@ class Viewer(trellis.Component):
     component = trellis.attr(None)
     cell_name = trellis.attr(None)
 
+    @trellis.compute
+    def formatted_name(self):
+        return self.cell_name
+
     @trellis.perform
     def view_it(self):
         value = getattr(self.component, self.cell_name, None)
         if None not in (self.component, self.cell_name, value):
-            print "%s changed to: %s" % (self.cell_name, value)
+            print "%s changed to: %s" % (self.formatted_name, value)

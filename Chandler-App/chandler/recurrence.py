@@ -6,6 +6,8 @@ import dateutil.rrule
 
 from chandler.core import *
 from chandler.event import Event
+from chandler.time_services import timestamp
+from chandler.triage import DONE
 
 def to_dateutil_frequency(freq):
     """Return the dateutil constant associated with the given frequency."""
@@ -15,10 +17,11 @@ def to_dateutil_frequency(freq):
 class Recurrence(Extension):
     trellis.attrs(
         freqeuncy=None,
+        triaged_done_before=None,
         start_extension=Event,
         start_extension_cellname='start'
     )
-
+    triaged_recurrence_ids=trellis.make(trellis.Dict)
     rdates=trellis.make(trellis.Set)
     exdates=trellis.make(trellis.Set)
 
@@ -105,6 +108,22 @@ class Occurrence(Item):
     def __repr__(self):
         return "<Occurrence: %s>" % self.recurrence_id
 
+
+def occurrence_triage(item):
+    """Hook for triage of an occurrence."""
+    if not isinstance(item, Occurrence):
+        return ()
+    else:
+        master = Recurrence(item.master)
+        done_before = master.triaged_done_before
+        if item.recurrence_id in master.triaged_recurrence_ids:
+            return (master.triaged_recurrence_ids[item.recurrence_id],)
+        elif not done_before or done_before < item.recurrence_id:
+            return ()
+        else:
+            return ((timestamp(Event(item).start), DONE),)
+
+plugins.Hook('chandler.domain.triage').register(occurrence_triage)
 
 def inherit_via_recurrence(item):
     if isinstance(item, Occurrence):
