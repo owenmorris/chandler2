@@ -28,7 +28,7 @@ class Event(Extension):
 
     def _init_inheritance(self, parent):
         """Initialize cells if self.item is an Occurrence."""
-        self.__cells__['base_start'] = trellis.Constant(self.item.recurrence_id)
+        self.base_start = trellis.Value(self.item.recurrence_id)
         super(Event, self)._init_inheritance(parent)
 
     @trellis.compute

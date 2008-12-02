@@ -317,6 +317,15 @@ If time moves forward, we'll have three dashboard entries, as the
 >>> len(item.dashboard_entries)
 3
 
+If the first occurrence is modified, another dashboard entry will be
+created, and it'll go away if it's unmodified.
+
+>>> first.modify(None, 'title', 'Historic first book club')
+>>> len(item.dashboard_entries)
+4
+>>> first.unmodify()
+>>> len(item.dashboard_entries)
+3
 
 Reminders and Recurrence
 ========================

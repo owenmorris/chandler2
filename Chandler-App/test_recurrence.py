@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from chandler.core import Item
 from chandler.recurrence import *
 from chandler.event import Event
+from chandler.triage import *
 from chandler.time_services import TimeZone, setNow
 
 class RecurrenceTestCase(unittest.TestCase):
@@ -22,6 +23,19 @@ class RecurrenceTestCase(unittest.TestCase):
         self.assertEqual(2, len(self.recurrence._recurrence_dashboard_entries))
         self.recurrence.remove()
         self.assertEqual(1, len(self.item.dashboard_entries))
+
+    def test_modification_triage(self):
+        """Modifications to start time work with triage."""
+        self.recurrence.frequency = 'weekly'
+        first = self.recurrence.get_occurrence(self.dtstart)
+        self.assertEqual(Triage(first).calculated, NOW)
+        first.modify(Event, 'base_start', self.dtstart + timedelta(days=2))
+        self.assertEqual(Triage(first).calculated, LATER)
+        self.recurrence.triaged_done_before = self.dtstart
+        self.assertEqual(Triage(first).calculated, LATER)
+        first.modify(Event, 'base_start', self.dtstart + timedelta(days=-1))
+        self.assertEqual(Triage(first).calculated, DONE)
+
 
 if __name__ == "__main__":
     unittest.main()

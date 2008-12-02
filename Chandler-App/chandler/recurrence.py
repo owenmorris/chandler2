@@ -141,7 +141,7 @@ class Recurrence(Extension):
                     new_set.add(recurrence_id)
 
             new_set.update(self.triaged_recurrence_ids)
-            # XXX add modifications
+            new_set.update(self.modification_recipes)
 
         for recurrence_id in old_set - new_set:
             del self._recurrence_dashboard_entries[recurrence_id]
@@ -212,7 +212,19 @@ class Occurrence(Item):
             recipes[self.recurrence_id] = recipe
 
         if name:
+            self.dirty(add_on, name)
             recipe.make_change(add_on, name, value)
+
+    @trellis.modifier
+    def dirty(self, cls, name):
+        """Mark a cell that's about to be replaced as changed.
+
+        If a cell is replaced but isn't marked changed, rules that
+        depend on the old cell won't be updated.
+
+        """
+        add_on = cls(self) if cls is not None else self
+        trellis.changed(trellis.Cells(add_on)[name])
 
     @trellis.compute
     def modification_recipe(self):
@@ -221,6 +233,8 @@ class Occurrence(Item):
     @trellis.modifier
     def unmodify(self):
         if self.modification_recipe:
+            for cls, name in self.modification_recipe.changes:
+                self.dirty(cls, name)
             del Recurrence(self.master).modification_recipes[self.recurrence_id]
 
     @trellis.maintain
@@ -255,6 +269,7 @@ class Occurrence(Item):
             # before overriding a cell, store it so it can be restored
             if key not in old_cells:
                 old_cells[key] = trellis.Cells(add_on)[name]
+            # use the new value
             setattr(add_on, name, value)
 
 
@@ -270,7 +285,7 @@ class ModificationRecipe(trellis.Component):
             if self.changes.added.get(key):
                 # multiple changes to the same attribute, bad
                 raise Exception, "Can't change the same attribute twice: %s" % key
-            self.changes[key] = trellis.Cell(value=value)
+            self.changes[key] = trellis.Value(value)
         else:
             cell.value = value
 
@@ -283,7 +298,7 @@ def occurrence_triage(item):
         done_before = master.triaged_done_before
         if item.recurrence_id in master.triaged_recurrence_ids:
             return (master.triaged_recurrence_ids[item.recurrence_id],)
-        elif not done_before or done_before < item.recurrence_id:
+        elif not done_before or done_before < Event(item).start:
             return ()
         else:
             return ((timestamp(Event(item).start), DONE),)
