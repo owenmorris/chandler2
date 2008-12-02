@@ -25,10 +25,10 @@ setup(
     long_description = open('README.txt').read(), # get_description(),
     install_requires=[
         'DecoratorTools>=1.6', #'Presentable>=0.1a1dev-r2439',
-        'Trellis>=0.6a2dev-r2525,==dev',
+        'Trellis>=0.7a3dev-r2595,==dev',
         'Plugins>=0.5a1dev-r2404,==dev',
         'Importing>=1.9.2',
-        'AddOns>=0.6'
+        'AddOns>=0.7dev-r2409,==dev'
     ],
     dependency_links=[
         'http://peak.telecommunity.com/snapshots/',
