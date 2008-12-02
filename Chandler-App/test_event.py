@@ -11,7 +11,7 @@ class EventTestCase(unittest.TestCase):
         self.event = Event(self.item).add()
         self.event.start
 
-    def test_None_start(self):
+    def test_none_start(self):
         """start should be None if base_start is"""
         self.assertEquals(self.event.start, None)
         self.event.all_day = True

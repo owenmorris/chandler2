@@ -239,20 +239,39 @@ XXX for some reason Triage doesn't recalculate unless setNow happens
 Modifications
 =============
 
+Frequently a recurring series will have a few instances that don't
+match their parent.  One or more changes to a single Occurrence
+together make up a :class:`ModificationRecipe`.  The easiest way to
+modify an Occurrence is with the :meth:`~Occurrence.modify` method.
 
-XXX point out (and perhaps separately test) the various rrule facets
-XXX set/read rrule string
+>>> len(recur.modification_recipes)
+0
+>>> first.modify()
+>>> recur.modification_recipes[halloween]
+<chandler.recurrence.ModificationRecipe object at ...>
 
-- Modifications
-- Multiple RRULEs, EXRULEs: Never seen in the wild, maybe not worth
-  implementing?  Actually, occasionally Monday-Wednesday meetings are
-  expressed as two different RRULEs, so not impossible.  Can add an
-  extra (maybe as string?) and use if necessary
+Without arguments, :meth:`~Occurrence.modify` creates a
+:class:`ModificationRecipe` for the Occurrence's recurrence-id, if one
+doesn't already exist.
 
-- FUTURE rrule changes: move exdates, modification recurrence-ids,
-  what about RDATEs (ignore)?
+Usually you'll provide a change, too:
 
-XXX forbid secondly, minutely, etc.
+>>> first.modify(Event, 'duration', timedelta(hours=4))
+>>> print Event(first).duration
+4:00:00
+
+If you're modifying an attribute on :class:`~chandler.core.Item`, use None for the add-on:
+
+>>> first.modify(None, 'title', "Special book club outing!")
+>>> first.title
+'Special book club outing!'
+
+A modification can be unmodified, too.
+
+>>> first.unmodify()
+>>> print Event(first).duration, first.title
+3:00:00 Book Club
+
 
 Dashboard Entries and Recurrence
 ================================
@@ -308,6 +327,20 @@ Collections and Recurrence
 ==========================
 
 future changes?  delete individual occurrences?  add single occurrence?
+
+
+XXX point out (and perhaps separately test) the various rrule facets
+XXX set/read rrule string
+
+- Multiple RRULEs, EXRULEs: Never seen in the wild, maybe not worth
+  implementing?  Actually, occasionally Monday-Wednesday meetings are
+  expressed as two different RRULEs, so not impossible.  Can add an
+  extra (maybe as string?) and use if necessary
+
+- FUTURE rrule changes: move exdates, modification recurrence-ids,
+  what about RDATEs (ignore)?
+
+XXX forbid secondly, minutely, etc.
 
 
 .. _iCalendar: http://tools.ietf.org/html/rfc2445

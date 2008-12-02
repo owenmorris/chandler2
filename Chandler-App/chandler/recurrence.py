@@ -19,13 +19,17 @@ class Recurrence(Extension):
         frequency=None,
         triaged_done_before=None,
         start_extension=Event,
-        start_extension_cellname='start'
+        start_extension_cellname='start',
     )
-    triaged_recurrence_ids=trellis.make(trellis.Dict)
-    _recurrence_dashboard_entries=trellis.make(trellis.Dict)
-    rdates=trellis.make(trellis.Set)
-    exdates=trellis.make(trellis.Set)
-    _occurrence_cache = {}
+    trellis.make.attrs(
+        triaged_recurrence_ids=trellis.Dict,
+        modification_recipes=trellis.Dict,
+        _recurrence_dashboard_entries=trellis.Dict,
+        rdates=trellis.Set,
+        exdates=trellis.Set,
+        _occurrence_cache=dict,
+        _pre_modification_cells=dict
+    )
 
     @trellis.compute
     def start(self):
@@ -182,11 +186,93 @@ class Occurrence(Item):
         # share all master cells
         self.__cells__ = master.__cells__
         # set up add-ons for the occurrence
-        self.load_extensions() # plugins.Extensible method
+        self.load_extensions()
+        if self.modification_recipe:
+            # initialize modified cells
+            self._change_cells(self.modification_recipe.changes)
 
     def __repr__(self):
         return "<Occurrence: %s>" % self.recurrence_id
 
+    @trellis.modifier
+    def modify(self, add_on=None, name=None, value=None):
+        """Adjust ModificationRecipe such that add_on(self).name == value.
+
+        If no ModificationRecipe exists, create it.  With no
+        arguments, just create a ModificationRecipe for this
+        recurrence-id if one doesn't already exist.
+
+        """
+        recipes = Recurrence(self.master).modification_recipes
+        recipe = recipes.get(self.recurrence_id)
+        if not recipe:
+            recipe = recipes.added.get(self.recurrence_id)
+        if not recipe:
+            recipe = ModificationRecipe()
+            recipes[self.recurrence_id] = recipe
+
+        if name:
+            recipe.make_change(add_on, name, value)
+
+    @trellis.compute
+    def modification_recipe(self):
+        return Recurrence(self.master).modification_recipes.get(self.recurrence_id)
+
+    @trellis.modifier
+    def unmodify(self):
+        if self.modification_recipe:
+            del Recurrence(self.master).modification_recipes[self.recurrence_id]
+
+    @trellis.maintain
+    def update_modified_cells(self):
+        deletions = {}
+        if self.modification_recipe:
+            # new modifications
+            if self.modification_recipe.changes.added:
+                self._change_cells(self.modification_recipe.changes.added)
+            # deleted changes
+            deletions = self.modification_recipe.changes.deleted
+
+        master_recipes = Recurrence(self.master).modification_recipes
+        if self.recurrence_id in master_recipes.deleted:
+            # unmodified
+            deleted_recipe = master_recipes.deleted[self.recurrence_id]
+            deletions = deleted_recipe.changes
+
+        if deletions:
+            old_cells = Recurrence(self.master)._pre_modification_cells[self.recurrence_id]
+            for cls, name in deletions:
+                add_on = cls(self) if cls is not None else self
+                setattr(add_on, name, old_cells[(cls, name)])
+
+    @trellis.modifier
+    def _change_cells(self, change_dict):
+        pre_modification_dict = Recurrence(self.master)._pre_modification_cells
+        old_cells = pre_modification_dict.setdefault(self.recurrence_id, {})
+        for key, value in change_dict.iteritems():
+            cls, name = key
+            add_on = cls(self) if cls is not None else self
+            # before overriding a cell, store it so it can be restored
+            if key not in old_cells:
+                old_cells[key] = trellis.Cells(add_on)[name]
+            setattr(add_on, name, value)
+
+
+class ModificationRecipe(trellis.Component):
+    # a dictionary of (AddOn, attr_name) keys, with Cells as values
+    changes = trellis.make(trellis.Dict)
+
+    @trellis.modifier
+    def make_change(self, add_on, name, value):
+        key = (add_on, name)
+        cell = self.changes.get(key)
+        if not cell:
+            if self.changes.added.get(key):
+                # multiple changes to the same attribute, bad
+                raise Exception, "Can't change the same attribute twice: %s" % key
+            self.changes[key] = trellis.Cell(value=value)
+        else:
+            cell.value = value
 
 def occurrence_triage(item):
     """Hook for triage of an occurrence."""
