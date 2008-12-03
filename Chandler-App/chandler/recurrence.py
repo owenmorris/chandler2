@@ -8,7 +8,6 @@ from chandler.core import *
 from chandler.event import Event
 from chandler.time_services import timestamp, getNow
 from chandler.triage import DONE, LATER, NOW, Triage
-from chandler.inheritance import *
 
 def to_dateutil_frequency(freq):
     """Return the dateutil constant associated with the given frequency."""
@@ -21,6 +20,7 @@ class Recurrence(Extension):
         triaged_done_before=None,
         start_extension=Event,
         start_extension_cellname='start',
+        recurrence_id_override='base_start'
     )
     trellis.make.attrs(
         triaged_recurrence_ids=trellis.Dict,
@@ -37,8 +37,11 @@ class Recurrence(Extension):
         if not self.start_extension.installed_on(self.item):
             return None
         else:
-            extension = self.start_extension(self.item)
-            return getattr(extension, self.start_extension_cellname)
+            return self.start_for(self.item)
+
+    def start_for(self, item):
+        extension = self.start_extension(item)
+        return getattr(extension, self.start_extension_cellname)
 
     def build_rrule(self, count=None, until=None):
         """Return a dateutil rrule based on self.
@@ -192,6 +195,20 @@ class Occurrence(Item):
         title = None,
     )
 
+    def inherited_value(self, add_on_instance, name):
+        """Inherit values from modifications, then master."""
+        cls = None if add_on_instance is self else type(add_on_instance)
+        key = cls, name
+        recipe = self.modification_recipe
+        if recipe and key in recipe.changes:
+            return recipe.changes[key].value
+        elif (cls  == Recurrence(self.master).start_extension and
+              name == Recurrence(self.master).recurrence_id_override):
+            return self.recurrence_id
+        else:
+            master = self.master if cls is None else cls(self.master)
+            return getattr(master, name)
+
     @trellis.compute
     def created(self):
         return self.master.created
@@ -266,12 +283,13 @@ def occurrence_triage(item):
     else:
         master = Recurrence(item.master)
         done_before = master.triaged_done_before
+        start = master.start_for(item)
         if item.recurrence_id in master.triaged_recurrence_ids:
             return (master.triaged_recurrence_ids[item.recurrence_id],)
-        elif not done_before or done_before < Event(item).start:
+        elif not done_before or done_before < start:
             return ()
         else:
-            return ((timestamp(Event(item).start), DONE),)
+            return ((timestamp(start), DONE),)
 
 plugins.Hook('chandler.domain.triage').register(occurrence_triage)
 

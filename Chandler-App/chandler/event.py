@@ -6,8 +6,6 @@ from chandler.core import *
 from chandler.time_services import TimeZone, timestamp, is_past_timestamp
 from chandler.triage import Triage, NOW, LATER
 
-from chandler.inheritance import *
-
 one_hour = timedelta(hours=1)
 zero_delta = timedelta(0)
 midnight = time(0, tzinfo=TimeZone.floating)

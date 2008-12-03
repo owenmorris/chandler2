@@ -8,7 +8,7 @@ import sys
 
 __all__ = ('Item', 'Extension', 'DashboardEntry', 'Collection',
            'One', 'Many',
-           'ItemAddOn',
+           'ItemAddOn', 'inherited_attrs',
            'Feature', 'Command', 'Text', 'Table', 'Scope',
            'ConstraintError', 'Viewer',)
 
@@ -171,6 +171,10 @@ class Item(trellis.Component, plugins.Extensible):
     def extensions(self):
         return frozenset(t(self) for t in self._extension_types)
 
+    def inherited_value(self, add_on_instance, name):
+        """Inheritance rule for cells defined by inherited_attrs."""
+        return getattr(add_on_instance, name)
+
 
 class ItemAddOn(trellis.Component, addons.AddOn):
     _item = trellis.attr(None)
@@ -180,6 +184,24 @@ class ItemAddOn(trellis.Component, addons.AddOn):
         self._item = item
         super(ItemAddOn, self).__init__(**kwds)
 
+
+def inherited_attrs(**attrs):
+    """Like trellis.attrs, but creates maintain rules that handle inheritance."""
+    frame = sys._getframe(1)
+    for k, v in attrs.items():
+        if k in frame.f_locals:
+            raise TypeError("%s is already defined in this class" % (k,))
+        rule = get_inherit_rule(k)
+        frame.f_locals[k] = trellis.CellAttribute.mkattr(v, __name__=k, rule=rule)
+
+def get_inherit_rule(name):
+    def func(add_on):
+        item = getattr(add_on, '_item', None)
+        if item is None:
+            item = add_on
+        return item.inherited_value(add_on, name)
+    func.__name__ = name
+    return func
 
 class Extension(ItemAddOn):
     @trellis.modifier
