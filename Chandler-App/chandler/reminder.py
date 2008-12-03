@@ -1,5 +1,5 @@
 import peak.events.trellis as trellis
-from chandler.core import ConstraintError, InheritedAddOn
+from chandler.core import ConstraintError, ItemAddOn
 from chandler.event import Event
 from chandler.triage import *
 from chandler.time_services import timestamp
@@ -7,13 +7,8 @@ from chandler.time_services import timestamp
 
 ### Domain model ###
 
-class ReminderList(InheritedAddOn, trellis.Component):
-    _item = trellis.attr(None)
+class ReminderList(ItemAddOn):
     reminders = trellis.make(trellis.List)
-
-    def __init__(self, subject, **kwargs):
-        self._item = subject
-        trellis.Component.__init__(self, **kwargs)
 
     def add_reminder(self, **kwargs):
         reminder = Reminder(item=self._item, **kwargs)

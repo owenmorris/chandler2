@@ -1,5 +1,5 @@
 import peak.events.trellis as trellis
-from peak.util.addons import AddOn
+from chandler.core import ItemAddOn
 from weakref import ref
 
 _keywords = {}
@@ -37,15 +37,8 @@ def Keyword(word):
         _keywords[word] = ref(keyword, del_keyword_ref)
         return keyword
 
-class ItemKeywords(AddOn, trellis.Component):
-    trellis.attrs(
-        _item=None,
-    )
-
+class ItemKeywords(ItemAddOn):
     keyword_strings = trellis.make(trellis.Set)
-
-    def __init__(self, item, **kwargs):
-        self._item = item
 
     @trellis.maintain
     def maintenance(self):

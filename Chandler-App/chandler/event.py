@@ -1,22 +1,20 @@
 from datetime import datetime, timedelta, time
 import peak.events.trellis as trellis
 import peak.events.activity as activity
-from peak.util.addons import AddOn
 
 from chandler.core import *
 from chandler.time_services import TimeZone, timestamp, is_past_timestamp
 from chandler.triage import Triage, NOW, LATER
+
+from chandler.inheritance import *
 
 one_hour = timedelta(hours=1)
 zero_delta = timedelta(0)
 midnight = time(0, tzinfo=TimeZone.floating)
 
 class Event(Extension):
-    trellis.attrs(
-        # not inherited, overridden in occurrences
-        base_start = None,          # None, or a datetime with a PyICU tzinfo
-    )
     inherited_attrs(
+        base_start = None,          # None, or a datetime with a PyICU tzinfo
         base_duration = one_hour,   # a timedelta
         all_day = False,
         base_any_time = False,
@@ -25,11 +23,6 @@ class Event(Extension):
         location = None,
         base_transparency = 'confirmed'
     )
-
-    def _init_inheritance(self, parent):
-        """Initialize cells if self.item is an Occurrence."""
-        self.base_start = trellis.Value(self.item.recurrence_id)
-        super(Event, self)._init_inheritance(parent)
 
     @trellis.compute
     def start(self):
@@ -108,14 +101,7 @@ class BadDurationError(ConstraintError):
     cell_description = "base_duration"
 
 ### Interaction model ###
-class EventFieldVisibility(AddOn, trellis.Component):
-    trellis.attrs(
-        _item=None,
-    )
-
-    def __init__(self, subject, **kwargs):
-        self._item = subject
-        trellis.Component.__init__(self, **kwargs)
+class EventFieldVisibility(ItemAddOn):
 
     @trellis.compute
     def event(self):

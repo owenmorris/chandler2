@@ -1,9 +1,8 @@
 import peak.events.trellis as trellis
 from peak.util import plugins
-from peak.util.addons import AddOn
 import peak.events.activity as activity
 from chandler.time_services import nowTimestamp, is_past_timestamp
-from chandler.core import ConstraintError, InheritedAddOn
+from chandler.core import ConstraintError, ItemAddOn
 
 ### Constants ###
 
@@ -32,16 +31,12 @@ def filter_on_time(triage, future=True):
             yield timestamp, status
 
 
-class Triage(InheritedAddOn, trellis.Component):
+class Triage(ItemAddOn):
     trellis.attrs(
-        _item=None,
         manual=None,
         manual_timestamp=None,
         auto_source=None
     )
-
-    def __init__(self, item, **kwargs):
-        self._item = item
 
     @trellis.compute
     def auto(self):
@@ -63,16 +58,11 @@ class Triage(InheritedAddOn, trellis.Component):
             if cell is not None and int(cell) < 100:
                 raise TriageRangeError(cell)
 
-class TriagePosition(InheritedAddOn, trellis.Component):
+class TriagePosition(ItemAddOn):
     trellis.attrs(
-        _item=None,
         pinned_triage_section=None,
         pinned_position=None
     )
-
-    def __init__(self, item, **kwargs):
-        self._item = item
-        trellis.Component.__init__(self, **kwargs)
 
     @trellis.compute
     def _triage_addon(self):

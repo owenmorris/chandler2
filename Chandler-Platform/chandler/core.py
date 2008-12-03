@@ -8,8 +8,8 @@ import sys
 
 __all__ = ('Item', 'Extension', 'DashboardEntry', 'Collection',
            'One', 'Many',
+           'ItemAddOn',
            'Feature', 'Command', 'Text', 'Table', 'Scope',
-           'InheritedAddOn', 'inherited_attrs',
            'ConstraintError', 'Viewer',)
 
 
@@ -171,52 +171,17 @@ class Item(trellis.Component, plugins.Extensible):
     def extensions(self):
         return frozenset(t(self) for t in self._extension_types)
 
-class InheritedAddOn(addons.AddOn):
-    __inherited__ = () # overridden to set() by calling inherited_attrs()
 
-    @classmethod
-    def __class_call__(cls, ob, *data):
-        parent = None
-        # look for a parent to inherit from
-        for parent, child_key in plugins.Hook('chandler.domain.inherit_from').query(ob):
-            if parent is not None:
-                # use parent's dict to store inherited AddOns
-                a = parent.__dict__
-                addon_key = cls.addon_key(child_key, *data)
-                break
-        else:
-            # normal AddOn behavior
-            a = addons.addons_for(ob)
-            addon_key = cls.addon_key(*data)
-        try:
-            return a[addon_key]
-        except KeyError:
-            ob = a.setdefault(addon_key, super(addons.AddOn, cls).__class_call__(ob, *data))
-            if parent is not None:
-                ob._init_inheritance(parent)
-            return ob
-
-    def _init_inheritance(self, parent):
-        for attr in self.__inherited__:
-            self.__cells__[attr] = self.__class__(parent).__cells__[attr]
-
-
-def inherited_attrs(**attrs):
-    """Like trellis.attrs but add attributes to __inherited__, too."""
-    frame = sys._getframe(1)
-    trellis._make_multi(frame, attrs, arg='initially')
-    frame.f_locals.setdefault('__inherited__', set()).update(attrs)
-
-
-class Extension(trellis.Component, InheritedAddOn):
-    __item = trellis.attr(None)
-
-    item = trellis.make(lambda self: self.__item, optional=False)
+class ItemAddOn(trellis.Component, addons.AddOn):
+    _item = trellis.attr(None)
+    item = trellis.make(lambda self: self._item, optional=False)
 
     def __init__(self, item, **kwds):
-        self.__item = item
-        super(Extension, self).__init__(**kwds)
+        self._item = item
+        super(ItemAddOn, self).__init__(**kwds)
 
+
+class Extension(ItemAddOn):
     @trellis.modifier
     def add(self, **kw):
         t = type(self)
@@ -240,7 +205,7 @@ class Extension(trellis.Component, InheritedAddOn):
     @classmethod
     def installed_on(cls, obj):
         try:
-            obj = obj.__item
+            obj = obj._item
         except AttributeError:
             pass
         return isinstance(obj, Item) and cls in obj._extension_types
@@ -258,6 +223,8 @@ class DashboardEntry(trellis.Component, plugins.Extensible):
         if not isinstance(subject_item, Item):
             raise TypeError, "DashboardEntry's subject_item must be an Item"
         cells = trellis.Cells(subject_item)
+        # touch created in case it's a rule and doesn't yet exist
+        subject_item.created
         kw.setdefault("when", cells["created"])
         kw.setdefault("what", cells["title"])
         super(DashboardEntry, self).__init__(**kw)

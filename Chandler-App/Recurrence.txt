@@ -256,7 +256,7 @@ doesn't already exist.
 
 Usually you'll provide a change, too:
 
->>> first.modify(Event, 'duration', timedelta(hours=4))
+>>> first.modify(Event, 'base_duration', timedelta(hours=4))
 >>> print Event(first).duration
 4:00:00
 

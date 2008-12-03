@@ -8,6 +8,7 @@ from chandler.core import *
 from chandler.event import Event
 from chandler.time_services import timestamp, getNow
 from chandler.triage import DONE, LATER, NOW, Triage
+from chandler.inheritance import *
 
 def to_dateutil_frequency(freq):
     """Return the dateutil constant associated with the given frequency."""
@@ -180,16 +181,33 @@ class Recurrence(Extension):
         return self._recurrence_dashboard_entries.get(recurrence_id)
 
 class Occurrence(Item):
+
+    # override master attributes
+    trellis.attrs(
+        dashboard_entries = None,
+        _default_dashboard_entry = None
+    )
+
+    inherited_attrs(
+        title = None,
+    )
+
+    @trellis.compute
+    def created(self):
+        return self.master.created
+
+    @trellis.compute
+    def _extension_types(self):
+        return frozenset(t for t in self.master._extension_types if t is not Recurrence)
+
+    @trellis.compute
+    def collections(self):
+        return self.master.collections
+
     def __init__(self, master, recurrence_id):
         self.master = master
         self.recurrence_id = recurrence_id
-        # share all master cells
-        self.__cells__ = master.__cells__
-        # set up add-ons for the occurrence
-        self.load_extensions()
-        if self.modification_recipe:
-            # initialize modified cells
-            self._change_cells(self.modification_recipe.changes)
+        return super(Occurrence, self).__init__()
 
     def __repr__(self):
         return "<Occurrence: %s>" % self.recurrence_id
@@ -212,19 +230,7 @@ class Occurrence(Item):
             recipes[self.recurrence_id] = recipe
 
         if name:
-            self.dirty(add_on, name)
             recipe.make_change(add_on, name, value)
-
-    @trellis.modifier
-    def dirty(self, cls, name):
-        """Mark a cell that's about to be replaced as changed.
-
-        If a cell is replaced but isn't marked changed, rules that
-        depend on the old cell won't be updated.
-
-        """
-        add_on = cls(self) if cls is not None else self
-        trellis.changed(trellis.Cells(add_on)[name])
 
     @trellis.compute
     def modification_recipe(self):
@@ -233,44 +239,8 @@ class Occurrence(Item):
     @trellis.modifier
     def unmodify(self):
         if self.modification_recipe:
-            for cls, name in self.modification_recipe.changes:
-                self.dirty(cls, name)
             del Recurrence(self.master).modification_recipes[self.recurrence_id]
 
-    @trellis.maintain
-    def update_modified_cells(self):
-        deletions = {}
-        if self.modification_recipe:
-            # new modifications
-            if self.modification_recipe.changes.added:
-                self._change_cells(self.modification_recipe.changes.added)
-            # deleted changes
-            deletions = self.modification_recipe.changes.deleted
-
-        master_recipes = Recurrence(self.master).modification_recipes
-        if self.recurrence_id in master_recipes.deleted:
-            # unmodified
-            deleted_recipe = master_recipes.deleted[self.recurrence_id]
-            deletions = deleted_recipe.changes
-
-        if deletions:
-            old_cells = Recurrence(self.master)._pre_modification_cells[self.recurrence_id]
-            for cls, name in deletions:
-                add_on = cls(self) if cls is not None else self
-                setattr(add_on, name, old_cells[(cls, name)])
-
-    @trellis.modifier
-    def _change_cells(self, change_dict):
-        pre_modification_dict = Recurrence(self.master)._pre_modification_cells
-        old_cells = pre_modification_dict.setdefault(self.recurrence_id, {})
-        for key, value in change_dict.iteritems():
-            cls, name = key
-            add_on = cls(self) if cls is not None else self
-            # before overriding a cell, store it so it can be restored
-            if key not in old_cells:
-                old_cells[key] = trellis.Cells(add_on)[name]
-            # use the new value
-            setattr(add_on, name, value)
 
 
 class ModificationRecipe(trellis.Component):
