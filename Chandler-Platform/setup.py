@@ -26,7 +26,7 @@ setup(
     install_requires=[
         'DecoratorTools>=1.6', #'Presentable>=0.1a1dev-r2439',
         'Trellis>=0.7a3dev-r2595,==dev',
-        'Plugins>=0.5a1dev-r2404,==dev',
+        'Plugins>=0.5a1dev-r2404,>=0.5a1dev,==dev',
         'Importing>=1.9.2',
         'AddOns>=0.7dev-r2409,==dev'
     ],
