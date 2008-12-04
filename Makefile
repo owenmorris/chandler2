@@ -11,7 +11,19 @@ PAPEROPT_a4     = -D latex_paper_size=a4
 PAPEROPT_letter = -D latex_paper_size=letter
 ALLSPHINXOPTS   = -d .build/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) .
 
-.PHONY: help clean html web pickle htmlhelp latex changes linkcheck
+.PHONY: build install develop help clean html web pickle htmlhelp latex changes linkcheck
+
+build:
+	cd Chandler-App && python setup.py build
+	cd Chandler-Platform && python setup.py build
+
+install:
+	cd Chandler-App && python setup.py install
+	cd Chandler-Platform && python setup.py install
+
+develop:
+	cd Chandler-App && python setup.py develop
+	cd Chandler-Platform && python setup.py develop
 
 help:
 	@echo "Please use \`make <target>' where <target> is one of"
