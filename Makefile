@@ -11,19 +11,23 @@ PAPEROPT_a4     = -D latex_paper_size=a4
 PAPEROPT_letter = -D latex_paper_size=letter
 ALLSPHINXOPTS   = -d .build/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) .
 
-.PHONY: build install develop help clean html web pickle htmlhelp latex changes linkcheck
+.PHONY: build install develop test help clean html web pickle htmlhelp latex changes linkcheck
+
+PROJECTS = Chandler-Platform Chandler-App
+SETUP_OPTS = 
+PYTHON = python
+
+test:
+	for proj in $(PROJECTS); do (cd "$$proj" && $(PYTHON) setup.py test $(SETUP_OPTS)); done
 
 build:
-	cd Chandler-App && python setup.py build
-	cd Chandler-Platform && python setup.py build
+	for proj in $(PROJECTS); do (cd "$$proj" && $(PYTHON) setup.py build $(SETUP_OPTS)); done
 
 install:
-	cd Chandler-App && python setup.py install
-	cd Chandler-Platform && python setup.py install
+	for proj in $(PROJECTS); do (cd "$$proj" && $(PYTHON) setup.py install $(SETUP_OPTS)); done
 
 develop:
-	cd Chandler-App && python setup.py develop
-	cd Chandler-Platform && python setup.py develop
+	for proj in $(PROJECTS); do (cd "$$proj" && $(PYTHON) setup.py develop $(SETUP_OPTS)); done
 
 help:
 	@echo "Please use \`make <target>' where <target> is one of"
