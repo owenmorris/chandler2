@@ -35,6 +35,7 @@ setup(
         'svn://svn.eby-sarna.com/svnroot/Trellis#egg=Trellis-dev'
     ],
     test_suite = 'test_suite',
+    test_loader = 'test_suite:TestLoader',
     packages = find_packages(),
     namespace_packages = ['chandler'],
 )
