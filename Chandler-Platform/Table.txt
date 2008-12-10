@@ -1,0 +1,307 @@
+=========================================
+The :class:`Table` Interaction Component
+=========================================
+
+.. currentmodule:: chandler.core
+
+>>> import peak.events.trellis as trellis
+>>> import peak.events.collections as collections
+>>> from chandler.core import *
+
+A :class:`Table` is an interaction component that's designed to
+represent the objects in a tabular form. Typically, this component
+would be presented as some kind of list or grid view. It's possible to
+imagine other presentations, though: For example, numerical data could
+be represented by some kind of bar or pie chart. In what follows,
+we'll stick with the former, and use terms like "row" to refer to
+individual components within a :class:`Table`.
+
+To demonstrate how a :class:`Table` works, let's imagine we are
+writing an application to display the `Elo rating`_ of the world's top
+chess players. Then we might model each entry in our table with an
+instance of the following component:
+
+>>> class ChessPlayer(trellis.Component):
+...     trellis.attrs(
+...         firstName=u'',
+...         lastName=u'',
+...         rating=0.0
+...     )
+
+Initially, let's start out with the following example players:
+
+>>> players = [
+...     ChessPlayer(firstName=u'Alexander', lastName=u'Morozevich', rating=2776),
+...     ChessPlayer(firstName=u'Veselin', lastName=u'Topalov', rating=2785),
+...     ChessPlayer(firstName=u'Vishy', lastName=u'Anand', rating=2780),
+...     ChessPlayer(firstName=u'Magnus', lastName=u'Carlsen', rating=2774),
+... ]
+
+We'll have to specify the columns that we want to display in our
+table. For each of these, we create a :class:`TableColumn`.
+
+>>> rating_column = TableColumn(label=u'Rating',
+...                             get_value=lambda item: item.rating)
+
+Here the :attr:`~TableColumn.label` would typically be presented as
+the title in the column's heading in the user interface, while
+:attr:`~TableColumn.get_value` is a function that specifies what to
+display for the ``item`` in each of the table's rows.
+
+It's not necessary for :attr:`~TableColumn.get_value` to be a simple
+item attribute. For instance, we can combine the :attr:`firstName` and
+:attr:`lastName` attributes into a single column:
+
+>>> name_column = TableColumn(label=u'Name',
+...                           get_value=lambda item: u"%s, %s" %
+...                                           (item.lastName, item.firstName))
+>>> rating_column = TableColumn(label=u'Rating',
+...                             get_value=lambda item: item.rating)
+
+Now, we're ready to create our :class:`Table`:
+
+>>> table = Table(columns=trellis.List([name_column, rating_column]),
+...               model=trellis.Set(players),
+...               sort_column=rating_column)
+
+Note that the :attr:`Table.model` attribute specifies the
+:class:`trellis.Set` that underlies the table. The actual `sorted
+set`_ that can be used to present the table, is accessible via
+:attr:`Table.items`. In our particular example, we are sorting by
+``rating_column``, and so we see:
+
+>>> list(player.rating for player in table.items)
+[2785, 2780, 2776, 2774]
+
+The API :meth:`Table.get_cell_value` allows you to get the value for a
+particular row and column of the items. The method takes a 2-element
+tuple of row and column as its only argument:
+
+>>> table.get_cell_value((1, 0))
+u'Anand, Vishy'
+
+Specifying an out-of-range row or column returns ``None``:
+
+>>> print table.get_cell_value((107, 0))
+None
+>>> print table.get_cell_value((0, -46))
+None
+
+Observing changes
+-----------------
+
+With the above API, it isn't hard to imagine hooking up a
+:class:`Table` to some presentation layer. By observing
+:attr:`Table.items`, you can update changes in specific rows of the
+table when items are added or removed from the underlying
+collection. However, what happens when the items in your table are
+changed in some way, for instance, by the user making changes
+elsewhere in the interface? To help propagate this kind of update,
+:class:`Table` has a :class:`trellis.collections.Observing` attribute
+(see the `Observing documentation`_ for details).
+
+Let's see you can use to push changes back to the user interface:
+
+>>> table.observer
+<peak.events.collections.Observing object at 0x...>
+
+Let's create a performer cell to observe these changes. To make our
+example produce repeatable output, we'll sort the changes before
+printing them, although you probably wouldn't want to do this in a
+real-world example:
+
+>>> def show():
+...     if (table.observer.changes):
+...         print "Observed %d change(s) ---" % (len(table.observer.changes),)
+...         for key in sorted(table.observer.changes.iterkeys()):
+...             new, old = table.observer.changes[key]
+...             print "%s: %s ==> %s" % (key, old, new)
+>>> c = trellis.Performer(show)
+
+The :class:`~trellis.collections.Observing` works in conjunction with
+the table's :attr:`~Table.visible_ranges` attribute, which starts out
+specifying no table cells are visible:
+
+>>> table.visible_ranges
+(0, 0, 0, 0)
+
+(The elements of this ``tuple`` are start row, number of rows, start
+column, number of columns). The idea here is that usually tables will
+be presented with some kind of scroll area, and so only a small number
+of rows and columns will be visible (i.e. require
+display). :class:`Table` provides a ``resetting_to`` cell that can be
+used to specify the changes in the above attribute. So, let's say for
+now we want to observe all values currently in the model. We'd do this
+by specifying ``len(table.model)`` for the change in number of rows,
+and ``len(table.columns)`` for the change in number of columns:
+
+>>> table.visible_range_change = (0, len(table.model), 0, len(table.columns))
+Observed 8 change(s) ---
+(0, 0): Topalov, Veselin ==> Topalov, Veselin
+(0, 1): 2785 ==> 2785
+(1, 0): Anand, Vishy ==> Anand, Vishy
+(1, 1): 2780 ==> 2780
+(2, 0): Morozevich, Alexander ==> Morozevich, Alexander
+(2, 1): 2776 ==> 2776
+(3, 0): Carlsen, Magnus ==> Carlsen, Magnus
+(3, 1): 2774 ==> 2774
+
+We now get notified of the change to every visible row and
+column. Let's see what happens when we change one displayed value:
+
+>>> players[2].firstName=u'Viswanathan'
+Observed 1 change(s) ---
+(1, 0): Anand, Vishy ==> Anand, Viswanathan
+
+Similarly, if we change a value in the ``rating_column``, we get a
+single change:
+
+>>> players[1].rating = 2796
+Observed 1 change(s) ---
+(0, 1): 2785 ==> 2796
+
+If we rearrange the columns in the table (for instance, in response to
+a user drag-and-dropping a column header in some UIs), we again get a
+notification of changes to all cells:
+
+>>> table.columns.reverse()
+Observed 8 change(s) ---
+(0, 0): Topalov, Veselin ==> 2796
+(0, 1): 2796 ==> Topalov, Veselin
+(1, 0): Anand, Viswanathan ==> 2780
+(1, 1): 2780 ==> Anand, Viswanathan
+(2, 0): Morozevich, Alexander ==> 2776
+(2, 1): 2776 ==> Morozevich, Alexander
+(3, 0): Carlsen, Magnus ==> 2774
+(3, 1): 2774 ==> Carlsen, Magnus
+
+Sorting
+-------
+The :attr:`~Table.sort_column` attribute specifies which column the
+table's :attr:`~Table.items` are sorted by. So, we can change this,
+and get notification of changes:
+
+>>> table.sort_column = name_column
+Observed 6 change(s) ---
+(1, 0): 2780 ==> 2776
+(1, 1): Anand, Viswanathan ==> Morozevich, Alexander
+(2, 0): 2776 ==> 2774
+(2, 1): Morozevich, Alexander ==> Carlsen, Magnus
+(3, 0): 2774 ==> 2780
+(3, 1): Carlsen, Magnus ==> Anand, Viswanathan
+
+Here, the 0-th entry, for ``u'Topalov, Veselin``, happens to have both
+the highest rating and comes last in the alphabet, so no change is
+propagated.
+
+:class:`Table` also has a ``resetting_to``
+:class:`~peak.events.trellis.Cell` that can be used to simulate a
+click on the column header in many GUIs. If it is set to the current
+:attr:`~Table.sort_column`, the current sort is reversed:
+
+>>> table.items.reverse
+True
+>>> table.select_column = name_column
+Observed 8 change(s) ---
+(0, 0): 2796 ==> 2780
+(0, 1): Topalov, Veselin ==> Anand, Viswanathan
+(1, 0): 2776 ==> 2774
+(1, 1): Morozevich, Alexander ==> Carlsen, Magnus
+(2, 0): 2774 ==> 2776
+(2, 1): Carlsen, Magnus ==> Morozevich, Alexander
+(3, 0): 2780 ==> 2796
+(3, 1): Anand, Viswanathan ==> Topalov, Veselin
+>>> table.items.reverse
+False
+
+By default, a :class:`Table` just uses its sort_column's
+:meth:`~TableColumn.get_value` method as a sort key. For more complex
+behavior, you can specify :func:`sort_key` on a
+:class:`TableColumn`. For example, if we wanted to break "ties" in
+sorting by rating by sorting by name, we could do something like:
+
+>>> def better_rating_sort_key(player):
+...     return (player.rating, player.lastName, player.firstName)
+>>> rating_column.sort_key = better_rating_sort_key
+
+Let's add a rating tie:
+
+>>> table.model.add(ChessPlayer(rating=2776, firstName=u"Vladimir", lastName=u"Kramnik"))
+Observed 3 change(s) ---
+(2, 1): Morozevich, Alexander ==> Kramnik, Vladimir
+(3, 0): 2796 ==> 2776
+(3, 1): Topalov, Veselin ==> Morozevich, Alexander
+
+>>> table.select_column = rating_column
+Observed 6 change(s) ---
+(0, 0): 2780 ==> 2796
+(0, 1): Anand, Viswanathan ==> Topalov, Veselin
+(1, 0): 2774 ==> 2780
+(1, 1): Carlsen, Magnus ==> Anand, Viswanathan
+(2, 1): Kramnik, Vladimir ==> Morozevich, Alexander
+(3, 1): Morozevich, Alexander ==> Kramnik, Vladimir
+
+>>> table.items[2].lastName, table.items[2].rating
+(u'Morozevich', 2776)
+>>> table.items[3].lastName, table.items[3].rating
+(u'Kramnik', 2776)
+
+Adding and Removing Items
+-------------------------
+
+Let's replace our :class:`~peak.events.trellis.Performer` with
+something that also observes changes to :attr:`~Table.items`,
+i.e. something closer to what we would use to hook our :class:`Table`
+up to a presentation layer:
+
+>>> def new_show():
+...     if table.items.changes:
+...         print "items.changes: %s" % (table.items.changes,)
+...     show()
+>>> c = trellis.Performer(new_show)
+
+Now, let's see what happens when we add a new entry to our model:
+
+>>> table.model.add(ChessPlayer(firstName=u'Vasily', lastName=u'Ivanchuk', rating=2792))
+items.changes: [(1, 1, 1)]
+Observed 5 change(s) ---
+(1, 0): 2780 ==> 2792
+(1, 1): Anand, Viswanathan ==> Ivanchuk, Vasily
+(2, 0): 2776 ==> 2780
+(2, 1): Morozevich, Alexander ==> Anand, Viswanathan
+(3, 1): Kramnik, Vladimir ==> Morozevich, Alexander
+
+>>> table.model.remove(players[0])
+items.changes: [(3, 4, 0)]
+Observed 1 change(s) ---
+(3, 1): Morozevich, Alexander ==> Kramnik, Vladimir
+
+
+Changing visible ranges
+-----------------------
+It's OK to make the visible range larger than the length of the
+list. In this case, you will get changes showing table values as
+``None``:
+
+>>> table.visible_range_change = (0, 2, 0, 0)
+Observed 4 change(s) ---
+(4, 0): 2774 ==> 2774
+(4, 1): Carlsen, Magnus ==> Carlsen, Magnus
+(5, 0): None ==> None
+(5, 1): None ==> None
+
+So, here we have a fifth item that became visible, as well as a blank
+line corresponding to the empty part of the scroll area of our
+hypothetical table.
+
+TODO
+----
+
+- Sectioning (again à la Dashboard) is somewhat tricky because it ends up
+  defining table cells that span columns, and because sorting is weird
+  (although things can again be patched up via a wrapper class
+  again). Possibly this can just be addressed as a presentation issue, though.
+
+.. _Elo rating: http://en.wikipedia.org/wiki/Elo_rating_system
+.. _sorted set: http://peak.telecommunity.com/DevCenter/TrellisCollections#sortedset
+.. _Observing documentation: http://peak.telecommunity.com/DevCenter/TrellisCollections#observing

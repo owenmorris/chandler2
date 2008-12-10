@@ -188,14 +188,18 @@ via:
 
 >>> class Thermostat(TempConverter):
 ...     room_name = trellis.attr('')
+...     def __cmp__(self, other):
+...         return cmp(self.room_name, other.room_name) or super(TempConverter, self).__cmp__(other)
 
-Let's make a list of ``Thermostat`` instances:
+To store ``Thermostat`` instances, we'll be using a Trellis
+:class:`~trellis.collections.SortedSet`, as follows:
 
->>> thermostats = trellis.List([
+>>> import peak.events.collections as collections
+>>> thermostats = [
 ...     Thermostat(room_name='Reykjavik', C=2),
 ...     Thermostat(room_name='Baguio City', C=25),
-...     Thermostat(room_name='Moscow', C=5),
-... ])
+...     Thermostat(room_name='Merano', C=16),
+... ]
 
 Our application will be slightly more complicated now: we will have
 some kind of list control to display all of our Thermostats, and we'll
@@ -203,11 +207,11 @@ just edit the selected one using our previous :class:`Feature`
 objects. The way we model this is using the concept of a Scope, which
 binds together model data to one or more :class:`Feature` instances.
 
->>> list_scope = Scope(
-...     model=thermostats,
-...     features=(
-...         Table(items=thermostats, display_name=lambda item:item.room_name),
-...     ),
+>>> table = Table(
+...     model=trellis.Set(thermostats),
+...     columns=[
+...         TableColumn(get_value=lambda item:item.room_name),
+...     ],
 ... )
 
 Note the presence of the :attr:`~Scope.model` attribute. This is an
@@ -216,12 +220,18 @@ various features (to appropriate cells).
 
 We'll discuss the :class:`Table` component later, but let's note for
 now this :class:`Feature` is what we're using to handle our list of
-thermostats. It has a :attr:`~Table.selected_item` attribute that
-defaults to the first item in its list:
+thermostats. We can retrieve the current (sorted) list via:
 
->>> table = iter(list_scope.features).next()
->>> table.display_name(table.selected_item)
-'Reykjavik'
+>>> list(item.room_name for item in table.items)
+['Baguio City', 'Merano', 'Reykjavik']
+
+The :class:`Table` has a :attr:`~Table.selected_item` attribute that
+defaults to the first item in its list.
+
+>>> table.columns[0].get_value(table.selected_item)
+'Baguio City'
+
+>>> table.selected_item = table.items[2]
 
 Now, we can create a second :class:`Scope`, which is the area where we
 can edit the Celsius and Fahrenheit temperatures for the selected
@@ -251,38 +261,63 @@ To observe what's happening to the two :class:`Text` values here, let's
 create a performer cell, which will print the values whenever they
 change:
 
->>> def watch_texts():
-...     print "C:", c_text.cell.value
-...     print "F:", f_text.cell.value
->>> perf = trellis.Performer(watch_texts)
-C: 2
-F: 35.6
+>>> def scope_watcher(scope):
+...     def rule():
+...         for feature in sorted(scope.features, key=lambda f: f.label):
+...             print "%s: %s" % (feature.label, feature.cell.value)
+...     return trellis.Performer(rule)
+>>> watcher = scope_watcher(detail_scope)
+Celsius: 2
+Fahrenheit: 35.6
 
 At this point, we can double-check that the Celsius text has the
 correct value:
 
->>> thermostats[0].C
+>>> table.items[2].C
 2
->>> c_text.cell.value == 2 == thermostats[0].C
-True
+>>> c_text.cell.value
+2
 >>> c_text.scope is detail_scope
 True
 
-Let's imagine the user selects the second item, "Baguio City", in the
+Let's imagine the user selects the "Baguio City" item in the
 table. Then, c_text and f_text will update accordingly:
 
 >>> table.selected_item = thermostats[1]
-C: 25
-F: 77.0
+Celsius: 25
+Fahrenheit: 77.0
 
 Altering one of the :class:`Text`'s cells (i.e. simulating entering a
 new value in the user interface) also causes both displayed values to change:
 
 >>> f_text.cell.value = 86
-C: 30.0
-F: 86
+Celsius: 30.0
+Fahrenheit: 86
 >>> table.selected_item.C
 30.0
+
+The :meth:`~Scope.make_model_cell` API is common enough that it has a
+meta-programming form that you can use in a subclass declaration:
+
+>>> class DetailScope(Scope):
+...    woot = Scope.feature_cells(
+...        C = lambda: Text(label=u'Celsius'),
+...        F = lambda: Text(label=u'Fahrenheit'),
+...        room_name = lambda: Text(label=u'Room Name')
+...    )
+
+>>> detail_scope = DetailScope(model=trellis.Cells(table)['selected_item'])
+>>> watcher = scope_watcher(detail_scope)
+Celsius: 30.0
+Fahrenheit: 86
+Room Name: Baguio City
+
+Let's select the last item in the table:
+
+>>> table.selected_item = table.items[2]
+Celsius: 2
+Fahrenheit: 35.6
+Room Name: Reykjavik
 
 Styling and Tags
 ----------------

@@ -1,4 +1,5 @@
 import peak.events.trellis as trellis
+import peak.events.collections as collections
 import peak.events.activity as activity
 from peak.util import addons, plugins
 from datetime import datetime
@@ -9,7 +10,8 @@ import sys
 __all__ = ('Item', 'Extension', 'DashboardEntry', 'Collection',
            'One', 'Many',
            'ItemAddOn', 'inherited_attrs',
-           'Feature', 'Command', 'Text', 'Table', 'Scope',
+           'Feature', 'Command', 'Text', 'Table', 'TableColumn',
+           'Scope',
            'ConstraintError', 'Viewer',)
 
 
@@ -283,34 +285,18 @@ class ConstraintError(Exception):
 
 #### Interaction Components #####
 
-class Feature(trellis.Component):
+class InteractionComponent(trellis.Component):
     trellis.attrs(
         label=u'',
         enabled=True,
         visible=True,
         help=None,
     )
+
+class Feature(InteractionComponent):
     cell = None
     scope = One()
 
-class Text(Feature):
-    pass
-
-class Command(Feature):
-    def act(self): pass
-
-class Table(Feature):
-    items = trellis.make(trellis.List)
-
-    @trellis.maintain(initially=None)
-    def selected_item(self):
-        if self.selected_item is None or not self.selected_item in self.items:
-            return self.items[0] or None
-        return self.selected_item
-
-    def display_name(self, item):
-        """Hook for customizing item display"""
-        return unicode(item)
 
 class _RuleCell(trellis.Cell):
      def get_value(self):
@@ -319,13 +305,141 @@ class _RuleCell(trellis.Cell):
          return self.rule().set_value(value)
      value = property(get_value, set_value)
 
-class Scope(trellis.Component):
+
+class Scope(InteractionComponent):
     model = trellis.attr(None)
     features = Many(inverse=Feature.scope)
 
     def make_model_cell(self, attr):
         return _RuleCell(lambda: trellis.Cells(self.model)[attr])
 
+    @staticmethod
+    def feature_cells(**kw):
+        def rule(scope):
+            def iter_features():
+                for key, fn in kw.iteritems():
+                    feature = fn()
+                    feature.scope = scope
+                    feature.cell = scope.make_model_cell(key)
+                    yield feature
+            return tuple(iter_features())
+        return trellis.CellAttribute(rule=rule)
+
+
+class Text(Feature):
+    pass
+
+
+class Command(Feature):
+    def act(self): pass
+
+
+class Table(Scope):
+    """A Table is responsible for managing the display of a C{trellis.Set}"""
+    columns = trellis.make(trellis.List)
+    sort_column = trellis.attr(None)
+    select_column = trellis.attr(resetting_to=None)
+
+    @trellis.make(optional=False)
+    def items(self):
+        return collections.SortedSet(data=self.model)
+
+    @trellis.maintain(initially=None)
+    def model(self):
+        if self.model is None:
+            return trellis.Set()
+        return self.model
+
+    @staticmethod
+    def default_sort_key(item):
+        return item
+
+    @trellis.maintain
+    def _maintain_sort_params(self):
+        if self.select_column is not None and self.select_column.can_sort:
+            if self.select_column is self.sort_column:
+                self.select_column.sort_ascending = not self.select_column.sort_ascending
+                self.items.reverse = not self.select_column.sort_ascending
+            else:
+                self.sort_column = self.select_column
+        elif self.sort_column is None:
+            self.items.sort_key = self.default_sort_key
+        else:
+            # should probably be in a modifier because it could
+            # trigger 2 unnecessary sorts
+            self.items.sort_key = self.sort_column.sort_key
+            self.items.reverse = not self.sort_column.sort_ascending
+
+    @trellis.maintain(initially=None, optional=True)
+    def selected_item(self):
+        if self.selected_item is None or not self.selected_item in self.items:
+            return self.items[0] if self.items else None
+        return self.selected_item
+
+    def get_cell_value(self, (row, col)):
+        """Get value at (row, col) in the table"""
+        self.items.changes # introduce dependency?!?!
+        try:
+            item = self.items[row]
+            column = self.columns[col]
+        except IndexError:
+            return None
+        else:
+            return column.get_value(item)
+
+    visible_range_change = trellis.attr(resetting_to=(0, 0, 0, 0))
+
+    @trellis.maintain(initially=(0, 0, 0, 0))
+    def visible_ranges(self):
+        visible_ranges = tuple(old + delta
+                               for old, delta in zip(self.visible_ranges,
+                                                     self.visible_range_change))
+        if self.visible_ranges != visible_ranges:
+            self.set_visible_ranges(visible_ranges)
+        return visible_ranges
+
+    @trellis.make
+    def observer(self):
+        return collections.Observing(lookup_func=self.get_cell_value)
+
+    @trellis.modifier
+    def set_visible_ranges(self, (start_row, end_row, start_col, end_col)):
+        keys = self.observer.keys
+        old = self.visible_ranges
+
+        def in_new(row, col):
+            return start_row <= row < end_row and start_col <= col < end_col
+
+        def in_old(row, col):
+            return old[0] <= row < old[1] and old[2] <= col < old[3]
+
+        for row in xrange(min(old[0], start_row), max(old[1], end_row)):
+            for col in xrange(min(old[2], start_col), max(old[2], end_col)):
+                cell_in_new = in_new(row, col)
+                cell_in_old = in_old(row, col)
+
+                if cell_in_new and not cell_in_old:
+                    keys.add((row, col))
+                elif cell_in_old and not cell_in_new:
+                    keys.remove((row, col))
+
+
+
+class TableColumn(InteractionComponent):
+    def get_value(self, item):
+        return unicode(item)
+
+    def sort_key(self, item):
+        return self.get_value(item)
+
+    trellis.attrs(
+        can_sort=True,
+        sort_ascending=False,
+    )
+
+class Frame(Scope):
+    """A top-level window/dialog in the UI"""
+    pass
 
 #### Utility #####
 

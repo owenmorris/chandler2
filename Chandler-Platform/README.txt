@@ -11,3 +11,4 @@ The Chandler Platform provides the basic building blocks of a PIM.
    Birefs
    Runtime
    Interaction
+   Table
