@@ -28,11 +28,12 @@ setup(
         'Trellis>=0.7a3dev-r2595,==dev',
         'Plugins>=0.5a1dev-r2404,>=0.5a1dev,==dev',
         'Importing>=1.9.2',
-        'AddOns>=0.7dev-r2409,==dev'
+        'AddOns==dev,>=0.7dev-r2409'
     ],
     dependency_links=[
         'http://peak.telecommunity.com/snapshots/',
-        'svn://svn.eby-sarna.com/svnroot/Trellis#egg=Trellis-dev'
+        'svn://svn.eby-sarna.com/svnroot/Trellis#egg=Trellis-dev',
+        'svn://svn.eby-sarna.com/svnroot/AddOns#egg=AddOns-dev',
     ],
     test_suite = 'test_suite',
     test_loader = 'test_suite:TestLoader',
