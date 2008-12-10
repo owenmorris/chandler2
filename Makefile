@@ -1,4 +1,5 @@
-# Makefile for Sphinx documentation
+# Makefile for Sphinx documentation, as well as build, install, develop, test
+# targets for our subprojects.
 #
 
 # You can set these variables from the command line.
