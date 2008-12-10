@@ -126,9 +126,10 @@ Both :class:`Command` and :class:`Text` are examples of a
 :class:`Feature`.  A :class:`Feature` represents a user-visible,
 application-independent element of the IM. For example, our ``f_text``
 component above has no idea that it has been wired up to a
-``TempConverter`` instance; it just knows that has a label and a
+``TempConverter`` instance; it just knows that it has a label and a
 cell. The goal of an IM, then, is to assemble a set of features,
-making sure they are wired up correctly to domain model components.
+making sure they are wired up correctly to domain model components,
+and to each other.
 
 We'll explore how this wiring occurs below, but for now, let's look
 at some attributes common to all :class:`Feature` instances.

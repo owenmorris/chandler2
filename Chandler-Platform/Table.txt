@@ -98,17 +98,15 @@ collection. However, what happens when the items in your table are
 changed in some way, for instance, by the user making changes
 elsewhere in the interface? To help propagate this kind of update,
 :class:`Table` has a :class:`trellis.collections.Observing` attribute
-(see the `Observing documentation`_ for details).
-
-Let's see you can use to push changes back to the user interface:
+(see the `Observing documentation`_ for details):
 
 >>> table.observer
 <peak.events.collections.Observing object at 0x...>
 
-Let's create a performer cell to observe these changes. To make our
-example produce repeatable output, we'll sort the changes before
-printing them, although you probably wouldn't want to do this in a
-real-world example:
+To show how this works, let's create a performer cell to observe these
+changes. To make our example produce repeatable output, we'll sort the
+changes before printing them, although you probably wouldn't want to
+do this in a real-world example:
 
 >>> def show():
 ...     if (table.observer.changes):
@@ -194,10 +192,12 @@ Here, the 0-th entry, for ``u'Topalov, Veselin``, happens to have both
 the highest rating and comes last in the alphabet, so no change is
 propagated.
 
-:class:`Table` also has a ``resetting_to``
-:class:`~peak.events.trellis.Cell` that can be used to simulate a
-click on the column header in many GUIs. If it is set to the current
-:attr:`~Table.sort_column`, the current sort is reversed:
+To simulate the behaviour of a click on a column header in many GUIs,
+you can change the :attr:`~Table.select_column` attribute, a
+``resetting_to`` :class:`~peak.events.trellis.Cell`. Setting
+:attr:`~Table.select_column` to the current sort column, causes the
+existing sort to be reversed. On the other hand, setting it to a new
+column changes the sort.
 
 >>> table.items.reverse
 True
