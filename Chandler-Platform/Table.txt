@@ -2,6 +2,7 @@
 The :class:`Table` Interaction Component
 =========================================
 
+.. _table-documentation:
 .. currentmodule:: chandler.core
 
 >>> import peak.events.trellis as trellis
@@ -111,7 +112,7 @@ do this in a real-world example:
 >>> def show():
 ...     if (table.observer.changes):
 ...         print "Observed %d change(s) ---" % (len(table.observer.changes),)
-...         for key in sorted(table.observer.changes.iterkeys()):
+...         for key in sorted(table.observer.changes):
 ...             new, old = table.observer.changes[key]
 ...             print "%s: %s ==> %s" % (key, old, new)
 >>> c = trellis.Performer(show)
@@ -127,13 +128,14 @@ specifying no table cells are visible:
 column, number of columns). The idea here is that usually tables will
 be presented with some kind of scroll area, and so only a small number
 of rows and columns will be visible (i.e. require
-display). :class:`Table` provides a ``resetting_to`` cell that can be
-used to specify the changes in the above attribute. So, let's say for
-now we want to observe all values currently in the model. We'd do this
-by specifying ``len(table.model)`` for the change in number of rows,
-and ``len(table.columns)`` for the change in number of columns:
+display). :class:`Table` provides :attr:`~Table.visible_range_increments`,
+a ``resetting_to`` cell that can be used to specify the changes in the
+above attribute. So, let's say for now we want to observe all values
+currently in the model. We'd do this by specifying
+``len(table.model)`` for the change in number of rows, and
+``len(table.columns)`` for the change in number of columns:
 
->>> table.visible_range_change = (0, len(table.model), 0, len(table.columns))
+>>> table.visible_range_increments = (0, len(table.model), 0, len(table.columns))
 Observed 8 change(s) ---
 (0, 0): Topalov, Veselin ==> Topalov, Veselin
 (0, 1): 2785 ==> 2785
@@ -144,8 +146,11 @@ Observed 8 change(s) ---
 (3, 0): Carlsen, Magnus ==> Carlsen, Magnus
 (3, 1): 2774 ==> 2774
 
-We now get notified of the change to every visible row and
-column. Let's see what happens when we change one displayed value:
+We now get notified of the change to every visible row and column. (In
+the case where we change the visible range,
+:class:`~trellis.collections.Observing` sends the same value for
+``old`` and ``new``). Let's see what happens when we change one
+displayed value:
 
 >>> players[2].firstName=u'Viswanathan'
 Observed 1 change(s) ---
@@ -260,6 +265,9 @@ up to a presentation layer:
 ...     show()
 >>> c = trellis.Performer(new_show)
 
+Here, ``table.items.changes`` is a "discrete" (``resetting_to``) cell
+that notifies us of any additions/removals anywhere within ``table.items``.
+
 Now, let's see what happens when we add a new entry to our model:
 
 >>> table.model.add(ChessPlayer(firstName=u'Vasily', lastName=u'Ivanchuk', rating=2792))
@@ -283,7 +291,7 @@ It's OK to make the visible range larger than the length of the
 list. In this case, you will get changes showing table values as
 ``None``:
 
->>> table.visible_range_change = (0, 2, 0, 0)
+>>> table.visible_range_increments = (0, 2, 0, 0)
 Observed 4 change(s) ---
 (4, 0): 2774 ==> 2774
 (4, 1): Carlsen, Magnus ==> Carlsen, Magnus

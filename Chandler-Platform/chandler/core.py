@@ -293,6 +293,7 @@ class InteractionComponent(trellis.Component):
         help=None,
     )
 
+
 class Feature(InteractionComponent):
     cell = None
     scope = One()
@@ -387,13 +388,13 @@ class Table(Scope):
         else:
             return column.get_value(item)
 
-    visible_range_change = trellis.attr(resetting_to=(0, 0, 0, 0))
+    visible_range_increments = trellis.attr(resetting_to=(0, 0, 0, 0))
 
     @trellis.maintain(initially=(0, 0, 0, 0))
     def visible_ranges(self):
         visible_ranges = tuple(old + delta
                                for old, delta in zip(self.visible_ranges,
-                                                     self.visible_range_change))
+                                                     self.visible_range_increments))
         if self.visible_ranges != visible_ranges:
             self.set_visible_ranges(visible_ranges)
         return visible_ranges

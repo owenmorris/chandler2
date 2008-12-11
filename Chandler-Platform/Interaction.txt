@@ -205,8 +205,10 @@ To store ``Thermostat`` instances, we'll be using a Trellis
 Our application will be slightly more complicated now: we will have
 some kind of list control to display all of our Thermostats, and we'll
 just edit the selected one using our previous :class:`Feature`
-objects. The way we model this is using the concept of a Scope, which
-binds together model data to one or more :class:`Feature` instances.
+objects. The way we model this is using the concept of a
+:class:`Scope`, which binds together model data to one or more
+:class:`Feature` instances. In our case, we will be a using a
+:class:`Table`, which is actually a subclass of :class:`Scope`:
 
 >>> table = Table(
 ...     model=trellis.Set(thermostats),
@@ -215,24 +217,28 @@ binds together model data to one or more :class:`Feature` instances.
 ...     ],
 ... )
 
-Note the presence of the :attr:`~Scope.model` attribute. This is an
-arbitrary object that each :class:`Scope` can use to connect up its
-various features (to appropriate cells).
+Note the presence of the :attr:`~Scope.model` attribute, inherited
+from the base :class:`Scope` class. This is an arbitrary object that
+each :class:`Scope` can use to connect up its various features (to
+appropriate cells).
 
-We'll discuss the :class:`Table` component later, but let's note for
-now this :class:`Feature` is what we're using to handle our list of
-thermostats. We can retrieve the current (sorted) list via:
+We discuss the :class:`Table` component more fully :ref:`elsewhere
+<table-documentation>`, but let's note for now that this is what we're
+using to handle our list of thermostats. We can retrieve the current
+(sorted) list via:
 
 >>> list(item.room_name for item in table.items)
 ['Baguio City', 'Merano', 'Reykjavik']
 
 The :class:`Table` has a :attr:`~Table.selected_item` attribute that
-defaults to the first item in its list.
+defaults to the first item in its list:
 
 >>> table.columns[0].get_value(table.selected_item)
 'Baguio City'
 
 >>> table.selected_item = table.items[2]
+>>> table.columns[0].get_value(table.selected_item)
+'Reykjavik'
 
 Now, we can create a second :class:`Scope`, which is the area where we
 can edit the Celsius and Fahrenheit temperatures for the selected
