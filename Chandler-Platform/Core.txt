@@ -108,6 +108,94 @@ More generally, any object is considered_ a collection if it has:
 XXX What should add and remove do for read-only collections? Raise an
 exception?
 
+Filtered Subsets
+----------------
+
+In some cases, you have a :class:`trellis.Set` of objects, and want to
+create a subset based on some function applied to the members of the
+set.  (For example, Chandler needs to do this to filter the items in
+Sidebar collections). :class:`FilteredSubset` is a utility class that
+models this situation.
+
+To create one, you need to supply :attr:`~FilteredSubset.base`, the
+:class:`trellis.Set` you want to filter, and
+:attr:`~FilteredSubset.predicate`, a function that says whether
+objects are in the subset or not.
+
+Let's create a simple example, using sets of integers:
+
+>>> import peak.events.trellis as trellis
+>>> base = trellis.Set(xrange(10))
+
+Imagine we're interested in viewing only the even elements of
+``base``. Then a good predicate will be:
+
+>>> def is_even(i):
+...     return i%2 == 0
+
+and our :class:`FilteredSubset` will just be:
+
+>>> filtered = FilteredSubset(base=base, predicate=is_even)
+
+To show how changes are propagated, we'll create a
+:class:`~trellis.Performer` cell to observe the contents of
+``filtered``, as well as its :attr:`~trellis.Set.added` and
+:attr:`trellis.Set.removed` cells, inherited from
+:class:`~trellis.Set`:
+
+>>> def observe():
+...     print "contents:", sorted(filtered)
+...     for i in sorted(filtered.added): print "    added: %s" % (i,)
+...     for i in sorted(filtered.removed): print "    removed: %s" % (i,)
+>>> c = trellis.Performer(observe)
+contents: [0, 2, 4, 6, 8]
+
+Removing an item from the base set that isn't the subset doesn't cause
+a change to be propagated:
+
+>>> base.remove(9)
+
+Removing a matching member of the base set does cause a notification,
+of course:
+
+>>> base.remove(2)
+contents: [0, 4, 6, 8]
+    removed: 2
+contents: [0, 4, 6, 8]
+
+If objects are added to the base set, and some of them match
+:attr:`~FilteredSubset.predicate`, then we'll get added notifications
+for those:
+
+>>> base.union_update(set([10, 11, 12]))
+contents: [0, 4, 6, 8, 10, 12]
+    added: 10
+    added: 12
+contents: [0, 4, 6, 8, 10, 12]
+
+It's OK to change predicate in mid-stream, so to speak:
+
+>>> filtered.predicate = lambda i: i>7
+contents: [8, 10, 11, 12]
+    added: 11
+    removed: 0
+    removed: 4
+    removed: 6
+contents: [8, 10, 11, 12]
+
+Finally, the same goes for :attr:`~FilteredSubset.base`:
+
+>>> filtered.base = trellis.Set([6, 7, 8, 9])
+contents: [8, 9]
+    added: 9
+    removed: 10
+    removed: 11
+    removed: 12
+contents: [8, 9]
+
+**TODO:** Disallow :class:`trellis.Set` methods that change the
+  :class:`FilteredSubset` directly (e.g. :meth:`trellis.Set.add`), or
+  forward them on to :attr:`~FilteredSubset.base` if appropriate.
 
 Extensions
 ----------

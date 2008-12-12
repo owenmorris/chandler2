@@ -8,7 +8,7 @@ import time
 import sys
 
 __all__ = ('Item', 'Extension', 'DashboardEntry', 'Collection',
-           'One', 'Many',
+           'One', 'Many', 'FilteredSubset',
            'ItemAddOn', 'inherited_attrs',
            'Feature', 'Command', 'Text', 'Table', 'TableColumn',
            'Scope',
@@ -147,6 +147,41 @@ class TupleBackedSet(trellis.Set):
             trellis.Set.remove(self, obj)
         for obj in self.iter_matches(self._tuples.added):
             trellis.Set.add(self, obj)
+
+
+class FilteredSubset(trellis.Set):
+
+    predicate = trellis.attr(lambda obj: True)
+    base = trellis.make(writable=True)(trellis.Set)
+
+    @trellis.compute
+    def added(self):
+        result = set(obj for obj in self.base._added if self.predicate(obj))
+        result.update(self._added)
+        return result
+
+    @trellis.compute
+    def removed(self):
+        result = set(obj for obj in self.base._removed if self.predicate(obj))
+        result.update(self._removed)
+        return result
+
+    @trellis.maintain(resetting_to=None)
+    def _new_base_predicate(self):
+        return self.base, self.predicate
+
+    @trellis.maintain
+    def _maintain_filter(self):
+        if self._new_base_predicate:
+            self._refilter()
+
+    @trellis.modifier
+    def _refilter(self):
+        new = set(obj for obj in self.base if self.predicate(obj))
+        old = set(self._data)
+
+        self.to_remove.update(old - new)
+        self.to_add.update(new - old)
 
 
 class Item(trellis.Component, plugins.Extensible):
