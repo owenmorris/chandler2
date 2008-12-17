@@ -11,7 +11,7 @@ __all__ = ('Item', 'Extension', 'DashboardEntry', 'Collection',
            'One', 'Many', 'FilteredSubset',
            'ItemAddOn', 'inherited_attrs',
            'InteractionComponent', 'Feature', 'Scope',
-           'Command', 'Text', 'Table', 'TableColumn',
+           'Command', 'Text', 'Table', 'TableColumn', 'Choice', 'ChoiceItem',
            'ConstraintError', 'Viewer',)
 
 
@@ -435,6 +435,56 @@ class Command(Feature):
         """Override this to implement a particular command."""
         pass
 
+class ChoiceItem(InteractionComponent):
+    trellis.attrs(
+        label=u'',
+        help=u'',
+        enabled=True,
+        value=None,
+    )
+    def __repr__(self):
+        return "<%s at 0x%0x value=%r>" % (type(self).__name__, id(self), self.value)
+
+class Choice(Feature):
+    choices = trellis.make(trellis.List, writable=True)
+
+    # code to translate between our value and our chosen_item
+    @trellis.compute(resetting_to=None)
+    def new_value(self):
+        return self.value
+
+    @trellis.compute
+    def chosen_item(self):
+        """The currently selected ChoiceItem from our list"""
+        # First, cover a change to the new_choice receiver cell
+        if self.new_choice is not None:
+            if self.new_choice in self.choices:
+                return self.new_choice
+
+            raise ConstraintError("Choice %r isn't in choices of %r" %
+                                   (self.new_choice, self))
+
+        # Cover the case of someone explicitly tweaking value (or
+        # indirectly triggering a recompute)
+        value = self.new_value or self.value
+        for choice_item in self.choices:
+            if choice_item.value == value:
+                return choice_item
+
+        if value is not None:
+            raise ConstraintError("No value for %r in choices of %r" %
+                                   (value, self))
+
+        # If all else fails, return the first ChoiceItem
+        if self.choices:
+            return self.choices[0]
+
+    @trellis.maintain(initially=None)
+    def value(self):
+        if self.chosen_item is not None:
+            return self.chosen_item.value
+
+    new_choice = trellis.attr(resetting_to=None)
 
 class Table(Scope):
     """A Table is responsible for managing the display of a C{trellis.Set}"""
@@ -542,6 +592,7 @@ class TableColumn(InteractionComponent):
 class Frame(Scope):
     """A top-level window/dialog in the UI"""
     pass
+
 
 #### Utility #####
 

@@ -326,6 +326,90 @@ Celsius: 2
 Fahrenheit: 35.6
 Room Name: Reykjavik
 
+The :class:`Choice` feature
+---------------------------
+Sometimes, you have a case where the user needs to choose between a
+set of values. This is usually handled in a user interface via one of
+the following:
+
+- A drop-down list (possibly a combo box)
+- A group of radio-style buttons
+- A group of menu items, one of which is checked.
+
+The :class:`Choice` and :class:`ChoiceItem` components are used to
+handle this type of interaction. A :class:`ChoiceItem` represents one
+possible choice in the set of values. For instance, if we had a case
+where the user gets to choose from a set of colors, one item might
+look like:
+
+>>> greenChoice = ChoiceItem(label=u'Green', help=u'Go Green Yourself!', value=(0, 255, 0))
+
+Here, :attr:`~ChoiceItem.label` and :attr:`~ChoiceItem.help` work just
+as in their :class:`Feature` counterparts. The same goes for
+:attr:`~ChoiceItem.enabled`, which defaults to ``True``:
+
+>>> greenChoice.enabled
+True
+
+So, let's include this and a couple of other color choice items in a
+:class:`Choice`. This component has a :attr:`Choice.choices` attribute
+to enumerate all the possibilities:
+
+>>> choice = Choice(
+...     label=u'What is your favourite colour?',
+...     choices=trellis.List([
+...         ChoiceItem(label=u'Red', value=(255, 0, 0)),
+...         greenChoice,
+...         ChoiceItem(label=u'Blue', value=(0, 0, 255))
+...     ]),
+... )
+
+The :attr:`~Choice.value` of a :class:`Choice` is always the
+:attr:`~ChoiceItem.value` of whichever of the :attr:`~Choice.choices`
+has been chosen by the user. This defaults to the first
+:class:`ChoiceItem` in the list:
+
+>>> choice.value
+(255, 0, 0)
+
+The :class:`ChoiceItem` object corresponding to this value is
+available via the :attr:`~Choice.chosen_item` attribute:
+
+>>> choice.chosen_item
+<ChoiceItem at 0x... value=(255, 0, 0)>
+
+You can set :attr:`~Choice.value` directly, which causes
+:attr:`~Choice.chosen_item` to update to the :class:`ChoiceItem` with
+the matching :attr:`ChoiceItem.value`:
+
+>>> choice.value = (0, 255, 0)
+>>> choice.chosen_item is greenChoice
+True
+
+It is an error if there is no item in :attr:`Choice.choices` matching
+the new value:
+
+>>> choice.value = 'Pink'
+Traceback (most recent call last):
+    ...
+ConstraintError: Can't set cell to: No value for 'Pink' in choices of <chandler.core.Choice object at 0x...>
+
+Lastly, :attr:`~Choice.new_choice` is a "receiver" cell that can be
+used to update :attr:`~Choice.chosen_item`:
+
+>>> choice.new_choice = choice.choices[2]
+>>> choice.value
+(0, 0, 255)
+
+As you might expect, it's again an error to specify a :class:`ChoiceItem` that's not
+in the list of :attr:`~Choice.choices`:
+
+>>> choice.new_choice = ChoiceItem(value=(255, 255, 255))
+Traceback (most recent call last):
+    ...
+ConstraintError: Can't set cell to: Choice <ChoiceItem at 0x... value=(255, 255, 255)> isn't in choices of <chandler.core.Choice object at 0x...>
+
+
 Styling and Tags
 ----------------
 
