@@ -10,8 +10,8 @@ import sys
 __all__ = ('Item', 'Extension', 'DashboardEntry', 'Collection',
            'One', 'Many', 'FilteredSubset',
            'ItemAddOn', 'inherited_attrs',
-           'Feature', 'Command', 'Text', 'Table', 'TableColumn',
-           'Scope',
+           'InteractionComponent', 'Feature', 'Scope',
+           'Command', 'Text', 'Table', 'TableColumn',
            'ConstraintError', 'Viewer',)
 
 
@@ -321,6 +321,8 @@ class ConstraintError(Exception):
 #### Interaction Components #####
 
 class InteractionComponent(trellis.Component):
+    scope = One()
+
     trellis.attrs(
         label=u'',
         enabled=True,
@@ -330,8 +332,7 @@ class InteractionComponent(trellis.Component):
 
 
 class Feature(InteractionComponent):
-    cell = None
-    scope = One()
+    value = trellis.attr(None)
 
 
 class _RuleCell(trellis.Cell):
@@ -344,7 +345,7 @@ class _RuleCell(trellis.Cell):
 
 class Scope(InteractionComponent):
     model = trellis.attr(None)
-    features = Many(inverse=Feature.scope)
+    subcomponents = Many(inverse=InteractionComponent.scope)
 
     def make_model_cell(self, attr):
         return _RuleCell(lambda: trellis.Cells(self.model)[attr])
@@ -356,7 +357,7 @@ class Scope(InteractionComponent):
                 for key, fn in kw.iteritems():
                     feature = fn()
                     feature.scope = scope
-                    feature.cell = scope.make_model_cell(key)
+                    feature.value = scope.make_model_cell(key)
                     yield feature
             return tuple(iter_features())
         return trellis.CellAttribute(rule=rule)
@@ -367,7 +368,9 @@ class Text(Feature):
 
 
 class Command(Feature):
-    def act(self): pass
+    def act(self):
+        """Override this to implement a particular command."""
+        pass
 
 
 class Table(Scope):

@@ -58,13 +58,13 @@ are modelled by :class:`Text` objects:
 
 >>> from chandler.core import *
 
->>> f_text = Text(label='Fahrenheit', cell=trellis.Cells(tc)['F'])
->>> c_text = Text(label='Celsius', cell=trellis.Cells(tc)['C'])
+>>> f_text = Text(label='Fahrenheit', value=trellis.Cells(tc)['F'])
+>>> c_text = Text(label='Celsius', value=trellis.Cells(tc)['C'])
 
 So, we can now check that our fields got wired up correctly. We can
 simulate the user typing "41" into the Fahrenheit field:
 
->>> f_text.cell.value = 41
+>>> f_text.value = 41
 
 and check that our domain model has been updated correctly.
 
@@ -75,9 +75,9 @@ Similarly, changing the domain model should make its way out to
 the :class:`Text` objects:
 
 >>> tc.F = 212.0
->>> f_text.cell.value
+>>> f_text.value
 212.0
->>> c_text.cell.value
+>>> c_text.value
 100.0
 
 Of course, at this point we haven't really accomplish anything
@@ -91,7 +91,7 @@ things), and have an event handler that is called to let us know when
 the user has changed the text in the widget. This handler will set the
 cell's value. In the reverse case, there will probably be a
 :class:`trellis.Performer` cell to observe the changes in
-:attr:`Text.cell`, and push them to the widget.
+:attr:`Text.value`, and push them to the widget.
 
 Command objects
 ---------------
@@ -103,10 +103,10 @@ items. Let's add a couple of Commands, then:
 >>> class Increment(Command):
 ...    increment = 1
 ...    def act(self):
-...        self.cell.value += self.increment
+...        self.value += self.increment
 
->>> c_plus_command = Increment(label='+', cell=c_text.cell, increment=1)
->>> c_minus_command = Increment(label='-', cell=c_text.cell, increment=-1)
+>>> c_plus_command = Increment(label='+', value=trellis.Cells(c_text)['value'], increment=1)
+>>> c_minus_command = Increment(label='-', value=trellis.Cells(c_text)['value'], increment=-1)
 
 The :meth:`~Action.act` method specifies what happens when the user
 clicks the button or menu item. (In more complex cases, this method
@@ -116,7 +116,7 @@ if we "click" on the "+" button:
 >>> c_plus_command.act()
 >>> tc.C
 101.0
->>> f_text.cell.value
+>>> f_text.value
 213.8...
 
 Features
@@ -127,7 +127,7 @@ Both :class:`Command` and :class:`Text` are examples of a
 application-independent element of the IM. For example, our ``f_text``
 component above has no idea that it has been wired up to a
 ``TempConverter`` instance; it just knows that it has a label and a
-cell. The goal of an IM, then, is to assemble a set of features,
+value. The goal of an IM, then, is to assemble a set of features,
 making sure they are wired up correctly to domain model components,
 and to each other.
 
@@ -173,7 +173,7 @@ At this point, ``visible`` will be updated whether we change ``tc``
 directly, or simulate the user entering a value in one of the
 :class:`Text` features:
 
->>> c_text.cell.value = 250.0
+>>> c_text.value = 250.0
 >>> c_plus_command.visible
 False
 
@@ -182,9 +182,9 @@ Scopes
 
 So, how does data make its way from the domain model into the
 application?  To start, we'll need to beef up our one-object "domain
-model" a little to make it somewhat realistic. Instead of one single
-temperature, let's imagine we're writing a program to monitor the
-thermostats in a conference center. We can model this situation
+model" a little to make it slightly more realistic. Instead of one
+single temperature, let's imagine we're writing a program to monitor
+the thermostats in a conference center. We can model this situation
 via:
 
 >>> class Thermostat(TempConverter):
@@ -246,15 +246,15 @@ thermostat:
 
 >>> detail_scope = Scope(
 ...     model=trellis.Cells(table)['selected_item'],
-...     features=(c_text, f_text)
+...     subcomponents=(c_text, f_text)
 ... )
 
-Of course, we need the ``cell`` attributes of our two :attr:`Text`
+Of course, we need the ``value`` attributes of our two :attr:`Text`
 features to point to the correct field in the currently selected item.
 The most straightforward way to do this is to use the
 :meth:`~Scope.make_model_cell` API.
 
->>> c_text.cell = detail_scope.make_model_cell('C')
+>>> c_text.value = detail_scope.make_model_cell('C')
 
 This returned cell is bound to the 'C' attribute of whatever the
 :class:`Scope`'s :attr:`~Feature.model` happens to be (i.e. it
@@ -262,7 +262,7 @@ updates correctly if :attr:`~Feature.model` changes).
 
 We can go ahead and create the same kind of cell for f_text:
 
->>> f_text.cell = detail_scope.make_model_cell('F')
+>>> f_text.value = detail_scope.make_model_cell('F')
 
 To observe what's happening to the two :class:`Text` values here, let's
 create a performer cell, which will print the values whenever they
@@ -270,8 +270,8 @@ change:
 
 >>> def scope_watcher(scope):
 ...     def rule():
-...         for feature in sorted(scope.features, key=lambda f: f.label):
-...             print "%s: %s" % (feature.label, feature.cell.value)
+...         for feature in sorted(scope.subcomponents, key=lambda f: f.label):
+...             print "%s: %s" % (feature.label, feature.value)
 ...     return trellis.Performer(rule)
 >>> watcher = scope_watcher(detail_scope)
 Celsius: 2
@@ -282,7 +282,7 @@ correct value:
 
 >>> table.items[2].C
 2
->>> c_text.cell.value
+>>> c_text.value
 2
 >>> c_text.scope is detail_scope
 True
@@ -297,7 +297,7 @@ Fahrenheit: 77.0
 Altering one of the :class:`Text`'s cells (i.e. simulating entering a
 new value in the user interface) also causes both displayed values to change:
 
->>> f_text.cell.value = 86
+>>> f_text.value = 86
 Celsius: 30.0
 Fahrenheit: 86
 >>> table.selected_item.C
