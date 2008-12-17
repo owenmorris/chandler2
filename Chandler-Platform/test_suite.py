@@ -3,13 +3,14 @@ import sys, os.path
 import pkg_resources
 
 from test_birefs import *
+from test_filtered_subset import *
 
 from setuptools.command.test import ScanningLoader
 
 class TestLoader(ScanningLoader):
     """
     Loader that supports running individual doctests. For example:
-    
+
     Run all doctests:
         python test_suite.py doctests
 
@@ -18,7 +19,7 @@ class TestLoader(ScanningLoader):
 
     The setup.py forms of these work, too, e.g
         python setup.py test -s doctests
-    
+
     """
     def loadTestsFromName(self, name, module=None):
         if name in ("doctests", __name__ + ".doctests"):

@@ -156,33 +156,96 @@ class FilteredSubset(trellis.Set):
 
     @trellis.compute
     def added(self):
-        result = set(obj for obj in self.base._added if self.predicate(obj))
-        result.update(self._added)
-        return result
+        return set(obj for obj in self._added if obj in self)
 
-    @trellis.compute
-    def removed(self):
-        result = set(obj for obj in self.base._removed if self.predicate(obj))
-        result.update(self._removed)
-        return result
+    @trellis.maintain(initially=None)
+    def _data(self):
+        """The dictionary containing the set cells."""
+        if self._data is None: # could change make for this case
+            data = dict()
+            added = self.base
+            removed = ()
+        elif self._new_base:
+            data = self._data
+            added = iter(x for x in self._new_base if not x in self._data)
+            removed = set(x for x in self._data if not x in self._new_base)
+        else:
+            data = self._data
+            added = self.base.added
+            removed = self.base.removed
+
+        for obj in added:
+            data[obj] = cell = self._create_cell(obj)
+            if cell.value:
+                self.to_add.add(obj)
+
+        for obj in removed:
+            cell = data.get(obj, None)
+            if cell is not None:
+                if cell.value:
+                    trellis.mark_dirty()
+                    self.to_remove.add(obj)
+                del data[obj]
+
+        return data
+
+    def _create_cell(self, obj):
+        def rule():
+            return self._maintain_one_cell(obj)
+        value = self.predicate(obj)
+        if value:
+            trellis.mark_dirty()
+        return trellis.Cell(rule=rule, value=value)
+
+    def __repr__(self):
+        return "%s([%s])" % (type(self).__name__,
+                             ", ".join(repr(item) for item, cell in self._data.items() if cell.value))
+
+    def _maintain_one_cell(self, obj):
+        """This maintains the cell corresonding to obj in _data"""
+
+        # Figure out the new value; this also causes the
+        # trellis to calculate the cell's dependencies, and
+        # thereby trigger later changes if necessary.
+        new_value = self.predicate(obj)
+
+        # If we were a real @maintain rule it would be
+        # easy to figure out the old value here. Instead,
+        # we have to track down the cell from self._data
+        # (the same way that a @maintain rule eventually gets
+        # it from component.__cells__).
+        if self._data is None:
+            return new_value
+
+        old_cell = self._data.get(obj, None)
+        if old_cell is None:
+            return new_value
+
+        if old_cell.value != new_value:
+            if new_value:
+                if obj in self.to_remove:
+                    self.to_remove.remove(obj)
+                else:
+                    self.to_add.add(obj)
+            else:
+                if obj in self.to_add:
+                    self.to_add.remove(obj)
+                else:
+                    self.to_remove.add(obj)
+
+        return new_value
 
     @trellis.maintain(resetting_to=None)
-    def _new_base_predicate(self):
-        return self.base, self.predicate
+    def _new_base(self):
+        return self.base
 
-    @trellis.maintain
-    def _maintain_filter(self):
-        if self._new_base_predicate:
-            self._refilter()
+    def __iter__(self):
+        return iter(obj for obj, cell in self._data.iteritems()
+                    if cell.get_value())
 
-    @trellis.modifier
-    def _refilter(self):
-        new = set(obj for obj in self.base if self.predicate(obj))
-        old = set(self._data)
-
-        self.to_remove.update(old - new)
-        self.to_add.update(new - old)
-
+    def __contains__(self, obj):
+        cell = self._data.get(obj)
+        return cell is not None and cell.get_value()
 
 class Item(trellis.Component, plugins.Extensible):
     extend_with = plugins.Hook('chandler.domain.item_addon')
