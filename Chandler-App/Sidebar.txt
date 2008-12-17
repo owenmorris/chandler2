@@ -1,0 +1,177 @@
+====================
+The Chandler Sidebar
+====================
+
+.. module:: chandler.sidebar
+
+Domain (Model) Level
+--------------------
+
+>>> from chandler.sidebar import *
+
+The sidebar in Chandler is the list of Collections, usually displayed
+on the top-left hand side of the main Chandler frame. At the model
+level, each line in the sidebar is represented by a
+:class:`SidebarEntry` object.
+
+Let's create a :class:`SidebarEntry`:
+
+>>> entry = SidebarEntry()
+
+The :attr:`~SidebarEntry.collection` attribute wraps a
+:class:`chandler.core.Collection` instance, whose
+:attr:`~Collection.items` the user will be able to view by selecting
+the entry. By default, this starts out as an empty, untitled
+collection:
+
+>>> entry.collection
+<Collection: >
+>>> list(entry.collection.items)
+[]
+
+It's perfectly possible for a :class:`SidebarEntry` to wrap a
+:class:`~chandler.keyword.Keyword` collection, too:
+
+>>> from chandler.keyword import Keyword
+>>> keyword_entry = SidebarEntry(collection=Keyword('fish'))
+>>> keyword_entry.collection
+<Keyword: fish>
+
+A :class:`SidebarEntry` has a couple of user-settable attributes that
+affect its display:
+
+- :attr:`~SidebarEntry.hsv_color` is a ``tuple`` that specifies what
+  color to use when displaying the entry's icon. By default, these
+  are cycled through a standard sequence:
+
+  >>> entry.hsv_color
+  (210, 0, 0)
+  >>> keyword_entry.hsv_color
+  (120, 0, 0)
+  >>> [SidebarEntry().hsv_color for i in xrange(9)]
+  [(0, 0, 0), (30, 0, 0), (50, 0, 0), (300, 0, 0), (170, 0, 0), (330, 0, 0), (270, 0, 0), (210, 0, 0), (120, 0, 0)]
+
+- :attr:`~SidebarEntry.sort_key` is an ``int`` that is used for
+  sorting the entries at the Interaction layer.
+
+  >>> entry.sort_key
+  1
+  >>> keyword_entry.sort_key
+  2
+
+  Since we made 9 entries in the :attr:`~SidebarEntry.hsv_color` test
+  above, the next :attr:`~SidebarEntry.sort_key` will be 12:
+
+  >>> SidebarEntry().sort_key
+  12
+
+- :attr:`~SidebarEntry.checked` is a simple ``boolean`` attribute
+  that is used to determine whether the given collection should be
+  included in calendar overlays. It defaults to ``False``:
+
+  >>> entry.checked
+  False
+
+These attributes are all writable, so for example, we can set up an
+entry as:
+
+>>> special_entry = SidebarEntry(hsv_color=(17, 22, 35), sort_key=99,
+...                              checked=True)
+>>> special_entry.hsv_color
+(17, 22, 35)
+>>> special_entry.sort_key
+99
+>>> special_entry.checked
+True
+
+The :attr:`SidebarEntry.sort_key` attribute is intended to be used
+mainly by interaction-level components. For instance, the
+:class:`Sidebar` will actually reassign this attribute to implement
+reordering of the entries (or, creating a new :class:`SidebarEntry` at
+an arbitrary position in the list). In addition, non-positive values
+for :attr:`SidebarEntry.sort_key` will be used for "special"
+(i.e. application-defined) collections.
+
+Interaction Model: The Sidebar
+------------------------------
+
+The Sidebar itself is a :class:`chandler.core.Table` subclass.
+
+>>> s = Sidebar()
+>>> s.icon_column
+<chandler.core.TableColumn object at 0x...>
+>>> s.name_column
+<chandler.core.TableColumn object at 0x...>
+
+A subcomponent of the :class:`Sidebar` is the :attr:`~Sidebar.filters`
+that can be applied to the collection:
+
+>>> s.filters
+<chandler.core.Choice object at 0x...>
+
+By default, the "All" collection (i.e. don't filter out any items) is
+selected:
+
+>>> s.filters.chosen_item.label
+u'All'
+
+For demonstration purposes, let's create a couple of collections,
+throw some items in them, and add them to the Sidebar:
+
+>>> import chandler.event as event
+>>> home = core.Collection(title=u'Home')
+>>> work = core.Collection(title=u'Work')
+>>> s.model.update(SidebarEntry(collection=c) for c in (home, work))
+>>> hello = core.Item(title=u'Hello, World!',
+...                  collections=(home, work))
+>>> meeting = event.Event(core.Item(title=u'Meeting', collections=(work,)))
+>>> meeting.add()
+<chandler.event.Event object at 0x...>
+
+Now, we're ready to see how filtering and the Sidebar work. First, the
+
+>>> s.selected_item
+<SidebarEntry(Home) at 0x...>
+
+The :attr:`~Sidebar.filtered_items` attribute consists of all the
+items in :attr:`Sidebar.filtered_items`, filtered appropriately.
+So, in the above case, where "Home" has one item, hello, we see:
+
+>>> len(s.filtered_items)
+1
+>>> set(s.filtered_items) == set([hello])
+True
+
+Let's filter the current collection by event:
+
+>>> s.filters.new_choice = s.filters.choices[1]
+
+We can double-check that this chosen item is correct:
+
+>>> s.filters.chosen_item.label
+u'Calendar'
+>>> s.filters.chosen_item.value == event.Event.installed_on
+True
+
+and that this change has been propagated to the
+:attr:`~core.FilteredSubset.predicate` of
+:attr:`~Sidebar.filtered_items`:
+
+>>> s.filtered_items.predicate
+<bound method classy_class.installed_on of <class 'chandler.event.Event'>>
+
+Since, ``hello``, the only member of "Home", is empty, we expect
+``filtered_items`` to be empty now:
+
+>>> s.filtered_items
+FilteredSubset([])
+
+However, switching the Sidebar's collection to "Work" should leave us
+with one filtered item:
+
+>>> s.items[1]
+<SidebarEntry(Work) at 0x...>
+>>> s.selected_item = s.items[1]
+>>> s.filtered_items
+FilteredSubset([<chandler.core.Item object at 0x...>])
+

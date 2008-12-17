@@ -27,3 +27,4 @@ Interaction Model
 .. toctree::
 
    Event-Interaction
+   Sidebar

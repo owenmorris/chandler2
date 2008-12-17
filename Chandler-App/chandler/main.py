@@ -17,6 +17,8 @@ def load_interaction(app):
     load_domain(app)
 
     # IM-specific stuff here
+    from chandler.sidebar import load_interaction
+    load_interaction(app)
 
 def _headless(app):
     banner = """
