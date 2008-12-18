@@ -177,3 +177,13 @@ with one filtered item:
 >>> s.filtered_items
 FilteredSubset([<chandler.core.Item object at 0x...>])
 
+Sorting
+-------
+
+The :class:`Sidebar` is sorted by the :attr:`~SidebarEntry.sort_key`
+attribute. So, for example, if we add a "special" entry with negative
+:attr:`~SidebarEntry.sort_key`, it'll appear first in the list:
+
+>>> s.model.add(SidebarEntry(collection=core.Collection(title=u'Special'), sort_key=-1))
+>>> s.items[0]
+<SidebarEntry(Special) at 0x...>

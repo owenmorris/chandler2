@@ -26,6 +26,12 @@ class SidebarEntry(trellis.Component):
                                       self.collection.title,
                                       id(self))
 
+    def __cmp__(self, other):
+        if isinstance(other, SidebarEntry):
+            return cmp(self.sort_key, other.sort_key)
+        else:
+            return super(SidebarEntry, self).__cmp__(other)
+
 class Sidebar(core.Table):
     @trellis.maintain
     def icon_column(self):
