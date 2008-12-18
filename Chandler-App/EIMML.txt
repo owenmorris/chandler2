@@ -6,46 +6,44 @@ Serializing Values
 
 First define a record type::
 
-    >>> from application import schema
-    >>> from osaf import sharing, pim
-    >>> from osaf.sharing import ( eimml, recordset_conduit, State, getFilter,
-    ...     Inherit, RecordSet as rs, NoChange as nc, Diff, RecordSet )
+
+    >>> from chandler.core import Item
+    >>> from chandler import eim, eimml
+    >>> from chandler.eim import Inherit, RecordSet as rs, NoChange as nc, Diff
     >>> import datetime, decimal
-    >>> from chandlerdb.persistence.RepositoryView import NullRepositoryView
-    >>> rv = NullRepositoryView()
-    >>> class TestRecord(sharing.Record):
+    >>> class TestRecord(eim.Record):
     ...     URI = 'cid:TestRecord@osaf.us'
-    ...     textField = sharing.field(sharing.TextType(size=100))
-    ...     decimalField = sharing.field(sharing.DecimalType(digits=11,
+    ...     textField = eim.field(eim.TextType(size=100))
+    ...     decimalField = eim.field(eim.DecimalType(digits=11,
     ...                                  decimal_places=2))
-    ...     dateField = sharing.field(sharing.DateType)
+    ...     dateField = eim.field(eim.DateType)
 
 
 Translate text values::
 
-    >>> value = eimml.deserializeValue(TestRecord.textField.typeinfo, rv, 'xyzzy')
+    >>> value = eimml.deserializeValue(TestRecord.textField.typeinfo, 'xyzzy')
     >>> value
     'xyzzy'
-    >>> eimml.serializeValue(TestRecord.textField.typeinfo, rv, value)
+    >>> eimml.serializeValue(TestRecord.textField.typeinfo, value)
     ('xyzzy', 'text')
 
 
 Translate decimal values::
 
-    >>> value = eimml.deserializeValue(TestRecord.decimalField.typeinfo, rv, '123.45')
+    >>> value = eimml.deserializeValue(TestRecord.decimalField.typeinfo, '123.45')
     >>> value
     Decimal("123.45")
-    >>> eimml.serializeValue(TestRecord.decimalField.typeinfo, rv, value)
+    >>> eimml.serializeValue(TestRecord.decimalField.typeinfo, value)
     ('123.45', 'decimal')
 
 
 Translate datetime values::
 
-    >>> value = eimml.deserializeValue(TestRecord.dateField.typeinfo, rv, 
+    >>> value = eimml.deserializeValue(TestRecord.dateField.typeinfo,
     ... '2007-01-30T15:45:30.098593-08:00')
     >>> value
     datetime.datetime(2007, 1, 30, 15, 45, 30, 98593, tzinfo=<ICUtzinfo: Etc/GMT+8>)
-    >>> eimml.serializeValue(TestRecord.dateField.typeinfo, rv, value)
+    >>> eimml.serializeValue(TestRecord.dateField.typeinfo, value)
     ('2007-01-30T15:45:30.098593-08:00', 'datetime')
 
 TODO: int, lob, bytes
@@ -98,9 +96,9 @@ Serialize and deserialize entire record sets using EIMMLSerializer::
     ...   </eim:recordset>
     ... </eim:collection>'''
 
-    >>> recordSets, extra = eimml.EIMMLSerializer.deserialize(rv, sample)
+    >>> recordSets, extra = eimml.EIMMLSerializer.deserialize(sample)
 
-    >>> expectedRecordSets = { '8501de14-1dc9-40d4-a7d4-f289feff8214': Diff([sharing.model.ItemRecord('8501de14-1dc9-40d4-a7d4-f289feff8214', u'Welcome to Cosmo', u'100 123456789.12 1', decimal.Decimal("1164803131"), 0, 0, 0), sharing.model.ModifiedByRecord('8501de14-1dc9-40d4-a7d4-f289feff8214', 'foo@example.com', decimal.Decimal("1164803132"), 500), sharing.model.NoteRecord('8501de14-1dc9-40d4-a7d4-f289feff8214', 'This is the body\nsecond line', u'1e2d48c0-d66b-494c-bb33-c3d75a1ba66b', None, None, None), sharing.model.EventRecord('8501de14-1dc9-40d4-a7d4-f289feff8214', u'20061130T140000', u'PT1H', u'San Jose', u'FREQ=WEEKLY', None, None, None, u'CONFIRMED', None)])}
+    >>> expectedRecordSets = { '8501de14-1dc9-40d4-a7d4-f289feff8214': Diff([sharing_model.ItemRecord('8501de14-1dc9-40d4-a7d4-f289feff8214', u'Welcome to Cosmo', u'100 123456789.12 1', decimal.Decimal("1164803131"), 0, 0, 0), sharing_model.ModifiedByRecord('8501de14-1dc9-40d4-a7d4-f289feff8214', 'foo@example.com', decimal.Decimal("1164803132"), 500), sharing_model.NoteRecord('8501de14-1dc9-40d4-a7d4-f289feff8214', 'This is the body\nsecond line', u'1e2d48c0-d66b-494c-bb33-c3d75a1ba66b', None, None, None), sharing_model.EventRecord('8501de14-1dc9-40d4-a7d4-f289feff8214', u'20061130T140000', u'PT1H', u'San Jose', u'FREQ=WEEKLY', None, None, None, u'CONFIRMED', None)])}
 
 
     >>> recordSets == expectedRecordSets
@@ -109,9 +107,9 @@ Serialize and deserialize entire record sets using EIMMLSerializer::
     >>> extra
     {'name': 'foo', 'uuid': '9501de14-1dc9-40d4-a7d4-f289feff8214'}
 
-    >>> text = eimml.EIMMLSerializer.serialize(rv, recordSets, name="foo")
+    >>> text = eimml.EIMMLSerializer.serialize(recordSets, name="foo")
 
-    >>> recordSets, extra = eimml.EIMMLSerializer.deserialize(rv, text)
+    >>> recordSets, extra = eimml.EIMMLSerializer.deserialize(text)
     >>> recordSets == expectedRecordSets
     True
 
@@ -122,25 +120,25 @@ Serialize and deserialize entire record sets using EIMMLSerializer::
 Fields with empty strings are serialized with an empty="true" attribute on
 their element::
 
-    >>> records = { '8501de14-1dc9-40d4-a7d4-f289feff8214': Diff([sharing.model.NoteRecord('8501de14-1dc9-40d4-a7d4-f289feff8214', '', u'1e2d48c0-d66b-494c-bb33-c3d75a1ba66b', None, None, None)])}
-    >>> text = eimml.EIMMLSerializer.serialize(rv, records)
+    >>> records = { '8501de14-1dc9-40d4-a7d4-f289feff8214': Diff([sharing_model.NoteRecord('8501de14-1dc9-40d4-a7d4-f289feff8214', '', u'1e2d48c0-d66b-494c-bb33-c3d75a1ba66b', None, None, None)])}
+    >>> text = eimml.EIMMLSerializer.serialize(records)
     >>> text
     '<?xml version=\'1.0\' encoding=\'UTF-8\'?><ns0:collection xmlns:ns0="http://osafoundation.org/eim/0"><ns0:recordset uuid="8501de14-1dc9-40d4-a7d4-f289feff8214"><ns1:record xmlns:ns1="http://osafoundation.org/eim/note/0"><ns1:uuid ns0:key="true" ns0:type="text">8501de14-1dc9-40d4-a7d4-f289feff8214</ns1:uuid><ns1:body empty="true" ns0:type="clob" /><ns1:icalUid ns0:type="text">1e2d48c0-d66b-494c-bb33-c3d75a1ba66b</ns1:icalUid><ns1:icalProperties ns0:type="text" /><ns1:icalParameters ns0:type="text" /><ns1:icalExtra ns0:type="text" /></ns1:record></ns0:recordset></ns0:collection>'
-    >>> newRecords, extra = eimml.EIMMLSerializer.deserialize(rv, text)
+    >>> newRecords, extra = eimml.EIMMLSerializer.deserialize(text)
     >>> records == newRecords
     True
 
 Any records in a recordset's exclusions are serialized as deletions::
 
-    >>> recordDeletion = { '8501de14-1dc9-40d4-a7d4-f289feff8214': Diff(set([]), set([sharing.model.ItemRecord('8501de14-1dc9-40d4-a7d4-f289feff8214', u'Welcome to Cosmo', u'100 123456789.12 1', decimal.Decimal("1164803131"), 0, 0, 0)]))}
-    >>> text = eimml.EIMMLSerializer.serialize(rv, recordDeletion)
+    >>> recordDeletion = { '8501de14-1dc9-40d4-a7d4-f289feff8214': Diff(set([]), set([sharing_model.ItemRecord('8501de14-1dc9-40d4-a7d4-f289feff8214', u'Welcome to Cosmo', u'100 123456789.12 1', decimal.Decimal("1164803131"), 0, 0, 0)]))}
+    >>> text = eimml.EIMMLSerializer.serialize(recordDeletion)
     >>> text
     '<?xml version=\'1.0\' encoding=\'UTF-8\'?><ns0:collection xmlns:ns0="http://osafoundation.org/eim/0"><ns0:recordset uuid="8501de14-1dc9-40d4-a7d4-f289feff8214"><ns1:record ns0:deleted="true" xmlns:ns1="http://osafoundation.org/eim/item/0"><ns1:uuid ns0:key="true" ns0:type="text">8501de14-1dc9-40d4-a7d4-f289feff8214</ns1:uuid></ns1:record></ns0:recordset></ns0:collection>'
 
 To indicate that item has been deleted, pass None instead of a recordset::
 
     >>> itemDeletion = { '8501de14-1dc9-40d4-a7d4-f289feff8214' : None }
-    >>> text = eimml.EIMMLSerializer.serialize(rv, itemDeletion)
+    >>> text = eimml.EIMMLSerializer.serialize(itemDeletion)
     >>> text
     '<?xml version=\'1.0\' encoding=\'UTF-8\'?><ns0:collection xmlns:ns0="http://osafoundation.org/eim/0"><ns0:recordset uuid="8501de14-1dc9-40d4-a7d4-f289feff8214" ns0:deleted="true" /></ns0:collection>'
 
@@ -148,9 +146,9 @@ To indicate that item has been deleted, pass None instead of a recordset::
 
 There is a special value, Inherit, which gets serialized as missing="true"::
 
-    >>> missing = { '8501de14-1dc9-40d4-a7d4-f289feff8214': Diff([sharing.model.NoteRecord('8501de14-1dc9-40d4-a7d4-f289feff8214', Inherit, u'1e2d48c0-d66b-494c-bb33-c3d75a1ba66b', None, None, None)])}
-    >>> text = eimml.EIMMLSerializer.serialize(rv, missing)
-    >>> imported, extra = eimml.EIMMLSerializer.deserialize(rv, text)
+    >>> missing = { '8501de14-1dc9-40d4-a7d4-f289feff8214': Diff([sharing_model.NoteRecord('8501de14-1dc9-40d4-a7d4-f289feff8214', Inherit, u'1e2d48c0-d66b-494c-bb33-c3d75a1ba66b', None, None, None)])}
+    >>> text = eimml.EIMMLSerializer.serialize(missing)
+    >>> imported, extra = eimml.EIMMLSerializer.deserialize(text)
     >>> imported
     {'8501de14-1dc9-40d4-a7d4-f289feff8214': Diff(set([NoteRecord(u'8501de14-1dc9-40d4-a7d4-f289feff8214', Inherit, u'1e2d48c0-d66b-494c-bb33-c3d75a1ba66b', None, None, None)]), set([]))}
 
@@ -163,23 +161,23 @@ Records can be sorted by their dependencies. To make a record type dependent
 on another, make one of the first record type's fields' type be the field of
 another.  For instance, NoteRecord's uuid field = eim.key(ItemRecord.uuid)::
 
-    >>> r1 = sharing.model.ItemRecord('1', None, nc, nc, nc, nc, nc)
-    >>> r2 = sharing.model.NoteRecord('1', None, nc, nc, nc, nc)
-    >>> r3 = sharing.model.EventRecord('1', None, nc, nc, nc, nc, nc, nc, nc, nc)
-    >>> r4 = sharing.model.DisplayAlarmRecord('1', nc, None, nc, nc)
-    >>> list(sharing.sort_records( [r3, r1, r4, r2] ))
+    >>> r1 = sharing_model.ItemRecord('1', None, nc, nc, nc, nc, nc)
+    >>> r2 = sharing_model.NoteRecord('1', None, nc, nc, nc, nc)
+    >>> r3 = sharing_model.EventRecord('1', None, nc, nc, nc, nc, nc, nc, nc, nc)
+    >>> r4 = sharing_model.DisplayAlarmRecord('1', nc, None, nc, nc)
+    >>> list(eim.sort_records( [r3, r1, r4, r2] ))
     [ItemRecord(u'1', None, NoChange, NoChange, NoChange, NoChange, NoChange), NoteRecord(u'1', None, NoChange, NoChange, NoChange, NoChange), EventRecord(u'1', None, NoChange, NoChange, NoChange, NoChange, NoChange, NoChange, NoChange, NoChange), DisplayAlarmRecord(u'1', NoChange, None, NoChange, NoChange)]
 
 Sorting works even if not all record types are represented::
 
-    >>> list(sharing.sort_records( [r3, r1, r4] ))
+    >>> list(eim.sort_records( [r3, r1, r4] ))
     [ItemRecord(u'1', None, NoChange, NoChange, NoChange, NoChange, NoChange), EventRecord(u'1', None, NoChange, NoChange, NoChange, NoChange, NoChange, NoChange, NoChange, NoChange), DisplayAlarmRecord(u'1', NoChange, None, NoChange, NoChange)]
 
-    >>> list(sharing.sort_records( [r4, r3] ))
+    >>> list(eim.sort_records( [r4, r3] ))
     [EventRecord(u'1', None, NoChange, NoChange, NoChange, NoChange, NoChange, NoChange, NoChange, NoChange), DisplayAlarmRecord(u'1', NoChange, None, NoChange, NoChange)]
 
     >>> sortedSets = {'1': rs([r4, r1, r3])}
-    >>> eimml.EIMMLSerializer.serialize(rv, sortedSets)
+    >>> eimml.EIMMLSerializer.serialize(sortedSets)
     '<?xml version=\'1.0\' encoding=\'UTF-8\'?><ns0:collection xmlns:ns0="http://osafoundation.org/eim/0"><ns0:recordset uuid="1"><ns1:record xmlns:ns1="http://osafoundation.org/eim/item/0"><ns1:uuid ns0:key="true" ns0:type="text">1</ns1:uuid><ns1:title ns0:type="text" /></ns1:record><ns1:record xmlns:ns1="http://osafoundation.org/eim/event/0"><ns1:uuid ns0:key="true" ns0:type="text">1</ns1:uuid><ns1:dtstart ns0:type="text" /></ns1:record><ns1:record xmlns:ns1="http://osafoundation.org/eim/displayAlarm/0"><ns1:uuid ns0:key="true" ns0:type="text">1</ns1:uuid><ns1:trigger ns0:type="text" /></ns1:record></ns0:recordset></ns0:collection>'
 
 
@@ -192,7 +190,7 @@ Inmemory Mock Cosmo
 
 You can "send" a recordset::
 
-    >>> conduit = recordset_conduit.InMemoryDiffRecordSetConduit(itsView=rv,
+    >>> conduit = recordset_conduit.InMemoryDiffRecordSetConduit(
     ...     shareName="test1", serializer=eimml.EIMMLSerializer)
     >>> conduit.put(sample)
     >>> conduit.syncToken
@@ -275,8 +273,8 @@ created::
     >>> text = conduit.get()
     >>> conduit.syncToken
     '3'
-    >>> expectedRecordSets = { '8501de14-1dc9-40d4-a7d4-f289feff8214': Diff([sharing.model.ItemRecord('8501de14-1dc9-40d4-a7d4-f289feff8214', u'Welcome to Cosmo', u'100 123456789.12 1', decimal.Decimal("1164803131"), 0, 0, 0), sharing.model.ModifiedByRecord('8501de14-1dc9-40d4-a7d4-f289feff8214', 'foo@example.com', decimal.Decimal("1164803132"), 500), sharing.model.NoteRecord('8501de14-1dc9-40d4-a7d4-f289feff8214', 'This is the body\nsecond line', u'1e2d48c0-d66b-494c-bb33-c3d75a1ba66b', None, None, None), sharing.model.EventRecord('8501de14-1dc9-40d4-a7d4-f289feff8214', u'20061130T140000', u'PT1H', u'San Jose', u'FREQ=WEEKLY', None, None, None, u'CONFIRMED', None)]), '9501de14-1dc9-40d4-a7d4-f289feff8214': rs([sharing.model.ItemRecord('9501de14-1dc9-40d4-a7d4-f289feff8214', u'Welcome to Cosmo', u'100 123456789.12 1', decimal.Decimal("1164803132"), 0, 0, 0), sharing.model.ModifiedByRecord('9501de14-1dc9-40d4-a7d4-f289feff8214', 'foo@example.com', decimal.Decimal("1164803132"), 500), sharing.model.NoteRecord('9501de14-1dc9-40d4-a7d4-f289feff8214', 'This is the body\nsecond line', u'1e2d48c0-d66b-494c-bb33-c3d75a1ba66b', None, None, None), sharing.model.EventRecord('9501de14-1dc9-40d4-a7d4-f289feff8214', u'20061130T140000', u'PT1H', None, u'FREQ=WEEKLY', None, None, None, u'CONFIRMED', nc)]) }
-    >>> recordSets, extra = eimml.EIMMLSerializer.deserialize(rv, text)
+    >>> expectedRecordSets = { '8501de14-1dc9-40d4-a7d4-f289feff8214': Diff([sharing_model.ItemRecord('8501de14-1dc9-40d4-a7d4-f289feff8214', u'Welcome to Cosmo', u'100 123456789.12 1', decimal.Decimal("1164803131"), 0, 0, 0), sharing_model.ModifiedByRecord('8501de14-1dc9-40d4-a7d4-f289feff8214', 'foo@example.com', decimal.Decimal("1164803132"), 500), sharing_model.NoteRecord('8501de14-1dc9-40d4-a7d4-f289feff8214', 'This is the body\nsecond line', u'1e2d48c0-d66b-494c-bb33-c3d75a1ba66b', None, None, None), sharing_model.EventRecord('8501de14-1dc9-40d4-a7d4-f289feff8214', u'20061130T140000', u'PT1H', u'San Jose', u'FREQ=WEEKLY', None, None, None, u'CONFIRMED', None)]), '9501de14-1dc9-40d4-a7d4-f289feff8214': rs([sharing_model.ItemRecord('9501de14-1dc9-40d4-a7d4-f289feff8214', u'Welcome to Cosmo', u'100 123456789.12 1', decimal.Decimal("1164803132"), 0, 0, 0), sharing_model.ModifiedByRecord('9501de14-1dc9-40d4-a7d4-f289feff8214', 'foo@example.com', decimal.Decimal("1164803132"), 500), sharing_model.NoteRecord('9501de14-1dc9-40d4-a7d4-f289feff8214', 'This is the body\nsecond line', u'1e2d48c0-d66b-494c-bb33-c3d75a1ba66b', None, None, None), sharing_model.EventRecord('9501de14-1dc9-40d4-a7d4-f289feff8214', u'20061130T140000', u'PT1H', None, u'FREQ=WEEKLY', None, None, None, u'CONFIRMED', nc)]) }
+    >>> recordSets, extra = eimml.EIMMLSerializer.deserialize(text)
     >>> recordSets == expectedRecordSets
     True
 
@@ -295,19 +293,19 @@ the inbound changes that are pending due to conflict::
     >>> dEmpty  = Diff()
     >>> rsEmpty = RecordSet()
 
-    >>> barFilter = sharing.Filter('cid:bar-filter@osaf.us', u"Bars")
-    >>> bazFilter = sharing.Filter('cid:baz-filter@osaf.us', u"Bazzes")
+    >>> barFilter = eim.Filter('cid:bar-filter@osaf.us', u"Bars")
+    >>> bazFilter = eim.Filter('cid:baz-filter@osaf.us', u"Bazzes")
 
     >>> import osaf.sharing
     >>> __name__ = "osaf.sharing"
-    >>> class Demo(sharing.Record):
+    >>> class Demo(eim.Record):
     ...     URI = 'cid:eim.test.demo-record@osaf.us'
-    ...     foo = sharing.key(int)
-    ...     bar = sharing.field(int, filters=[barFilter])
-    ...     baz = sharing.field(int, filters=[bazFilter])
+    ...     foo = eim.key(int)
+    ...     bar = eim.field(int, filters=[barFilter])
+    ...     baz = eim.field(int, filters=[bazFilter])
     >>> osaf.sharing.Demo = Demo
 
-    >>> state = State(itsView=rv)
+    >>> state = State()
 
 Verify the state is empty
     >>> state
@@ -558,11 +556,11 @@ Start over, to test that local deletions and remote changes get detected::
 
 Start over, adding two records (one of a new record type)::
 
-    >>> class Demo2(sharing.Record):
+    >>> class Demo2(eim.Record):
     ...     URI = 'cid:eim.test.demo2-record@osaf.us'
-    ...     foo = sharing.key(int)
-    ...     bar = sharing.field(int, filters=[barFilter])
-    ...     baz = sharing.field(int, filters=[bazFilter])
+    ...     foo = eim.key(int)
+    ...     bar = eim.field(int, filters=[barFilter])
+    ...     baz = eim.field(int, filters=[bazFilter])
     >>> osaf.sharing.Demo2 = Demo2
 
     >>> state.set(rs(set([Demo(1,1,1), Demo2(1,2,2)])), dEmpty)
@@ -607,12 +605,12 @@ record has a NoChange value on the filtered field::
 
 Start over, using a filter that completely filters out an entire record::
 
-    >>> demo3Filter = sharing.Filter('cid:demo3-filter@osaf.us', u"Demo3")
-    >>> class Demo3(sharing.Record):
+    >>> demo3Filter = eim.Filter('cid:demo3-filter@osaf.us', u"Demo3")
+    >>> class Demo3(eim.Record):
     ...     URI = 'cid:eim.test.demo3-record@osaf.us'
-    ...     a = sharing.key(int)
-    ...     b = sharing.field(int, filters=[demo3Filter])
-    ...     c = sharing.field(int, filters=[demo3Filter])
+    ...     a = eim.key(int)
+    ...     b = eim.field(int, filters=[demo3Filter])
+    ...     c = eim.field(int, filters=[demo3Filter])
     >>> osaf.sharing.Demo3 = Demo3
 
 Without a filter, this merge results in a record to send::
@@ -803,17 +801,15 @@ Items can be shared with a peer without using a persistent Share/Conduit.
 The sharing package provides methods for translating items to EIMML and
 back.
 
-    >>> rv0 = NullRepositoryView()
-    >>> rv1 = NullRepositoryView()
-    >>> item0 = pim.Note(itsView=rv0, displayName="test displayName",
+    >>> item0 = pim.Note(displayName="test displayName",
     ...     body="test body")
     >>> item0.setTriageStatus(pim.TriageEnum.later)
     >>> uuid = item0.itsUUID.str16()
     >>> not pim.has_stamp(item0, sharing.SharedItem)
     True
 
-    >>> pje = schema.Item(itsView=rv0)
-    >>> morgen = schema.Item(itsView=rv1)
+    >>> pje = Item()
+    >>> morgen = Item()
 
 An item is serialized to EIMML using the outbound method.  The first
 argument is a list of items which identifies the peer(s) we're
@@ -946,10 +942,10 @@ several that "match" a given sender, but you want to re-use the same
 email address item that is already associated with a shared item so the
 correct state information can be retrieved::
 
-    >>> email1 = pim.EmailAddress(itsView=rv0, emailAddress="test@example.com")
-    >>> email2 = pim.EmailAddress(itsView=rv0, emailAddress="test@example.com",
+    >>> email1 = pim.EmailAddress(emailAddress="test@example.com")
+    >>> email2 = pim.EmailAddress(emailAddress="test@example.com",
     ...    fullName="Test User")
-    >>> item = pim.Note(itsView=rv0, displayName="test")
+    >>> item = pim.Note(displayName="test")
     >>> text = sharing.outbound([email1], item)
     >>> shared = sharing.SharedItem(item)
     >>> len(shared.peerStates)
@@ -978,11 +974,11 @@ hasChanges(record, filteredFields=None) returns True if the given record
 contains any non NoChange values in fields other than those named in
 filteredFields::
 
-    >>> rec = sharing.model.ItemRecord('8501de14-1dc9-40d4-a7d4-f289feff8214', nc, u'100 123456789.12 1', nc, nc, nc, nc)
+    >>> rec = sharing_model.ItemRecord('8501de14-1dc9-40d4-a7d4-f289feff8214', nc, u'100 123456789.12 1', nc, nc, nc, nc)
     >>> sharing.hasChanges(rec, ["triage"])
     False
     
-    >>> rec = sharing.model.ItemRecord('8501de14-1dc9-40d4-a7d4-f289feff8214', u'Welcome to Cosmo', u'100 123456789.12 1', decimal.Decimal("1164803131"), 0, 0, 0)
+    >>> rec = sharing_model.ItemRecord('8501de14-1dc9-40d4-a7d4-f289feff8214', u'Welcome to Cosmo', u'100 123456789.12 1', decimal.Decimal("1164803131"), 0, 0, 0)
     >>> sharing.hasChanges(rec, ["triage"])
     True
 
