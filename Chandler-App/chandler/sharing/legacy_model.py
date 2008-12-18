@@ -12,7 +12,9 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-import chandler.eim as eim
+# Legacy EIM model for Chandler 1.0 data
+
+import chandler.sharing.eim as eim
 import logging
 from uuid import UUID
 logger = logging.getLogger(__name__)

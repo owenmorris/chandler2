@@ -12,10 +12,9 @@ setup(
     test_suite = 'test_suite',
     test_loader = 'test_suite:TestLoader',
     packages = find_packages(),
-    namespace_packages = ['chandler'],
+    namespace_packages = ['chandler', 'chandler.sharing'],
     install_requires=[
         'simplegeneric>=0.6,==dev',
-        'vobject>=0.7.1,==dev',
     ],
     entry_points = """
     [chandler.domain.triage]

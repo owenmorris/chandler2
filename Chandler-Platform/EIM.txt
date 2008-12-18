@@ -3,7 +3,7 @@ The Sharing Record API
 ----------------------
 
 
->>> from chandler import eim
+>>> from chandler.sharing import eim
 >>> from decimal import Decimal
 
 
@@ -1479,4 +1479,41 @@ sort_records(records) will return records such that depenencies occur first::
     [DemoC(1)]
     >>> list(eim.sort_records( [rD] ))
     [DemoD(1)]
+
+
+------------------------
+ Serializing EIM: EIMML
+------------------------
+
+EIM records can be serialized using chandler.sharing.eimml.
+
+    >>> from chandler.sharing import eimml
+    >>> class TestRecord(eim.Record):
+    ...     URI = 'cid:TestRecord@osaf.us'
+    ...     textField = eim.field(eim.TextType(size=100))
+    ...     decimalField = eim.field(eim.DecimalType(digits=11,
+    ...                                  decimal_places=2))
+    ...     dateField = eim.field(eim.DateType)
+
+
+EIMML provides basic translations for text and decimal values.
+
+Translate text values::
+
+    >>> value = eimml.deserializeValue(TestRecord.textField.typeinfo, 'xyzzy')
+    >>> value
+    'xyzzy'
+    >>> eimml.serializeValue(TestRecord.textField.typeinfo, value)
+    ('xyzzy', 'text')
+
+Translate decimal values::
+
+    >>> value = eimml.deserializeValue(TestRecord.decimalField.typeinfo, '123.45')
+    >>> value
+    Decimal("123.45")
+    >>> eimml.serializeValue(TestRecord.decimalField.typeinfo, value)
+    ('123.45', 'decimal')
+
+TODO: int, lob, bytes
+
 

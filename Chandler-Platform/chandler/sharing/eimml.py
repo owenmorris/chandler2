@@ -14,7 +14,7 @@
 
 
 
-from chandler import eim, errors
+from chandler.sharing import eim, errors
 from simplegeneric import generic
 import PyICU, vobject, datetime, dateutil, itertools
 import base64, decimal, re
@@ -430,16 +430,4 @@ def forceToDateTime(dt, tzinfo=None):
             return dt
     elif type(dt) == datetime.date:
         return datetime.datetime.combine(dt, datetime.time(0, tzinfo=tzinfo))
-
-
-
-
-
-
-def test_suite():
-    import doctest
-    return doctest.DocFileSuite(
-        'EIMML.txt',
-        optionflags=doctest.ELLIPSIS|doctest.REPORT_ONLY_FIRST_FAILURE,
-    )
 

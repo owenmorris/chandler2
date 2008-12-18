@@ -28,7 +28,8 @@ setup(
         'Trellis>=0.7a3dev-r2595,==dev',
         'Plugins>=0.5a1dev-r2404,>=0.5a1dev,==dev',
         'Importing>=1.9.2',
-        'AddOns==dev,>=0.7dev-r2409'
+        'AddOns==dev,>=0.7dev-r2409',
+        'vobject>=0.7.1,==dev',
     ],
     dependency_links=[
         'http://peak.telecommunity.com/snapshots/',
@@ -38,5 +39,5 @@ setup(
     test_suite = 'test_suite',
     test_loader = 'test_suite:TestLoader',
     packages = find_packages(),
-    namespace_packages = ['chandler'],
+    namespace_packages = ['chandler', 'chandler.sharing'],
 )
