@@ -90,14 +90,14 @@ class IncompatibleTypes(TypeError):
 
 @generic
 def typeinfo_for(context):
-    """Return the relevant ``sharing.TypeInfo`` for `context`
+    """Return the relevant ``eim.TypeInfo`` for `context`
 
-    `context` may be a URI string, a ``sharing.TypeInfo``, ``sharing.Field``,
+    `context` may be a URI string, a ``eim.TypeInfo``, ``eim.Field``,
     or ``schema.Descriptor`` (e.g. ``schema.One``, etc.).  object.  It can also
-    be any object registered as a type alias using ``sharing.typedef()``.
+    be any object registered as a type alias using ``eim.typedef()``.
 
-    The return value is a ``sharing.TypeInfo``.  If no type information is
-    available for `context`, raise ``sharing.UnknownType``
+    The return value is a ``eim.TypeInfo``.  If no type information is
+    available for `context`, raise ``eim.UnknownType``
     """
     raise UnknownType(context)
 
@@ -130,7 +130,7 @@ class TypeInfo(object):
     def __init__(self, uri=None):
         if self.__class__.__dict__.get('abstract'):
             raise TypeError(
-                "sharing.%s is an abstract type; use a subtype"
+                "eim.%s is an abstract type; use a subtype"
                 % self.__class__.__name__
             )
         registerURI(uri, self, None)
@@ -139,12 +139,12 @@ class TypeInfo(object):
     def __setattr__(self, attr, value):
         if hasattr(self, 'uri'):    # have we been initialized?
             raise TypeError(
-                "sharing.%s instances are immutable" % self.__class__.__name__
+                "eim.%s instances are immutable" % self.__class__.__name__
             )
         object.__setattr__(self, attr, value)
 
     def __repr__(self):
-        return 'sharing.%s(%r)' % (
+        return 'eim.%s(%r)' % (
             self.__class__.__name__, self.uri
         )
 
@@ -170,14 +170,14 @@ class SizedType(TypeInfo):
     def __init__(self, uri=None, size=None):
         if size is None:
             raise TypeError(
-                "size must be specified when creating a sharing."
+                "size must be specified when creating a eim."
                 + self.__class__.__name__
             )
         self.size = size
         TypeInfo.__init__(self, uri)
 
     def __repr__(self):
-        return 'sharing.%s(%r, %d)' % (
+        return 'eim.%s(%r, %d)' % (
             self.__class__.__name__, self.uri, self.size
         )
 
@@ -212,14 +212,14 @@ class DecimalType(TypeInfo):
         if digits is None or decimal_places is None:
             raise TypeError(
                 "digits and decimal_places must be specified when creating"
-                " a sharing." + self.__class__.__name__
+                " a eim." + self.__class__.__name__
             )
         self.digits = digits
         self.decimal_places = decimal_places
         TypeInfo.__init__(self, uri)
 
     def __repr__(self):
-        return 'sharing.%s(%r, %d, %d)' % (
+        return 'eim.%s(%r, %d, %d)' % (
             self.__class__.__name__, self.uri, self.digits, self.decimal_places
         )
 

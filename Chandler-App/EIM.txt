@@ -3,42 +3,42 @@ The Sharing Record API
 ----------------------
 
 
->>> import osaf.sharing.eim as sharing   # API kludge during initial dev & testing
+>>> from chandler import eim
 >>> from decimal import Decimal
 
 
 Record Types and Fields
 =======================
 
-Record types are defined by subclassing ``sharing.Record`` and creating
-``sharing.key`` and ``sharing.field`` attributes to describe their layout::
+Record types are defined by subclassing ``eim.Record`` and creating
+``eim.key`` and ``eim.field`` attributes to describe their layout::
 
-    >>> Text500 = sharing.TextType(size=500)
-    >>> class Demo(sharing.Record):
+    >>> Text500 = eim.TextType(size=500)
+    >>> class Demo(eim.Record):
     ...     URI = 'cid:eim.test.demo-record@osaf.us'
-    ...     itemNumber  = sharing.key(int)
-    ...     itemName    = sharing.field(sharing.TextType(size=50))
-    ...     description = sharing.field(Text500)
-    ...     price       = sharing.field(sharing.DecimalType(None, 6, 2), u"Price", str)
+    ...     itemNumber  = eim.key(int)
+    ...     itemName    = eim.field(eim.TextType(size=50))
+    ...     description = eim.field(Text500)
+    ...     price       = eim.field(eim.DecimalType(None, 6, 2), u"Price", str)
 
     >>> r1 = Demo(1,"Foo", "This is a foo", Decimal('2.50'))
 
     >>> r1
     Demo(1, u'Foo', u'This is a foo', Decimal("2.50"))
 
-    >>> Demo(1, sharing.NoChange, sharing.NoChange, sharing.NoChange)
+    >>> Demo(1, eim.NoChange, eim.NoChange, eim.NoChange)
     NoChange
 
 Each record type can have an (optional) unique URI, that can be looked up using
-the ``sharing.lookupSchemaURI()`` API:
+the ``eim.lookupSchemaURI()`` API:
 
-    >>> sharing.lookupSchemaURI('cid:eim.test.demo-record@osaf.us')
+    >>> eim.lookupSchemaURI('cid:eim.test.demo-record@osaf.us')
     <class 'Demo'>
 
 But each record type must have a *unique* URI; duplicating the URI is an
 error::
 
-    >>> class Wrong(sharing.Record):
+    >>> class Wrong(eim.Record):
     ...     URI = 'cid:eim.test.demo-record@osaf.us'    # same as before
     Traceback (most recent call last):
       ...
@@ -66,19 +66,19 @@ Creating diffs from records::
     >>> r1 - Demo(1, "Foo", "This is NOT a foo", Decimal('2.50'))
     Demo(1, NoChange, u'This is a foo', NoChange)
 
-    >>> r1 - Demo(1, "Foo", sharing.NoChange, Decimal('2.50'))
+    >>> r1 - Demo(1, "Foo", eim.NoChange, Decimal('2.50'))
     Demo(1, NoChange, u'This is a foo', NoChange)
 
 Record addition (second record overwrites fields in first, unless NoChange,
 as long as keys match)::
 
-    >>> diff1 = Demo(1, "Bar", sharing.NoChange, Decimal('1.29'))
-    >>> diff2 = Demo(1, sharing.NoChange, "This is NOT a foo", Decimal('2.50'))
+    >>> diff1 = Demo(1, "Bar", eim.NoChange, Decimal('1.29'))
+    >>> diff2 = Demo(1, eim.NoChange, "This is NOT a foo", Decimal('2.50'))
 
     >>> r1 + diff1
     Demo(1, u'Bar', u'This is a foo', Decimal("1.29"))
 
-    >>> r1 + Demo(2, "spam", "wah", sharing.NoChange)
+    >>> r1 + Demo(2, "spam", "wah", eim.NoChange)
     Traceback (most recent call last):
       ...
     ValueError: Can't add itemNumber 1 to itemNumber 2
@@ -90,12 +90,12 @@ the record's key fields, in the order they were defined::
     >>> diff1.getKey()
     (<class 'Demo'>, 1)
 
-    >>> class Demo2(sharing.Record):
+    >>> class Demo2(eim.Record):
     ...     URI         = 'cid:eim.Demo2@osaf.us'
-    ...     itemName    = sharing.field(sharing.TextType(size=50))
-    ...     itemNumber  = sharing.key(int)
-    ...     description = sharing.field(sharing.TextType(size=500))
-    ...     price       = sharing.key(sharing.DecimalType(None, 6, 2))
+    ...     itemName    = eim.field(eim.TextType(size=50))
+    ...     itemNumber  = eim.key(int)
+    ...     description = eim.field(eim.TextType(size=500))
+    ...     price       = eim.key(eim.DecimalType(None, 6, 2))
 
     >>> Demo2(u'blah', 27, u'foobly', Decimal('16.2')).getKey()
     (<class 'Demo2'>, 27, Decimal("16.2"))
@@ -108,7 +108,7 @@ Records also have an ``explain()`` method that yields tuples describing their
      ('description', u'This is a foo', Demo(1, NoChange, u'This is a foo', NoChange)),
      ('itemName', u'Foo', Demo(1, u'Foo', NoChange, NoChange))]
 
-    >>> sorted(Demo(2, sharing.NoChange, "wah", sharing.NoChange).explain())
+    >>> sorted(Demo(2, eim.NoChange, "wah", eim.NoChange).explain())
     [('description', u'wah', Demo(2, NoChange, u'wah', NoChange))]
 
 Notice that the unicode string "Price" and its associated value were generated
@@ -116,11 +116,11 @@ using the unicode title and formatter that were registered with the price field
 when it was created.  You can also explicitly register formatters for specific
 fields or field types, and they will be used to "explain" the item::
 
-    >>> @sharing.format_field.when_object(Demo.itemName)
+    >>> @eim.format_field.when_object(Demo.itemName)
     ... def format_itemName(field, value):
     ...     return "%s (%s)" % (value, field.name)
 
-    >>> @sharing.format_field.when_object(Text500)
+    >>> @eim.format_field.when_object(Text500)
     ... def format_Text500(field, value):
     ...     return "This text can be a maximum of 500 bytes in UTF-8"
 
@@ -138,7 +138,7 @@ There is also a ``global_formatters`` dictionary, which is used to format
 special values that can occur in any field.  Here, we'll use it to format
 ``Decimal("2.50")`` as ``$2.50``::
 
-    >>> sharing.global_formatters[Decimal("2.50")] = lambda f, v: "$%s" % v
+    >>> eim.global_formatters[Decimal("2.50")] = lambda f, v: "$%s" % v
 
     >>> sorted(r1.explain()) # doctest: +NORMALIZE_WHITESPACE
     [(u'Price', '$2.50', Demo(1, NoChange, NoChange, Decimal("2.50"))),
@@ -146,7 +146,7 @@ special values that can occur in any field.  Here, we'll use it to format
        Demo(1, NoChange, u'This is a foo', NoChange)),
      ('itemName', u'Foo (itemName)', Demo(1, u'Foo', NoChange, NoChange))]
 
-    >>> del sharing.global_formatters[Decimal("2.50")]
+    >>> del eim.global_formatters[Decimal("2.50")]
 
 
 Extending Existing Record Types
@@ -156,13 +156,13 @@ If you are adding new fields to a record type that has previously been used
 to dump records, you must always add them *after* any existing fields, and
 give them default values::
 
-    >>> class Demo3(sharing.Record):
+    >>> class Demo3(eim.Record):
     ...     URI         = 'cid:eim.Demo3@osaf.us'
-    ...     itemName    = sharing.field(sharing.TextType(size=50))
-    ...     itemNumber  = sharing.key(int)
-    ...     description = sharing.field(sharing.TextType(size=500))
-    ...     price       = sharing.field(
-    ...         sharing.DecimalType(None, 6, 2), default=Decimal('49.99')
+    ...     itemName    = eim.field(eim.TextType(size=50))
+    ...     itemNumber  = eim.key(int)
+    ...     description = eim.field(eim.TextType(size=500))
+    ...     price       = eim.field(
+    ...         eim.DecimalType(None, 6, 2), default=Decimal('49.99')
     ...     )
     >>> Demo3('test', 27, 'blah').price
     Decimal("49.99")
@@ -170,12 +170,12 @@ give them default values::
 Note that you can't specify any optional fields (i.e., ones with default
 values) before required ones::
 
-    >>> class Demo4(sharing.Record):
+    >>> class Demo4(eim.Record):
     ...     URI         = 'cid:eim.Demo4@osaf.us'
-    ...     itemName    = sharing.field(sharing.TextType(size=50))
-    ...     itemNumber  = sharing.key(int)
-    ...     description = sharing.field(sharing.TextType(size=500), default="blah")
-    ...     price       = sharing.field(sharing.DecimalType(None, 6, 2))
+    ...     itemName    = eim.field(eim.TextType(size=50))
+    ...     itemNumber  = eim.key(int)
+    ...     description = eim.field(eim.TextType(size=500), default="blah")
+    ...     price       = eim.field(eim.DecimalType(None, 6, 2))
     Traceback (most recent call last):
       ...
     TypeError: Can't have required fields after optional ones: Demo4.price
@@ -184,24 +184,24 @@ values) before required ones::
 Record Sets
 -----------
 
-    >>> class R(sharing.Record):
+    >>> class R(eim.Record):
     ...     URI = 'cid:eim.R@osaf.us'
-    ...     k = sharing.key(int)
-    ...     v = sharing.field(int)
+    ...     k = eim.key(int)
+    ...     v = eim.field(int)
 
     >>> r1 = R(1, 2)
     >>> r2 = R(1, -2)
     >>> r3 = R(3, 3)
 
-    >>> rs = sharing.RecordSet([r1])
+    >>> rs = eim.RecordSet([r1])
 
     >>> bool(rs)
     True
 
-    >>> bool(sharing.RecordSet())
+    >>> bool(eim.RecordSet())
     False
 
-    >>> bool(sharing.Diff([],[r1]))
+    >>> bool(eim.Diff([],[r1]))
     True
 
     >>> rs.inclusions == set([r1])
@@ -209,41 +209,41 @@ Record Sets
     >>> rs.exclusions == set()
     True
 
-    >>> rs == sharing.RecordSet([r2])
+    >>> rs == eim.RecordSet([r2])
     False
-    >>> rs != sharing.RecordSet([r2])
+    >>> rs != eim.RecordSet([r2])
     True
-    >>> rs == sharing.RecordSet([r1])
+    >>> rs == eim.RecordSet([r1])
     True
-    >>> rs != sharing.RecordSet([r1])
+    >>> rs != eim.RecordSet([r1])
     False
 
     >>> rs - rs
     Diff(set([]), set([]))
 
-    >>> rs+sharing.RecordSet([r3]) == sharing.Diff([r1,r3], [])
+    >>> rs+eim.RecordSet([r3]) == eim.Diff([r1,r3], [])
     True
-    >>> rs-sharing.RecordSet([r3]) == sharing.Diff([r1],[r3])
-    True
-
-    >>> rs+sharing.RecordSet([r2]) == sharing.RecordSet([r2])
+    >>> rs-eim.RecordSet([r3]) == eim.Diff([r1],[r3])
     True
 
-    >>> sharing.RecordSet([r2]) + rs == rs
+    >>> rs+eim.RecordSet([r2]) == eim.RecordSet([r2])
     True
 
-    >>> rs - sharing.RecordSet([r2]) == rs
+    >>> eim.RecordSet([r2]) + rs == rs
+    True
+
+    >>> rs - eim.RecordSet([r2]) == rs
     True
 
     >>> rs_old = rs
-    >>> rs += sharing.RecordSet([r2])
-    >>> rs == sharing.RecordSet([r2])
+    >>> rs += eim.RecordSet([r2])
+    >>> rs == eim.RecordSet([r2])
     True
 
     >>> rs is rs_old
     True
 
-    >>> sharing.Diff([sharing.NoChange], [sharing.NoChange])
+    >>> eim.Diff([eim.NoChange], [eim.NoChange])
     Diff(set([]), set([]))
     
 
@@ -253,22 +253,22 @@ Extracting Nonconflicting Changes
 The "bitwise OR" operator (|) produces the nonconflicting merge of two diff
 records.  For each field in the original records, the new record contains
 either the value shared by both of the original records, or else
-``sharing.NoChange`` if the values conflicted.  If one of the original records
-has a value of ``sharing.NoChange`` in a given field, the other record's value
+``eim.NoChange`` if the values conflicted.  If one of the original records
+has a value of ``eim.NoChange`` in a given field, the other record's value
 for that field is used.
 
 This allows you to compute the nonconflicting subset of two sets of changes to
 a record::
 
-    >>> class S(sharing.Record):
+    >>> class S(eim.Record):
     ...     URI = 'cid:eim.S@osaf.us'
-    ...     f1 = sharing.field(int)
-    ...     f2 = sharing.field(int)
+    ...     f1 = eim.field(int)
+    ...     f2 = eim.field(int)
 
-    >>> S(1, 2) |  S(1, sharing.NoChange)
+    >>> S(1, 2) |  S(1, eim.NoChange)
     S(1, 2)
 
-    >>> S(sharing.NoChange, 12) | S(16, sharing.NoChange)
+    >>> S(eim.NoChange, 12) | S(16, eim.NoChange)
     S(16, 12)
 
     >>> S(1,2) | S(1,3)
@@ -282,13 +282,13 @@ a record::
 
 The bitwise OR operator can also be applied to diffs::
 
-    >>> sharing.Diff([R(1,2)]) | sharing.Diff([R(1,2)])
+    >>> eim.Diff([R(1,2)]) | eim.Diff([R(1,2)])
     Diff(set([R(1, 2)]), set([]))
 
-    >>> sharing.Diff([R(1,3)]) | sharing.Diff([R(1,2)])
+    >>> eim.Diff([R(1,3)]) | eim.Diff([R(1,2)])
     Diff(set([]), set([]))
 
-    >>> sharing.Diff([R(1,3)]) | sharing.Diff([R(1,2), R(1,3), R(1,4)])
+    >>> eim.Diff([R(1,3)]) | eim.Diff([R(1,2), R(1,3), R(1,4)])
     Diff(set([]), set([]))
 
 
@@ -300,32 +300,32 @@ both to discard pending changes and to break down a pending change diff
 into its constituent changes.  The diff ``.remove()`` method allows you to
 delete an arbitrary subset of an existing recordset::
 
-    >>> d = sharing.Diff([R(1,2)], [R(2,3)])
-    >>> d.remove(sharing.Diff([], [R(2,3)]))  # delete the exclusion
+    >>> d = eim.Diff([R(1,2)], [R(2,3)])
+    >>> d.remove(eim.Diff([], [R(2,3)]))  # delete the exclusion
     >>> d
     Diff(set([R(1, 2)]), set([]))
     
-    >>> d.remove(sharing.Diff([R(1,2)]))
+    >>> d.remove(eim.Diff([R(1,2)]))
     >>> d
     Diff(set([]), set([]))
 
 Removing non-existent inclusions raises a KeyError::
 
-    >>> d.remove(sharing.Diff([R(2,4)]))
+    >>> d.remove(eim.Diff([R(2,4)]))
     Traceback (most recent call last):
       ...
     KeyError: R(2, 4)
 
     >>> r = Demo(1,"Foo", "This is a foo", Decimal('2.50'))
-    >>> d = sharing.Diff([r])
+    >>> d = eim.Diff([r])
 
 You can also remove individual Records, without having to wrap them in a
 recordset::
 
-    >>> d.remove(Demo(1,"Foo", sharing.NoChange, sharing.NoChange))
+    >>> d.remove(Demo(1,"Foo", eim.NoChange, eim.NoChange))
     >>> d
     Diff(set([Demo(1, NoChange, u'This is a foo', Decimal("2.50"))]), set([]))
-    >>> d.remove(Demo(1, sharing.NoChange, 'This is a foo', sharing.NoChange))
+    >>> d.remove(Demo(1, eim.NoChange, 'This is a foo', eim.NoChange))
     >>> d
     Diff(set([Demo(1, NoChange, NoChange, Decimal("2.50"))]), set([]))
     
@@ -337,30 +337,30 @@ Filters are used to suppress the inclusion of selected fields from shared
 records.  To define one, you must provide a unique URI, and a human-readable
 description (in Unicode) of the filter::
 
-    >>> Reminders = sharing.Filter('cid:reminder-filter@osaf.us', u"Reminders")
-    >>> Passwords = sharing.Filter('cid:password-filter@osaf.us', u"Passwords")
+    >>> Reminders = eim.Filter('cid:reminder-filter@osaf.us', u"Reminders")
+    >>> Passwords = eim.Filter('cid:password-filter@osaf.us', u"Passwords")
 
-    >>> sharing.lookupSchemaURI('cid:reminder-filter@osaf.us')
+    >>> eim.lookupSchemaURI('cid:reminder-filter@osaf.us')
     Filter('cid:reminder-filter@osaf.us', u'Reminders')
 
-    >>> sharing.lookupSchemaURI('cid:password-filter@osaf.us')
+    >>> eim.lookupSchemaURI('cid:password-filter@osaf.us')
     Filter('cid:password-filter@osaf.us', u'Passwords')
 
 
 When you define record types, you can provide a list of filters to one or more
 fields::
 
-    >>> t50 = sharing.TextType(size=50)
-    >>> d62 = sharing.DecimalType(None, 6, 2)
-    >>> t500 = sharing.TextType(size=500)
+    >>> t50 = eim.TextType(size=50)
+    >>> d62 = eim.DecimalType(None, 6, 2)
+    >>> t500 = eim.TextType(size=500)
 
-    >>> class SomeType(sharing.Record):
+    >>> class SomeType(eim.Record):
     ...     URI = 'cid:SomeType-for-eim@osaf.us'
-    ...     foo = sharing.key(int)
-    ...     bar = sharing.field(t50, filters=[Reminders, Passwords])
-    ...     baz = sharing.field(d62, filters=[Reminders])
-    ...     spam  = sharing.field(t500)
-    ...     pin = sharing.field(int, filters=[Passwords])
+    ...     foo = eim.key(int)
+    ...     bar = eim.field(t50, filters=[Reminders, Passwords])
+    ...     baz = eim.field(d62, filters=[Reminders])
+    ...     spam  = eim.field(t500)
+    ...     pin = eim.field(int, filters=[Passwords])
 
 These fields are then suppressed whenever you take the ``sync_filter()`` of an
 applicable record::
@@ -387,13 +387,13 @@ Record types that are not linked to the filter are returned unchanged from
 You can also pass ``RecordSet`` or ``Diff`` instances to ``sync_filter``, and
 the result is a new ``RecordSet`` or ``Diff``::
 
-    >>> r4s = sharing.RecordSet([r4])
+    >>> r4s = eim.RecordSet([r4])
     >>> Passwords.sync_filter(r4s)  # doctest: +NORMALIZE_WHITESPACE
     RecordSet(set([SomeType(42, NoChange, Decimal("3"), u'blah', NoChange)]))
 
 But only the ``inclusions`` are filtered, not the ``exclusions``::
 
-    >>> r4s = sharing.Diff(exclusions=[r4])
+    >>> r4s = eim.Diff(exclusions=[r4])
     >>> Passwords.sync_filter(r4s)  # doctest: +NORMALIZE_WHITESPACE
     Diff(set([]),
               set([SomeType(42, u'password reminder', Decimal("3"), u'blah',
@@ -416,7 +416,7 @@ You can also combined filters using ``+=``.  Normally this will be used by
 sharing conduits to construct filters according to the share's filtering
 options::
 
-    >>> conduit_filter = sharing.Filter(None, u'Temporary filter')
+    >>> conduit_filter = eim.Filter(None, u'Temporary filter')
     >>> conduit_filter += Reminders     # add in active filters for this share
     >>> conduit_filter += Passwords     # (real code would use lookupSchemaURI)
 
@@ -458,14 +458,14 @@ Notes on Filtering and Sync algorithms::
 The Translator Framework
 ========================
 
-A ``sharing.Translator`` is an object that handles importing and exporting of
+A ``eim.Translator`` is an object that handles importing and exporting of
 Chandler items as EIM records.  It must have ``URI`` (string), ``version``
 (integer), and ``description`` (unicode) attributes::
 
     >>> from application import schema
     >>> from osaf import pim
 
-    >>> class DemoTranslator(sharing.Translator):
+    >>> class DemoTranslator(eim.Translator):
     ...     """Demonstration translator"""
     ...     URI = "cid:demotranslator@osaf.us"
     ...     version = 1
@@ -487,12 +487,12 @@ Chandler items as EIM records.  It must have ``URI`` (string), ``version``
     ...     def delete_R_record(self, r):
     ...         print "deleting R:", r
     ...
-    ...     @sharing.exporter(schema.Item)
+    ...     @eim.exporter(Item)
     ...     def export_item(self, item):
     ...         print "exporting item"
     ...         yield R(1,2)
     ...
-    ...     @sharing.exporter(pim.ContentItem)
+    ...     @eim.exporter(pim.ContentItem)
     ...     def export_contentitem(self, item):
     ...         print "exporting ContentItem"
     ...         yield R(3,4)
@@ -502,7 +502,7 @@ either "entry points" or some repository registry to look them up for
 importing.  However, once imported, translator classes can be looked up using
 the standard ``lookupSchemaURI()`` API::
 
-    >>> sharing.lookupSchemaURI("cid:demotranslator@osaf.us")
+    >>> eim.lookupSchemaURI("cid:demotranslator@osaf.us")
     <class 'DemoTranslator'>
 
 The sharing layer creates a new translator instance for each import or export
@@ -571,11 +571,11 @@ a single ``Record`` object.
     >>> t.importRecord(R(1,2))
     importing R record: R(1, 2)
 
-    >>> t.importRecords(sharing.Diff([R(1,2)], [d]))
+    >>> t.importRecords(eim.Diff([R(1,2)], [d]))
     importing R record: R(1, 2)
     deleting Demo: Demo(1, u'Foo', u'This is a foo', Decimal("2.50"))
 
-    >>> t.importRecords(sharing.Diff([d], [R(1,2)]))
+    >>> t.importRecords(eim.Diff([d], [R(1,2)]))
     importing Demo record: Demo(1, u'Foo', u'This is a foo', Decimal("2.50"))
     deleting R: R(1, 2)
 
@@ -606,12 +606,12 @@ stamp classes can be used as export targets::
     ...     def delete_Demo_record(self, r):
     ...         print "farewell,", r
     ...
-    ...     @sharing.exporter(schema.Item)
+    ...     @eim.exporter(Item)
     ...     def export_item(self, item):
     ...         print "exporting item"
     ...         yield R(-1, -2)
     ...
-    ...     @sharing.exporter(DemoStamp)
+    ...     @eim.exporter(DemoStamp)
     ...     def export_stamp(self, stamp):
     ...         print "exporting stamp"
     ...         yield R(stamp.data, 42)
@@ -619,11 +619,11 @@ stamp classes can be used as export targets::
     >>> t = DemoTranslator2(rv)
     >>> t.startImport()
 
-    >>> t.importRecords(sharing.Diff([R(1,2)], [d]))
+    >>> t.importRecords(eim.Diff([R(1,2)], [d]))
     importing R record: R(1, 2)
     farewell, Demo(1, u'Foo', u'This is a foo', Decimal("2.50"))
 
-    >>> t.importRecords(sharing.Diff([d], [R(1,2)]))
+    >>> t.importRecords(eim.Diff([d], [R(1,2)]))
     welcome, Demo(1, u'Foo', u'This is a foo', Decimal("2.50"))
     deleting R: R(1, 2)
 
@@ -654,15 +654,15 @@ Creating/Updating Items
 Importers will usually use the translator's ``withItemForUUID()`` decorator
 to create, upgrade the type of, or retrieve an existing item by itsUUID.
 
-    >>> class DemoRecord2(sharing.Record):
+    >>> class DemoRecord2(eim.Record):
     ...     URI = 'cid:eim.test.demo-record2@osaf.us'
-    ...     uuid  = sharing.key(schema.UUID)
+    ...     uuid  = eim.key(schema.UUID)
 
-    >>> class DemoRecord3(sharing.Record):
+    >>> class DemoRecord3(eim.Record):
     ...     URI = 'cid:eim.test.demo-record3@osaf.us'
-    ...     uuid  = sharing.key(schema.UUID)
+    ...     uuid  = eim.key(schema.UUID)
 
-    >>> class DemoTranslator3(sharing.Translator):
+    >>> class DemoTranslator3(eim.Translator):
     ...     """Demonstration translator 3"""
     ...     URI = "cid:demotranslator3@osaf.us"
     ...     version = 1
@@ -670,7 +670,7 @@ to create, upgrade the type of, or retrieve an existing item by itsUUID.
     ...
     ...     @DemoRecord2.importer
     ...     def import_Demo_record2(self, r):
-    ...         self.withItemForUUID(r.uuid, schema.Item)
+    ...         self.withItemForUUID(r.uuid, Item)
     ...         print "Imported record2"
     ...
     ...     @DemoRecord3.importer
@@ -707,7 +707,7 @@ invoked, passing in the (possibly-upgraded) item::
     ... def do_it(item): print item is theItem, item.displayName
     True testme
 
-If it doesn't exist, an item of the specified type (``schema.Item`` by default)
+If it doesn't exist, an item of the specified type (``Item`` by default)
 is created::
 
     >>> uuid1 = '0c7c6c5c-4a04-4d5a-8997-2fcef848c92d'
@@ -738,7 +738,7 @@ upgraded::
 Note, however, that the requested type must be a subclass or superclass of the
 item's current type, or nothing will happen immediately::
 
-    >>> class NonContent(schema.Item):
+    >>> class NonContent(Item):
     ...     foo = schema.One(schema.Integer)
     ...     schema.initialValues(foo=lambda self:99)
     ...     def __setup__(self):
@@ -778,9 +778,9 @@ previously registered callback(s) will be invoked on the upgraded item::
    
 Note, by the way, that the item's type is NOT downgraded if the requested type
 is a superclass of the item's existing type.  So, if ``an_item`` is a
-``pim.ContentItem``, asking for a ``schema.Item`` will leave it unchanged::
+``pim.ContentItem``, asking for a ``Item`` will leave it unchanged::
 
-    >>> @t.withItemForUUID(uuid1, schema.Item)
+    >>> @t.withItemForUUID(uuid1, Item)
     ... def do_it(item): print repr(item)
     <Combined (new): 0c7c6c5c-4a04-4d5a-8997-2fcef848c92d>
 
@@ -801,16 +801,16 @@ you can set attributes on the returned object using keyword arguments to
     >>> pim.has_stamp(an_item, DemoStamp)   # after
     True
 
-Attributes set to ``sharing.NoChange`` are ignored, as this makes it easier to
+Attributes set to ``eim.NoChange`` are ignored, as this makes it easier to
 process "diff" records when importing (no need to check for no-change values)::
 
-    >>> @t.withItemForUUID(uuid1, DemoStamp, data=sharing.NoChange)
+    >>> @t.withItemForUUID(uuid1, DemoStamp, data=eim.NoChange)
     ... def do_it(stamp): print stamp.data  # value is unchanged
     42
 
-Attributes set to ``sharing.Inherit`` are deleted::
+Attributes set to ``eim.Inherit`` are deleted::
 
-    >>> @t.withItemForUUID(uuid1, DemoStamp, data=sharing.Inherit)
+    >>> @t.withItemForUUID(uuid1, DemoStamp, data=eim.Inherit)
     ... def do_it(stamp): print hasattr(stamp, 'data')
     False
 
@@ -833,7 +833,7 @@ instance.  The default implementation saves this and re-raises the error
 at the end of the importRecord operation, but you can also override it in
 a subclass to do something else::
 
-    >>> class DemoTranslator4(sharing.Translator):
+    >>> class DemoTranslator4(eim.Translator):
     ...     """Demonstration translator 4"""
     ...     URI = "cid:demotranslator4@osaf.us"
     ...     version = 1
@@ -841,7 +841,7 @@ a subclass to do something else::
     ...
     ...     @DemoRecord2.importer
     ...     def import_Demo_record2(self, r):
-    ...         @self.withItemForUUID(r.uuid, schema.Item)
+    ...         @self.withItemForUUID(r.uuid, Item)
     ...         def do(item):
     ...             raise TypeError("Some kind of problem")
     ... 
@@ -882,7 +882,7 @@ Conflict Management
 Translators have an ``explainConflicts()`` method that yields information about
 a recordset for conflict-resolution purposes::
 
-    >>> sorted( t.explainConflicts(sharing.Diff([R(1,2)], [R(3,4)])) ) # doctest: +NORMALIZE_WHITESPACE
+    >>> sorted( t.explainConflicts(eim.Diff([R(1,2)], [R(3,4)])) ) # doctest: +NORMALIZE_WHITESPACE
     [('Deleted', (<class 'R'>, 3), Diff(set([]), set([R(3, 4)]))),
      ('v',       2,                Diff(set([R(1, 2)]), set([])))]
 
@@ -902,18 +902,18 @@ The most basic kinds of field types can be created using the ``BytesType``,
 ``TextType``, ``IntType``, ``DateType``, ``DecimalType``, ``BlobType`` and
 ``ClobType`` constructors::
 
-    >>> my_date = sharing.DateType()
+    >>> my_date = eim.DateType()
     >>> my_date
-    sharing.DateType(None)
+    eim.DateType(None)
 
 Types can be given a unique URI, and they can be looked up by it::
 
-    >>> my_text = sharing.TextType("cid:some_text_type@osaf.us", size=99)
+    >>> my_text = eim.TextType("cid:some_text_type@osaf.us", size=99)
     >>> my_text
-    sharing.TextType('cid:some_text_type@osaf.us', 99)
+    eim.TextType('cid:some_text_type@osaf.us', 99)
 
-    >>> sharing.typeinfo_for("cid:some_text_type@osaf.us")
-    sharing.TextType('cid:some_text_type@osaf.us', 99)
+    >>> eim.typeinfo_for("cid:some_text_type@osaf.us")
+    eim.TextType('cid:some_text_type@osaf.us', 99)
 
     >>> my_text.uri
     'cid:some_text_type@osaf.us'
@@ -923,40 +923,40 @@ Types can be given a unique URI, and they can be looked up by it::
 
 But only one type can exist for a given URI at a given point in time::
 
-    >>> another_text = sharing.TextType("cid:some_text_type@osaf.us", 99)
+    >>> another_text = eim.TextType("cid:some_text_type@osaf.us", 99)
     Traceback (most recent call last):
       ...
     TypeError: URI 'cid:some_text_type@osaf.us' is already in use
 
     >>> del my_text     # no conflicting definition now
-    >>> another_text = sharing.TextType("cid:some_text_type@osaf.us", 99)
+    >>> another_text = eim.TextType("cid:some_text_type@osaf.us", 99)
 
 
 Type Aliasing
 -------------
 
-The ``sharing.typedef()`` API lets you register type information for arbitrary
+The ``eim.typedef()`` API lets you register type information for arbitrary
 Python objects, so that you can use existing types, kinds, etc. as field types.
 For example::
 
     >>> class my_int(int):
     ...     """This is just a demonstration type"""
 
-    >>> my_int_type = sharing.IntType('cid:my_int_ex@osaf.us')
-    >>> sharing.typedef(my_int, my_int_type)
+    >>> my_int_type = eim.IntType('cid:my_int_ex@osaf.us')
+    >>> eim.typedef(my_int, my_int_type)
 
-Now, ``my_int`` can be used directly as a field type in a ``sharing.Record``
+Now, ``my_int`` can be used directly as a field type in a ``eim.Record``
 class, instead of using the ``IntType`` object::
 
-    >>> class DemoRecord(sharing.Record):
+    >>> class DemoRecord(eim.Record):
     ...     URI = 'cid:eim.DemoRecord@osaf.us'
-    ...     an_int = sharing.field(my_int)
+    ...     an_int = eim.field(my_int)
 
     >>> DemoRecord.an_int.type
     <class 'my_int'>
 
     >>> DemoRecord.an_int.typeinfo
-    sharing.IntType('cid:my_int_ex@osaf.us')
+    eim.IntType('cid:my_int_ex@osaf.us')
 
 You can alias more than one object to the same type, or alias an object to
 an already-registered alias::
@@ -964,25 +964,25 @@ an already-registered alias::
     >>> class my_int2(int):
     ...     """Another demonstration type"""
 
-    >>> sharing.typedef(my_int2, my_int)
-    >>> sharing.typeinfo_for(my_int2) is sharing.typeinfo_for(my_int)
+    >>> eim.typedef(my_int2, my_int)
+    >>> eim.typeinfo_for(my_int2) is eim.typeinfo_for(my_int)
     True
 
 There are also built-in aliases for anonymous versions of the sizeless
 primitive types (``IntType``, ``BlobType``, ``ClobType``, and ``DateType``),
 so you can use them directly in fields::
 
-    >>> sharing.typeinfo_for(sharing.IntType)
-    sharing.IntType(None)
+    >>> eim.typeinfo_for(eim.IntType)
+    eim.IntType(None)
 
-    >>> sharing.typeinfo_for(sharing.BlobType)
-    sharing.BlobType(None)
+    >>> eim.typeinfo_for(eim.BlobType)
+    eim.BlobType(None)
 
-    >>> sharing.typeinfo_for(sharing.ClobType)
-    sharing.ClobType(None)
+    >>> eim.typeinfo_for(eim.ClobType)
+    eim.ClobType(None)
 
-    >>> sharing.typeinfo_for(sharing.DateType)
-    sharing.DateType(None)
+    >>> eim.typeinfo_for(eim.DateType)
+    eim.DateType(None)
 
 
 Type Conversion
@@ -1001,11 +1001,11 @@ So let's define a ``hexint`` type that we can use in field definitions where
 we want to be able to supply either integers or hex strings as input when
 creating a record.
 
-    >>> hexint = sharing.IntType('cid:hexint_example@osaf.us')
+    >>> hexint = eim.IntType('cid:hexint_example@osaf.us')
 
-    >>> class HexRecord(sharing.Record):
+    >>> class HexRecord(eim.Record):
     ...     URI = 'cid:eim.HexRecord@osaf.us'
-    ...     aField = sharing.field(hexint)
+    ...     aField = eim.field(hexint)
 
 By default, there is no converter registered to convert strings to integers,
 although there is one for converting integers to integers::
@@ -1018,16 +1018,16 @@ although there is one for converting integers to integers::
       ...
     TypeError: No converter registered for values of type <type 'str'>
 
-The ``sharing.add_converter()`` API allows you to register a conversion
+The ``eim.add_converter()`` API allows you to register a conversion
 function to be used for a particular field or field type::
 
-    >>> sharing.add_converter(hexint, str, lambda v: int(v,16))
+    >>> eim.add_converter(hexint, str, lambda v: int(v,16))
     >>> HexRecord("23")
     HexRecord(35)
 
 You can also override the conversion function(s) on a field-by-field basis::
 
-    >>> sharing.add_converter(HexRecord.aField, str, lambda v: int(v,8))
+    >>> eim.add_converter(HexRecord.aField, str, lambda v: int(v,8))
     >>> HexRecord("23")
     HexRecord(19)
 
@@ -1053,36 +1053,36 @@ Creating Subtypes
 -----------------
 
 Sometimes, it's useful to create a field type by copying an existing type.  The
-``sharing.subtype()`` function creates a new type from an existing one.  The
+``eim.subtype()`` function creates a new type from an existing one.  The
 new type will be of the same primitive type, and it will "inherit" any
 conversion functions defined for the base type::
 
-    >>> hexint2 = sharing.subtype(hexint)
+    >>> hexint2 = eim.subtype(hexint)
     >>> hexint2
-    sharing.IntType(None)
+    eim.IntType(None)
 
-    >>> sharing.get_converter(hexint2)("23")
+    >>> eim.get_converter(hexint2)("23")
     35
 
 New subtypes default to having the same size as their base type, if
 applicable, and any extra arguments to ``subtype()`` are passed through to
 the appropriate constructor::
 
-    >>> bytes1 = sharing.BytesType(size=55)
-    >>> bytes2 = sharing.subtype(bytes1, 'bytes2 uri')
+    >>> bytes1 = eim.BytesType(size=55)
+    >>> bytes2 = eim.subtype(bytes1, 'bytes2 uri')
     >>> bytes2
-    sharing.BytesType('bytes2 uri', 55)
+    eim.BytesType('bytes2 uri', 55)
 
-    >>> dec1 = sharing.DecimalType(None, 9, 3)
-    >>> sharing.subtype(dec1, decimal_places = 2)
-    sharing.DecimalType(None, 9, 2)
-    >>> sharing.subtype(dec1, digits = 7)
-    sharing.DecimalType(None, 7, 3)
+    >>> dec1 = eim.DecimalType(None, 9, 3)
+    >>> eim.subtype(dec1, decimal_places = 2)
+    eim.DecimalType(None, 9, 2)
+    >>> eim.subtype(dec1, digits = 7)
+    eim.DecimalType(None, 7, 3)
 
 Note that you can also subtype type aliases::
 
-    >>> sharing.subtype(my_int, 'dummy uri')
-    sharing.IntType('dummy uri')
+    >>> eim.subtype(my_int, 'dummy uri')
+    eim.IntType('dummy uri')
 
 
 XXX test generation-skipping in converter registration
@@ -1094,60 +1094,60 @@ Internals
 
 TypeInfo instances are immutable once created::
 
-    >>> t = sharing.IntType()
+    >>> t = eim.IntType()
     >>> t.uri = "fhdsfblah"
     Traceback (most recent call last):
       ...
-    TypeError: sharing.IntType instances are immutable
+    TypeError: eim.IntType instances are immutable
 
 Misc. constructor data validation tests::
 
-    >>> sharing.TypeInfo()
+    >>> eim.TypeInfo()
     Traceback (most recent call last):
       ...
-    TypeError: sharing.TypeInfo is an abstract type; use a subtype
+    TypeError: eim.TypeInfo is an abstract type; use a subtype
 
-    >>> sharing.SizedType()
+    >>> eim.SizedType()
     Traceback (most recent call last):
       ...
-    TypeError: size must be specified when creating a sharing.SizedType
+    TypeError: size must be specified when creating a eim.SizedType
 
-    >>> sharing.SizedType(size=53)
+    >>> eim.SizedType(size=53)
     Traceback (most recent call last):
       ...
-    TypeError: sharing.SizedType is an abstract type; use a subtype
+    TypeError: eim.SizedType is an abstract type; use a subtype
 
-    >>> sharing.BytesType()
+    >>> eim.BytesType()
     Traceback (most recent call last):
       ...
-    TypeError: size must be specified when creating a sharing.BytesType
+    TypeError: size must be specified when creating a eim.BytesType
 
-    >>> sharing.TextType()
+    >>> eim.TextType()
     Traceback (most recent call last):
       ...
-    TypeError: size must be specified when creating a sharing.TextType
+    TypeError: size must be specified when creating a eim.TextType
 
-    >>> sharing.DecimalType()
+    >>> eim.DecimalType()
     Traceback (most recent call last):
       ...
-    TypeError: digits and decimal_places must be ... sharing.DecimalType
+    TypeError: digits and decimal_places must be ... eim.DecimalType
 
-    >>> sharing.DecimalType(None, 3)    # default places of 0
-    sharing.DecimalType(None, 3, 0)
+    >>> eim.DecimalType(None, 3)    # default places of 0
+    eim.DecimalType(None, 3, 0)
 
 
 No such type::
 
-    >>> sharing.typeinfo_for('xyz:abc')
+    >>> eim.typeinfo_for('xyz:abc')
     Traceback (most recent call last):
       ...
     UnknownType: 'xyz:abc'
 
 Recordtype/field creation and sequence numbers::
 
-    >>> class MyRecord(sharing.Record):
+    >>> class MyRecord(eim.Record):
     ...     URI = 'cid:eim.MyRecord@osaf.us'
-    ...     f1, f2 = sharing.field(hexint), sharing.field(hexint)
+    ...     f1, f2 = eim.field(hexint), eim.field(hexint)
 
     >>> f1, f2 = MyRecord.f1, MyRecord.f2
 
@@ -1177,9 +1177,9 @@ Recordtype/field creation and sequence numbers::
     >>> f2 == f2.seq    # must not be directly comparable to integer
     False
 
-    >>> class MR2(sharing.Record):
+    >>> class MR2(eim.Record):
     ...     URI = 'cid:eim.MR2@osaf.us'
-    ...     f3 = sharing.field(my_int)
+    ...     f3 = eim.field(my_int)
 
     >>> r = MyRecord("23", f2=3)
     >>> r
@@ -1191,7 +1191,7 @@ Recordtype/field creation and sequence numbers::
     >>> MR2(27)
     MR2(27)
 
-    >>> sharing.field(27)   # must be a registered type or alias
+    >>> eim.field(27)   # must be a registered type or alias
     Traceback (most recent call last):
       ...
     UnknownType: 27
@@ -1216,7 +1216,7 @@ Verify that the generated constructor code shows up in tracebacks::
 
 Immutable field attrs::
 
-    >>> sharing.field(my_int).foo = "bar"
+    >>> eim.field(my_int).foo = "bar"
     Traceback (most recent call last):
       ...
     AttributeError: 'field' object has no attribute 'foo'
@@ -1252,7 +1252,7 @@ Can't subclass an existing record type, or reuse fields in other record types::
       ...
     TypeError: Record classes cannot be subclassed
 
-    >>> class CantDoThis(sharing.Record):
+    >>> class CantDoThis(eim.Record):
     ...     URI = 'cid:eim.CantDoThis@osaf.us'
     ...     f3 = MyRecord.f1
     Traceback (most recent call last):
@@ -1276,28 +1276,28 @@ Can't add non-field, non-filter to filter::
 Translators *must* have all required attributes, of the right types, and with
 unique URIs::
 
-    >>> class MissingURI(sharing.Translator):
+    >>> class MissingURI(eim.Translator):
     ...     version = 1
     ...     description = u"Localized human-readable description here"
     Traceback (most recent call last):
       ...
     TypeError: Translator classes must have a `URI` attribute of type `str`
 
-    >>> class MissingVersion(sharing.Translator):
+    >>> class MissingVersion(eim.Translator):
     ...     URI = 'cid:foo@bar.osaf.us'
     ...     description = u"Localized human-readable description here"
     Traceback (most recent call last):
       ...
     TypeError: Translator classes must have a `version` attribute of type `int`
 
-    >>> class MissingDescr(sharing.Translator):
+    >>> class MissingDescr(eim.Translator):
     ...     URI = 'cid:foo@bar.osaf.us'
     ...     version = 42
     Traceback (most recent call last):
       ...
     TypeError: ... must have a `description` attribute of type `unicode`
 
-    >>> class DupeURI(sharing.Translator):
+    >>> class DupeURI(eim.Translator):
     ...     URI = 'cid:eim.R@osaf.us'   # already in use above
     ...     version = 1
     ...     description = u"Localized human-readable description here"
@@ -1307,7 +1307,7 @@ unique URIs::
 
 More than one import or delete type can be declared for a given function::
 
-    >>> class Testlator1(sharing.Translator):
+    >>> class Testlator1(eim.Translator):
     ...     URI = 'cid:testlator1@osaf.us'   # already in use above
     ...     version = 1
     ...     description = u"Blah"
@@ -1324,7 +1324,7 @@ More than one import or delete type can be declared for a given function::
 
     >>> t = Testlator1(rv)
     >>> t.startImport()
-    >>> t.importRecords(sharing.Diff([R(1,2)], [MyRecord(3,4)]))
+    >>> t.importRecords(eim.Diff([R(1,2)], [MyRecord(3,4)]))
     yo! R(1, 2)
     hasta la vista, MyRecord(3, 4)
 
@@ -1333,7 +1333,7 @@ More than one import or delete type can be declared for a given function::
 But it's an error to define more than one importer, exporter, or deleter for
 a given type in a given translator class::
 
-    >>> class Testlator2(sharing.Translator):
+    >>> class Testlator2(eim.Translator):
     ...     URI = 'cid:testlator2@osaf.us'   # already in use above
     ...     version = 1
     ...     description = u"Blah"
@@ -1349,7 +1349,7 @@ a given type in a given translator class::
       ...
     TypeError: Multiple importers defined for <class 'R'> in <class 'Testlator2'>
 
-    >>> class Testlator3(sharing.Translator):
+    >>> class Testlator3(eim.Translator):
     ...     URI = 'cid:testlator3@osaf.us'   # already in use above
     ...     version = 1
     ...     description = u"Blah"
@@ -1365,223 +1365,223 @@ a given type in a given translator class::
       ...
     TypeError: Multiple deleters defined for <class 'R'> in <class 'Testlator3'>
 
-    >>> class Testlator4(sharing.Translator):
+    >>> class Testlator4(eim.Translator):
     ...     URI = 'cid:testlator4@osaf.us'   # already in use above
     ...     version = 1
     ...     description = u"Blah"
     ...
-    ...     @sharing.exporter(schema.Item, pim.ContentItem)
+    ...     @eim.exporter(Item, pim.ContentItem)
     ...     def export_something(self, item):
     ...         return []
     ...
-    ...     @sharing.exporter(schema.Item)
+    ...     @eim.exporter(Item)
     ...     def extra_export(self, item):
     ...         return []
     Traceback (most recent call last):
       ...
     TypeError: Multiple exporters defined for <class '...Item'> in <class 'Testlator4'>
 
-Exporters can only be registered for ``schema.Item`` classes and ``pim.Stamp``
+Exporters can only be registered for ``Item`` classes and ``pim.Stamp``
 subclasses::
 
-    >>> @sharing.exporter(object)
+    >>> @eim.exporter(object)
     ... def wont_work(self, item):
     ...     return []
     Traceback (most recent call last):
       ...
-    TypeError: <type 'object'> is not a `schema.Item` or `pim.Stamp` subclass
+    TypeError: <type 'object'> is not a `Item` or `pim.Stamp` subclass
 
-    >>> @sharing.exporter(pim.Stamp)    # has to be a *subclass* of Stamp
+    >>> @eim.exporter(pim.Stamp)    # has to be a *subclass* of Stamp
     ... def wont_work(self, item):
     ...     return []
     Traceback (most recent call last):
       ...
-    TypeError: <class ...Stamp'> is not a `schema.Item` or `pim.Stamp` subclass
+    TypeError: <class ...Stamp'> is not a `Item` or `pim.Stamp` subclass
 
 Diff ``_merge()`` method should handle multiple encounters w/conflicting
 records::
 
-    >>> rs = sharing.Diff([R(1,2)])
+    >>> rs = eim.Diff([R(1,2)])
     >>> rs._merge([], [R(1,3), R(1,4)])
     >>> rs
     Diff(set([]), set([]))
 
-    >>> rs = sharing.Diff([R(1,2)])
+    >>> rs = eim.Diff([R(1,2)])
     >>> rs._merge([R(1,3), R(1,4)], [])
     >>> rs
     Diff(set([]), set([]))
 
 sort_records(records) will return records such that depenencies occur first::
 
-    >>> class DemoA(sharing.Record):
+    >>> class DemoA(eim.Record):
     ...     URI = 'cid:eim.test.demoA-record@osaf.us'
-    ...     uuid  = sharing.key(int)
+    ...     uuid  = eim.key(int)
 
-    >>> class DemoB(sharing.Record):
+    >>> class DemoB(eim.Record):
     ...     URI = 'cid:eim.test.demoB-record@osaf.us'
-    ...     uuid  = sharing.key(DemoA.uuid)
+    ...     uuid  = eim.key(DemoA.uuid)
 
-    >>> class DemoC(sharing.Record):
+    >>> class DemoC(eim.Record):
     ...     URI = 'cid:eim.test.demoC-record@osaf.us'
-    ...     uuid  = sharing.key(DemoB.uuid)
+    ...     uuid  = eim.key(DemoB.uuid)
 
-    >>> class DemoD(sharing.Record):
+    >>> class DemoD(eim.Record):
     ...     URI = 'cid:eim.test.demoD-record@osaf.us'
-    ...     uuid  = sharing.key(DemoC.uuid)
+    ...     uuid  = eim.key(DemoC.uuid)
 
     >>> rA = DemoA(1)
     >>> rB = DemoB(1)
     >>> rC = DemoC(1)
     >>> rD = DemoD(1)
 
-    >>> list(sharing.sort_records( [rA, rB, rC, rD] ))
+    >>> list(eim.sort_records( [rA, rB, rC, rD] ))
     [DemoA(1), DemoB(1), DemoC(1), DemoD(1)]
-    >>> list(sharing.sort_records( [rA, rC, rD, rB] ))
+    >>> list(eim.sort_records( [rA, rC, rD, rB] ))
     [DemoA(1), DemoB(1), DemoC(1), DemoD(1)]
-    >>> list(sharing.sort_records( [rA, rD, rB, rC] ))
-    [DemoA(1), DemoB(1), DemoC(1), DemoD(1)]
-
-    >>> list(sharing.sort_records( [rA, rD, rC, rB] ))
-    [DemoA(1), DemoB(1), DemoC(1), DemoD(1)]
-    >>> list(sharing.sort_records( [rA, rB, rD, rC] ))
-    [DemoA(1), DemoB(1), DemoC(1), DemoD(1)]
-    >>> list(sharing.sort_records( [rA, rC, rB, rD] ))
+    >>> list(eim.sort_records( [rA, rD, rB, rC] ))
     [DemoA(1), DemoB(1), DemoC(1), DemoD(1)]
 
-    >>> list(sharing.sort_records( [rB, rC, rD, rA] ))
+    >>> list(eim.sort_records( [rA, rD, rC, rB] ))
     [DemoA(1), DemoB(1), DemoC(1), DemoD(1)]
-    >>> list(sharing.sort_records( [rB, rD, rA, rC] ))
+    >>> list(eim.sort_records( [rA, rB, rD, rC] ))
     [DemoA(1), DemoB(1), DemoC(1), DemoD(1)]
-    >>> list(sharing.sort_records( [rB, rA, rC, rD] ))
-    [DemoA(1), DemoB(1), DemoC(1), DemoD(1)]
-
-    >>> list(sharing.sort_records( [rB, rA, rD, rC] ))
-    [DemoA(1), DemoB(1), DemoC(1), DemoD(1)]
-    >>> list(sharing.sort_records( [rB, rC, rA, rD] ))
-    [DemoA(1), DemoB(1), DemoC(1), DemoD(1)]
-    >>> list(sharing.sort_records( [rB, rD, rC, rA] ))
+    >>> list(eim.sort_records( [rA, rC, rB, rD] ))
     [DemoA(1), DemoB(1), DemoC(1), DemoD(1)]
 
-    >>> list(sharing.sort_records( [rC, rD, rA, rB] ))
+    >>> list(eim.sort_records( [rB, rC, rD, rA] ))
     [DemoA(1), DemoB(1), DemoC(1), DemoD(1)]
-    >>> list(sharing.sort_records( [rC, rA, rB, rD] ))
+    >>> list(eim.sort_records( [rB, rD, rA, rC] ))
     [DemoA(1), DemoB(1), DemoC(1), DemoD(1)]
-    >>> list(sharing.sort_records( [rC, rB, rD, rA] ))
-    [DemoA(1), DemoB(1), DemoC(1), DemoD(1)]
-
-    >>> list(sharing.sort_records( [rC, rB, rA, rD] ))
-    [DemoA(1), DemoB(1), DemoC(1), DemoD(1)]
-    >>> list(sharing.sort_records( [rC, rD, rB, rA] ))
-    [DemoA(1), DemoB(1), DemoC(1), DemoD(1)]
-    >>> list(sharing.sort_records( [rC, rA, rD, rB] ))
+    >>> list(eim.sort_records( [rB, rA, rC, rD] ))
     [DemoA(1), DemoB(1), DemoC(1), DemoD(1)]
 
-    >>> list(sharing.sort_records( [rD, rA, rB, rC] ))
+    >>> list(eim.sort_records( [rB, rA, rD, rC] ))
     [DemoA(1), DemoB(1), DemoC(1), DemoD(1)]
-    >>> list(sharing.sort_records( [rD, rB, rC, rA] ))
+    >>> list(eim.sort_records( [rB, rC, rA, rD] ))
     [DemoA(1), DemoB(1), DemoC(1), DemoD(1)]
-    >>> list(sharing.sort_records( [rD, rC, rA, rB] ))
-    [DemoA(1), DemoB(1), DemoC(1), DemoD(1)]
-
-    >>> list(sharing.sort_records( [rD, rC, rB, rA] ))
-    [DemoA(1), DemoB(1), DemoC(1), DemoD(1)]
-    >>> list(sharing.sort_records( [rD, rA, rC, rB] ))
-    [DemoA(1), DemoB(1), DemoC(1), DemoD(1)]
-    >>> list(sharing.sort_records( [rD, rB, rA, rC] ))
+    >>> list(eim.sort_records( [rB, rD, rC, rA] ))
     [DemoA(1), DemoB(1), DemoC(1), DemoD(1)]
 
-    >>> list(sharing.sort_records( [rA, rB, rC] ))
+    >>> list(eim.sort_records( [rC, rD, rA, rB] ))
+    [DemoA(1), DemoB(1), DemoC(1), DemoD(1)]
+    >>> list(eim.sort_records( [rC, rA, rB, rD] ))
+    [DemoA(1), DemoB(1), DemoC(1), DemoD(1)]
+    >>> list(eim.sort_records( [rC, rB, rD, rA] ))
+    [DemoA(1), DemoB(1), DemoC(1), DemoD(1)]
+
+    >>> list(eim.sort_records( [rC, rB, rA, rD] ))
+    [DemoA(1), DemoB(1), DemoC(1), DemoD(1)]
+    >>> list(eim.sort_records( [rC, rD, rB, rA] ))
+    [DemoA(1), DemoB(1), DemoC(1), DemoD(1)]
+    >>> list(eim.sort_records( [rC, rA, rD, rB] ))
+    [DemoA(1), DemoB(1), DemoC(1), DemoD(1)]
+
+    >>> list(eim.sort_records( [rD, rA, rB, rC] ))
+    [DemoA(1), DemoB(1), DemoC(1), DemoD(1)]
+    >>> list(eim.sort_records( [rD, rB, rC, rA] ))
+    [DemoA(1), DemoB(1), DemoC(1), DemoD(1)]
+    >>> list(eim.sort_records( [rD, rC, rA, rB] ))
+    [DemoA(1), DemoB(1), DemoC(1), DemoD(1)]
+
+    >>> list(eim.sort_records( [rD, rC, rB, rA] ))
+    [DemoA(1), DemoB(1), DemoC(1), DemoD(1)]
+    >>> list(eim.sort_records( [rD, rA, rC, rB] ))
+    [DemoA(1), DemoB(1), DemoC(1), DemoD(1)]
+    >>> list(eim.sort_records( [rD, rB, rA, rC] ))
+    [DemoA(1), DemoB(1), DemoC(1), DemoD(1)]
+
+    >>> list(eim.sort_records( [rA, rB, rC] ))
     [DemoA(1), DemoB(1), DemoC(1)]
-    >>> list(sharing.sort_records( [rA, rC, rB] ))
+    >>> list(eim.sort_records( [rA, rC, rB] ))
     [DemoA(1), DemoB(1), DemoC(1)]
-    >>> list(sharing.sort_records( [rB, rA, rC] ))
+    >>> list(eim.sort_records( [rB, rA, rC] ))
     [DemoA(1), DemoB(1), DemoC(1)]
-    >>> list(sharing.sort_records( [rB, rC, rA] ))
+    >>> list(eim.sort_records( [rB, rC, rA] ))
     [DemoA(1), DemoB(1), DemoC(1)]
-    >>> list(sharing.sort_records( [rC, rA, rB] ))
+    >>> list(eim.sort_records( [rC, rA, rB] ))
     [DemoA(1), DemoB(1), DemoC(1)]
-    >>> list(sharing.sort_records( [rC, rB, rA] ))
+    >>> list(eim.sort_records( [rC, rB, rA] ))
     [DemoA(1), DemoB(1), DemoC(1)]
 
-    >>> list(sharing.sort_records( [rA, rB, rD] ))
+    >>> list(eim.sort_records( [rA, rB, rD] ))
     [DemoA(1), DemoB(1), DemoD(1)]
-    >>> list(sharing.sort_records( [rA, rD, rB] ))
+    >>> list(eim.sort_records( [rA, rD, rB] ))
     [DemoA(1), DemoB(1), DemoD(1)]
-    >>> list(sharing.sort_records( [rB, rA, rD] ))
+    >>> list(eim.sort_records( [rB, rA, rD] ))
     [DemoA(1), DemoB(1), DemoD(1)]
-    >>> list(sharing.sort_records( [rB, rD, rA] ))
+    >>> list(eim.sort_records( [rB, rD, rA] ))
     [DemoA(1), DemoB(1), DemoD(1)]
-    >>> list(sharing.sort_records( [rD, rA, rB] ))
+    >>> list(eim.sort_records( [rD, rA, rB] ))
     [DemoA(1), DemoB(1), DemoD(1)]
-    >>> list(sharing.sort_records( [rD, rB, rA] ))
+    >>> list(eim.sort_records( [rD, rB, rA] ))
     [DemoA(1), DemoB(1), DemoD(1)]
 
 
-    >>> list(sharing.sort_records( [rA, rC, rD] ))
+    >>> list(eim.sort_records( [rA, rC, rD] ))
     [DemoA(1), DemoC(1), DemoD(1)]
-    >>> list(sharing.sort_records( [rA, rD, rC] ))
+    >>> list(eim.sort_records( [rA, rD, rC] ))
     [DemoA(1), DemoC(1), DemoD(1)]
-    >>> list(sharing.sort_records( [rC, rA, rD] ))
+    >>> list(eim.sort_records( [rC, rA, rD] ))
     [DemoA(1), DemoC(1), DemoD(1)]
-    >>> list(sharing.sort_records( [rC, rD, rA] ))
+    >>> list(eim.sort_records( [rC, rD, rA] ))
     [DemoA(1), DemoC(1), DemoD(1)]
-    >>> list(sharing.sort_records( [rD, rA, rC] ))
+    >>> list(eim.sort_records( [rD, rA, rC] ))
     [DemoA(1), DemoC(1), DemoD(1)]
-    >>> list(sharing.sort_records( [rD, rC, rA] ))
+    >>> list(eim.sort_records( [rD, rC, rA] ))
     [DemoA(1), DemoC(1), DemoD(1)]
 
 
-    >>> list(sharing.sort_records( [rB, rC, rD] ))
+    >>> list(eim.sort_records( [rB, rC, rD] ))
     [DemoB(1), DemoC(1), DemoD(1)]
-    >>> list(sharing.sort_records( [rB, rD, rC] ))
+    >>> list(eim.sort_records( [rB, rD, rC] ))
     [DemoB(1), DemoC(1), DemoD(1)]
-    >>> list(sharing.sort_records( [rC, rB, rD] ))
+    >>> list(eim.sort_records( [rC, rB, rD] ))
     [DemoB(1), DemoC(1), DemoD(1)]
-    >>> list(sharing.sort_records( [rC, rD, rB] ))
+    >>> list(eim.sort_records( [rC, rD, rB] ))
     [DemoB(1), DemoC(1), DemoD(1)]
-    >>> list(sharing.sort_records( [rD, rB, rC] ))
+    >>> list(eim.sort_records( [rD, rB, rC] ))
     [DemoB(1), DemoC(1), DemoD(1)]
-    >>> list(sharing.sort_records( [rD, rC, rB] ))
+    >>> list(eim.sort_records( [rD, rC, rB] ))
     [DemoB(1), DemoC(1), DemoD(1)]
 
 
-    >>> list(sharing.sort_records( [rA, rB] ))
+    >>> list(eim.sort_records( [rA, rB] ))
     [DemoA(1), DemoB(1)]
-    >>> list(sharing.sort_records( [rB, rA] ))
+    >>> list(eim.sort_records( [rB, rA] ))
     [DemoA(1), DemoB(1)]
 
-    >>> list(sharing.sort_records( [rA, rC] ))
+    >>> list(eim.sort_records( [rA, rC] ))
     [DemoA(1), DemoC(1)]
-    >>> list(sharing.sort_records( [rC, rA] ))
+    >>> list(eim.sort_records( [rC, rA] ))
     [DemoA(1), DemoC(1)]
 
-    >>> list(sharing.sort_records( [rA, rD] ))
+    >>> list(eim.sort_records( [rA, rD] ))
     [DemoA(1), DemoD(1)]
-    >>> list(sharing.sort_records( [rD, rA] ))
+    >>> list(eim.sort_records( [rD, rA] ))
     [DemoA(1), DemoD(1)]
 
-    >>> list(sharing.sort_records( [rB, rC] ))
+    >>> list(eim.sort_records( [rB, rC] ))
     [DemoB(1), DemoC(1)]
-    >>> list(sharing.sort_records( [rC, rB] ))
+    >>> list(eim.sort_records( [rC, rB] ))
     [DemoB(1), DemoC(1)]
 
-    >>> list(sharing.sort_records( [rB, rD] ))
+    >>> list(eim.sort_records( [rB, rD] ))
     [DemoB(1), DemoD(1)]
-    >>> list(sharing.sort_records( [rD, rB] ))
+    >>> list(eim.sort_records( [rD, rB] ))
     [DemoB(1), DemoD(1)]
 
-    >>> list(sharing.sort_records( [rC, rD] ))
+    >>> list(eim.sort_records( [rC, rD] ))
     [DemoC(1), DemoD(1)]
-    >>> list(sharing.sort_records( [rD, rC] ))
+    >>> list(eim.sort_records( [rD, rC] ))
     [DemoC(1), DemoD(1)]
 
 
-    >>> list(sharing.sort_records( [rA] ))
+    >>> list(eim.sort_records( [rA] ))
     [DemoA(1)]
-    >>> list(sharing.sort_records( [rB] ))
+    >>> list(eim.sort_records( [rB] ))
     [DemoB(1)]
-    >>> list(sharing.sort_records( [rC] ))
+    >>> list(eim.sort_records( [rC] ))
     [DemoC(1)]
-    >>> list(sharing.sort_records( [rD] ))
+    >>> list(eim.sort_records( [rD] ))
     [DemoD(1)]
 
