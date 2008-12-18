@@ -250,7 +250,11 @@ class FilteredSubset(trellis.Set):
 class Item(trellis.Component, plugins.Extensible):
     extend_with = plugins.Hook('chandler.domain.item_addon')
 
-    title = trellis.attr(initially=u'')
+    trellis.attrs(
+        title=u'',
+        body=u'',     # XXX add body to Item doctests..
+    )
+
     created = trellis.make(lambda x: time_services.nowTimestamp(),
                            optional=False)
 

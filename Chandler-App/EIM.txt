@@ -129,7 +129,7 @@ fields or field types, and they will be used to "explain" the item::
      ('description', 'This text can be a maximum of 500 bytes in UTF-8',
        Demo(1, NoChange, u'This is a foo', NoChange)),
      ('itemName', u'Foo (itemName)', Demo(1, u'Foo', NoChange, NoChange))]
-    
+
 If you do not register a title with a field when you create it, the field's
 name is used instead.  If there is no formatter registered for the specific
 field or its typeinfo, field's raw value is used unchanged.
@@ -462,9 +462,7 @@ A ``eim.Translator`` is an object that handles importing and exporting of
 Chandler items as EIM records.  It must have ``URI`` (string), ``version``
 (integer), and ``description`` (unicode) attributes::
 
-    >>> from application import schema
-    >>> from osaf import pim
-
+    >>> from chandler.core import Item, Extension, inherited_attrs
     >>> class DemoTranslator(eim.Translator):
     ...     """Demonstration translator"""
     ...     URI = "cid:demotranslator@osaf.us"
@@ -491,11 +489,6 @@ Chandler items as EIM records.  It must have ``URI`` (string), ``version``
     ...     def export_item(self, item):
     ...         print "exporting item"
     ...         yield R(1,2)
-    ...
-    ...     @eim.exporter(pim.ContentItem)
-    ...     def export_contentitem(self, item):
-    ...         print "exporting ContentItem"
-    ...         yield R(3,4)
 
 When we support user-defined translator classes, we will probably need to use
 either "entry points" or some repository registry to look them up for
@@ -504,21 +497,7 @@ the standard ``lookupSchemaURI()`` API::
 
     >>> eim.lookupSchemaURI("cid:demotranslator@osaf.us")
     <class 'DemoTranslator'>
-
-The sharing layer creates a new translator instance for each import or export
-operation.  The constructor accepts a single argument, a repository view, which
-is stored in the ``rv`` attribute::
-
-    >>> from chandlerdb.persistence.RepositoryView import NullRepositoryView
-    >>> rv = NullRepositoryView(verify=True)  # report errors immediately
-
-    >>> t = DemoTranslator(rv)
-    >>> t.rv is rv
-    True
-
-(Note: the attribute is called ``rv`` instead of ``itsView`` because translator
-instances are *not* stored in the repository; calling it ``itsView`` would
-imply it was actually associated with the view in some way.  It's not.)
+    >>> t = DemoTranslator()
 
 
 Exporting (Sharing Layer)
@@ -532,17 +511,15 @@ sequence of records, while the return value of ``startExport()``, if any,
 is ignored.
 
 In between the two calls, ``exportItem()`` can be called zero or more times
-to yield EIM records for a given item::
+to yield EIM records for a given item:
 
-::
-
-    >>> t = DemoTranslator(rv)
+    >>> t = DemoTranslator()
     >>> t.startExport()
 
-    >>> list(t.exportItem(pim.ContentItem(itsName="foo", itsParent=rv)))
+    >>> item = Item(title="foo")
+    >>> list(t.exportItem(item))
     exporting item
-    exporting ContentItem
-    [R(1, 2), R(3, 4)]
+    [R(1, 2)]
 
     >>> list(t.finishExport())
     []
@@ -561,9 +538,7 @@ to process a ``RecordSet`` object's inclusions (adds/updates) and exclusions
 (deletions), or ``importRecord()`` can be called zero or more times to process
 a single ``Record`` object.
 
-::
-
-    >>> t = DemoTranslator(rv)
+    >>> t = DemoTranslator()
     >>> t.startImport()
 
     >>> d = Demo(1,"Foo", "This is a foo", Decimal('2.50'))
@@ -588,9 +563,8 @@ Translator Inheritance
 Importers, deleters, and exporters are inherited by translator subclasses, and
 stamp classes can be used as export targets::
 
-    >>> class DemoStamp(pim.Stamp):
-    ...     schema.kindInfo(annotates = pim.ContentItem)
-    ...     data = schema.One(schema.Integer)
+    >>> class DemoExtension(Extension):
+    ...     inherited_attrs(data="initial data")
 
     >>> class DemoTranslator2(DemoTranslator):
     ...     """Demonstration translator 2"""
@@ -611,12 +585,12 @@ stamp classes can be used as export targets::
     ...         print "exporting item"
     ...         yield R(-1, -2)
     ...
-    ...     @eim.exporter(DemoStamp)
-    ...     def export_stamp(self, stamp):
-    ...         print "exporting stamp"
-    ...         yield R(stamp.data, 42)
+    ...     @eim.exporter(DemoExtension)
+    ...     def export_demo_extension(self, extension):
+    ...         print "exporting extension"
+    ...         yield R(extension.data, 42)
 
-    >>> t = DemoTranslator2(rv)
+    >>> t = DemoTranslator2()
     >>> t.startImport()
 
     >>> t.importRecords(eim.Diff([R(1,2)], [d]))
@@ -630,19 +604,16 @@ stamp classes can be used as export targets::
     >>> t.finishImport()
 
     >>> t.startExport()
-    >>> list(t.exportItem(rv['foo']))
+    >>> list(t.exportItem(item))
     exporting item
-    exporting ContentItem
-    [R(-1, -2), R(3, 4)]
+    [R(-1, -2)]
 
-    >>> theItem = rv['foo']
-    >>> DemoStamp(theItem).add()
-    >>> DemoStamp(theItem).data = 99
-    >>> list(t.exportItem(theItem))
+    >>> DemoExtension(item).add(data=99)
+    <DemoExtension object at ...>
+    >>> list(t.exportItem(item))
     exporting item
-    exporting ContentItem
-    exporting stamp
-    [R(-1, -2), R(3, 4), R(99, 42)]
+    exporting extension
+    [R(-1, -2), R(99, 42)]
 
     >>> list(t.finishExport())
     []
@@ -652,15 +623,15 @@ Creating/Updating Items
 -----------------------
 
 Importers will usually use the translator's ``withItemForUUID()`` decorator
-to create, upgrade the type of, or retrieve an existing item by itsUUID.
+to create, add extensions to, or retrieve an existing item by uuid.
 
     >>> class DemoRecord2(eim.Record):
     ...     URI = 'cid:eim.test.demo-record2@osaf.us'
-    ...     uuid  = eim.key(schema.UUID)
+    ...     uuid  = eim.key(eim.UUIDType)
 
     >>> class DemoRecord3(eim.Record):
     ...     URI = 'cid:eim.test.demo-record3@osaf.us'
-    ...     uuid  = eim.key(schema.UUID)
+    ...     uuid  = eim.key(eim.UUIDType)
 
     >>> class DemoTranslator3(eim.Translator):
     ...     """Demonstration translator 3"""
@@ -675,11 +646,11 @@ to create, upgrade the type of, or retrieve an existing item by itsUUID.
     ...
     ...     @DemoRecord3.importer
     ...     def import_Demo_record3(self, r):
-    ...         @self.withItemForUUID(r.uuid, pim.ContentItem)
+    ...         @self.withItemForUUID(r.uuid)
     ...         def do(item):
     ...             print "Imported record3", item
 
-    >>> t3 = DemoTranslator3(rv)
+    >>> t3 = DemoTranslator3()
     >>> t3.startImport()
 
 ``withItemForUUID()`` can be used either as a decorator, or as a standalone
@@ -689,135 +660,69 @@ updates the item::
     >>> uuid = 'ed0277af-18a2-45b1-917d-a55dc75da776'
     >>> t3.importRecord(DemoRecord2(uuid))
     Imported record2
-    >>> rv.findUUID(uuid)
-    <Item (new): ed0277af-18a2-45b1-917d-a55dc75da776>
+    >>> demo_item = eim.get_item_for_uuid(uuid)
+    >>> demo_item
+    <chandler.core.Item object at ...>
+    >>> eim.EIM(demo_item).uuid
+    UUID('ed0277af-18a2-45b1-917d-a55dc75da776')
 
-And when used as a decorator, it calls the decorated function with the item,
-after first upgrading its type if necessary::
+And when used as a decorator, it calls the decorated function with the item::
 
     >>> t3.importRecord(DemoRecord3(uuid))
-    Imported record3 eQ2tWYoEAmN95ZFlT7nqtS
-    >>> rv.findUUID(uuid)
-    <ContentItem (new): ed0277af-18a2-45b1-917d-a55dc75da776>
+    Imported record3 <chandler.core.Item object at ...>
 
-If an item of the given UUID already exists, the callback is immediately
-invoked, passing in the (possibly-upgraded) item::
+If an item of the given UUID already exists, it's used, passing in the item::
 
-    >>> @t.withItemForUUID(theItem.itsUUID, displayName="testme")
-    ... def do_it(item): print item is theItem, item.displayName
+    >>> @t.withItemForUUID(uuid, title="testme")
+    ... def do_it(item): print item is demo_item, item.title
     True testme
 
-If it doesn't exist, an item of the specified type (``Item`` by default)
-is created::
+If it doesn't exist, a new Item is created::
 
     >>> uuid1 = '0c7c6c5c-4a04-4d5a-8997-2fcef848c92d'
-    >>> @t.withItemForUUID(uuid1, displayName="another_test")
-    ... def do_it(item): print item, item.displayName
-    <Item (new): 0c7c6c5c-4a04-4d5a-8997-2fcef848c92d> another_test
+    >>> @t.withItemForUUID(uuid1, DemoExtension, data="another_test")
+    ... def do_it(item): print item, item.data
+    <DemoExtension object at ...> another_test
 
-If it does exist, but isn't an instance of the specified type, its type is
-upgraded::
+If you specify a ``chandler.core.Extension`` subclass as the item
+type, an extension is passed to your callback.  If the item didn't
+already have an extension of the given type, it's added for you.
 
-    >>> an_item = rv.findUUID(uuid1)
-    >>> type(an_item)   # before
-    <class 'application.schema.Item'>
-
-    >>> an_item.itsKind
-    <Kind (new): Item ...>
-
-    >>> @t.withItemForUUID(uuid1, pim.ContentItem)
-    ... def do_it(item): print repr(item)
-    <ContentItem (new): 0c7c6c5c-4a04-4d5a-8997-2fcef848c92d>
-
-    >>> type(an_item)   # after
-    <class 'osaf.pim.items.ContentItem'>
-
-    >>> an_item.itsKind
-    <Kind (new): ContentItem ...>
-
-Note, however, that the requested type must be a subclass or superclass of the
-item's current type, or nothing will happen immediately::
-
-    >>> class NonContent(Item):
-    ...     foo = schema.One(schema.Integer)
-    ...     schema.initialValues(foo=lambda self:99)
-    ...     def __setup__(self):
-    ...         print "NonContent setup", self.foo
-
-    >>> @t.withItemForUUID(uuid1, NonContent, foo=42)
-    ... def do_it(item): print "loaded", repr(item)
-
-But you will get an ``IncompatibleTypes`` exception when importing is
-finished::
-
-    >>> t.finishImport()   
-    Traceback (most recent call last):
-      ...
-    IncompatibleTypes: {<ContentItem...>: [(<class 'NonContent'>, <Deferred...>)]}
-
-However, if before importing is completed, the same item is given a new type
-that combines both the incompatible type and the item's original type, the
-previously registered callback(s) will be invoked on the upgraded item::
-
-    >>> class Combined(pim.ContentItem, NonContent):
-    ...     """Multiple inheritance saves the day"""
-    ...     bar = schema.One(schema.Text)
-    ...     schema.initialValues(foo=lambda self:128, bar=lambda self:u"Foo")
-    ...     def __setup__(self):
-    ...         print "Combined setup", self.foo, self.bar
-
-    >>> @t.withItemForUUID(uuid1, Combined, bar=u"spam")
-    ... def do_it(item): print item.foo, item.bar; print "mixed!", repr(item)
-    NonContent setup 128
-    Combined setup 128 spam
-    loaded <Combined (new): 0c7c6c5c-4a04-4d5a-8997-2fcef848c92d>
-    42 spam
-    mixed! <Combined (new): 0c7c6c5c-4a04-4d5a-8997-2fcef848c92d>
-
-    >>> t.finishImport()    # no error this time
-   
-Note, by the way, that the item's type is NOT downgraded if the requested type
-is a superclass of the item's existing type.  So, if ``an_item`` is a
-``pim.ContentItem``, asking for a ``Item`` will leave it unchanged::
-
-    >>> @t.withItemForUUID(uuid1, Item)
-    ... def do_it(item): print repr(item)
-    <Combined (new): 0c7c6c5c-4a04-4d5a-8997-2fcef848c92d>
-
-If you specify a ``pim.Stamp`` subclass as the item type, a stamp is passed to
-your callback.  If the item didn't already have a stamp of the given type, it's
-added for you, and if necessary, the item's type is upgraded to whatever base
-type the stamp requires (typically ``pim.ContentItem`` or ``pim.Note``).  Also,
-you can set attributes on the returned object using keyword arguments to
-``withItemForUUID()``::
-
-    >>> pim.has_stamp(an_item, DemoStamp)   # before
+    >>> DemoExtension.installed_on(demo_item)   # before
     False
 
-    >>> @t.withItemForUUID(uuid1, DemoStamp, data=42)
-    ... def do_it(stamp): print stamp.data
-    42
+    >>> @t.withItemForUUID(uuid, DemoExtension)
+    ... def do_it(item): print item
+    <DemoExtension object at ...>
 
-    >>> pim.has_stamp(an_item, DemoStamp)   # after
+    >>> DemoExtension.installed_on(demo_item)   # after
     True
+
+Also, you can set attributes on the returned object using keyword
+arguments to ``withItemForUUID()``::
+
+    >>> @t.withItemForUUID(uuid1, DemoExtension, data=42)
+    ... def do_it(extension): print extension.data
+    42
 
 Attributes set to ``eim.NoChange`` are ignored, as this makes it easier to
 process "diff" records when importing (no need to check for no-change values)::
 
-    >>> @t.withItemForUUID(uuid1, DemoStamp, data=eim.NoChange)
-    ... def do_it(stamp): print stamp.data  # value is unchanged
+    >>> @t.withItemForUUID(uuid1, DemoExtension, data=eim.NoChange)
+    ... def do_it(extension): print extension.data  # value is unchanged
     42
 
-Attributes set to ``eim.Inherit`` are deleted::
+Attributes set to ``eim.Inherit`` are set to their initial value::
 
-    >>> @t.withItemForUUID(uuid1, DemoStamp, data=eim.Inherit)
-    ... def do_it(stamp): print hasattr(stamp, 'data')
-    False
+    >>> @t.withItemForUUID(uuid1, DemoExtension, data=eim.Inherit)
+    ... def do_it(extension): print extension.data
+    initial data
 
 In order to support recurrence, translators need to be able to handle the
 lookup of an UUID from an alias value, and to retrieve an alias from an item.
 The default implementation simply uses an item's UUID as its alias::
 
+   >>> an_item = eim.get_item_for_uuid(uuid1)
    >>> t.getAliasForItem(an_item)
    '0c7c6c5c-4a04-4d5a-8997-2fcef848c92d'
 
@@ -828,10 +733,10 @@ Import Error Handling
 ---------------------
 
 When a callback invoked by ``withItemForUUID()`` raises an error, the
-translator's ``recordFailure()`` method is invoked with a Twisted ``Failure``
-instance.  The default implementation saves this and re-raises the error
-at the end of the importRecord operation, but you can also override it in
-a subclass to do something else::
+translator's ``recordFailure()`` method is invoked with the exception.
+The default implementation saves this and re-raises the error at the
+end of the importRecord operation, but you can also override it in a
+subclass to do something else::
 
     >>> class DemoTranslator4(eim.Translator):
     ...     """Demonstration translator 4"""
@@ -844,21 +749,16 @@ a subclass to do something else::
     ...         @self.withItemForUUID(r.uuid, Item)
     ...         def do(item):
     ...             raise TypeError("Some kind of problem")
-    ... 
+    ...
     ...     def recordFailure(self, failure):
     ...         print failure
 
-    >>> t4 = DemoTranslator4(rv)
+    >>> t4 = DemoTranslator4()
     >>> t4.startImport()
 
     >>> uuid = 'ed0277af-18a2-45b1-917d-a55dc75da776'
     >>> t4.importRecord(DemoRecord2(uuid))
-    [Failure instance: Traceback: <...TypeError'>: Some kind of problem
-    ...:import_Demo_record2
-    ...
-    --- <exception caught here> ---
-    ...:do
-    ]
+    Some kind of problem
 
 Of course, you should call the ``super()`` of the method if you also want the
 standard behavior, which we'll demonstrate here::
@@ -869,11 +769,6 @@ standard behavior, which we'll demonstrate here::
     Traceback (most recent call last):
       ...
     TypeError: Some kind of problem
-
-Also note that if you use any ``Deferred`` objects, you should always use
-``.addErrback(self.recordFailure)`` after adding a callback to the deferred.
-This will ensure that any error in your callback will be reported back to the
-translator.
 
 
 Conflict Management
@@ -1322,7 +1217,7 @@ More than one import or delete type can be declared for a given function::
     ...     def delete_something(self, record):
     ...         print "hasta la vista,", record
 
-    >>> t = Testlator1(rv)
+    >>> t = Testlator1()
     >>> t.startImport()
     >>> t.importRecords(eim.Diff([R(1,2)], [MyRecord(3,4)]))
     yo! R(1, 2)
@@ -1370,7 +1265,7 @@ a given type in a given translator class::
     ...     version = 1
     ...     description = u"Blah"
     ...
-    ...     @eim.exporter(Item, pim.ContentItem)
+    ...     @eim.exporter(Item)
     ...     def export_something(self, item):
     ...         return []
     ...
@@ -1381,22 +1276,22 @@ a given type in a given translator class::
       ...
     TypeError: Multiple exporters defined for <class '...Item'> in <class 'Testlator4'>
 
-Exporters can only be registered for ``Item`` classes and ``pim.Stamp``
+Exporters can only be registered for ``Item`` classes and ``ItemAddOn`` or ``Extension``
 subclasses::
 
     >>> @eim.exporter(object)
     ... def wont_work(self, item):
     ...     return []
     Traceback (most recent call last):
-      ...
-    TypeError: <type 'object'> is not a `Item` or `pim.Stamp` subclass
+      . . .
+    TypeError: <type 'object'> is not an `Item`, `ItemAddOn` or `Extension`
 
-    >>> @eim.exporter(pim.Stamp)    # has to be a *subclass* of Stamp
+    >>> @eim.exporter(Extension)    # has to be a *subclass* of Extension
     ... def wont_work(self, item):
     ...     return []
     Traceback (most recent call last):
-      ...
-    TypeError: <class ...Stamp'> is not a `Item` or `pim.Stamp` subclass
+      . . .
+    TypeError: <class 'chandler.core.Extension'> is not an `Item`, `ItemAddOn` or `Extension`
 
 Diff ``_merge()`` method should handle multiple encounters w/conflicting
 records::

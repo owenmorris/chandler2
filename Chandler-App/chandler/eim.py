@@ -11,7 +11,6 @@
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
-from __future__ import with_statement
 
 __all__ = [
     'UnknownType', 'typeinfo_for', 'BytesType', 'TextType', 'DateType',
@@ -22,29 +21,51 @@ __all__ = [
     'sort_records', 'format_field', 'global_formatters',
 ]
 
-from symbols import Symbol, NOT_GIVEN  # XXX change this to peak.util.symbols
+from peak.util.symbols import Symbol, NOT_GIVEN
 from simplegeneric import generic
 from weakref import WeakValueDictionary
 import linecache, decimal, datetime
-from application import schema
-from chandlerdb.util.c import UUID
-from chandlerdb.persistence.RepositoryView import currentview
-from osaf import pim
-from twisted.internet.defer import Deferred
 import errors
 import logging
 logger = logging.getLogger(__name__)
 
+from chandler.core import Item, ItemAddOn, Extension
+import peak.events.trellis as trellis
+from uuid import UUID, uuid4
+import traceback
 
 
+class EIM(Extension):
+    uuid = trellis.make(lambda x: uuid4())
 
+    @trellis.modifier
+    def add(self, **kw):
+        super(EIM, self).add(**kw)
+        set_item_for_uuid(self.uuid, self._item)
+        return self
+
+_items_by_uuuid = {}
+
+def set_item_for_uuid(uuid, item):
+    _items_by_uuuid[str(uuid)] = item
+
+def get_item_for_uuid(uuid):
+    return _items_by_uuuid.get(uuid)
+
+def item_for_uuid(uuid):
+    """Return existing Item, or create and return a new Item."""
+    item = get_item_for_uuid(uuid)
+    if not item:
+        item = Item()
+        EIM(item).add(uuid=UUID(uuid))
+    return item
 
 
 def exporter(*types):
     """Mark a translator method as exporting the specified item type(s)"""
     for t in types:
-        if not issubclass(t,(pim.Stamp, schema.Item)) or t is pim.Stamp:
-            raise TypeError("%r is not a `schema.Item` or `pim.Stamp` subclass"
+        if not issubclass(t, (Item, ItemAddOn)) or t is Extension or t is ItemAddOn:
+            raise TypeError("%r is not an `Item`, `ItemAddOn` or `Extension`"
                 % (t,)
             )
     def decorate(func):
@@ -486,7 +507,7 @@ def sort_records(records):
                 deps.append(dep)
         if deps:
             continue    # can't process record with outstanding dependencies
-        
+
         yield record    # allow the record to pass, then its dependents
         for record in release(record.getKey()):
             yield record
@@ -904,8 +925,7 @@ class TranslatorClass(type):
 class Translator:
     """Base class for import/export between Items and Records"""
     __metaclass__ = TranslatorClass
-    def __init__(self, rv):
-        self.rv = rv
+    def __init__(self):
         self.loadQueue = {}
         self.export_cache = {}
 
@@ -931,25 +951,25 @@ class Translator:
             deleter = self.deleters.get(type(r))
             if deleter: deleter(self, r)
 
-    def importRecord(self, r):        
+    def importRecord(self, r):
         importer = self.importers.get(type(r))
         try:
             if importer: importer(self, r)
             if self.failure:
-                self.failure.raiseException()
+                raise self.failure
         except Exception, e:
             if self.failure:
                 errors.annotate(e, "Failed to import record %s" % str(r),
-                    details=self.failure.getTraceback())
+                    details=self.failureTraceback)
             raise
         finally:
             self.failure=None
 
     def _exportablesFor(self, item):
         yield item, object
-        if isinstance(item, pim.ContentItem):
-            for stamp in pim.Stamp(item).stamps:
-                yield stamp, pim.Stamp
+        if isinstance(item, Item):
+            for extension in item.extensions:
+                yield extension, ItemAddOn
 
     def exportItem(self, item):
         """Export an item and its stamps, if any"""
@@ -978,107 +998,56 @@ class Translator:
                     yield record
 
     def explainConflicts(self, rs):
-        with currentview.set(self.rv):
-            for r in rs.inclusions:
-                for n,v,r in r.explain():
-                    yield n, v, Diff([r])
-            for r in rs.exclusions:
-                yield "Deleted", r.getKey(), Diff([], [r])
+        for r in rs.inclusions:
+            for n,v,r in r.explain():
+                yield n, v, Diff([r])
+        for r in rs.exclusions:
+            yield "Deleted", r.getKey(), Diff([], [r])
 
-
-    def withItemForUUID(self, uuid, itype=schema.Item, **attrs):
-        d = self.deferredItem(uuid, itype, **attrs)
-        return lambda f: d.addCallback(f).addErrback(self.recordFailure)
-
-    def deferredItem(self, uuid, itype=schema.Item, **attrs):
-        """Return deferred for a stamp or item by UUID+type w/optional attrs"""
-        if isinstance(uuid, Deferred):
-            d = Deferred()
-            @uuid.addCallback
-            def uuid_to_item(uuid):
-                if uuid in (None, NoChange):
-                    d.callback(uuid)
-                else:
-                    self.deferredItem(uuid, itype, **attrs).addCallback(d.callback)
-                return uuid
-            uuid.addErrback(self.recordFailure)
-            return d
+    def withItemForUUID(self, uuid, itype=Item, **attrs):
+        item = item_for_uuid(uuid)
 
         def setattrs(ob):
             # Set specified attributes, skipping NoChange attrs, and deleting
             # Inherit attrs
-            for attr, val in attrs.items(): self.smart_setattr(val, ob, attr)
-            return ob   # return value for deferreds
+            for attr, val in attrs.iteritems(): self.smart_setattr(val, ob, attr)
 
-        if issubclass(itype, pim.Stamp):
-            d = self.deferredItem(uuid, itype.targetType())
-            @d.addCallback
-            def add_stamp(item):
-                stamp = itype(item)
-                if not stamp.stamp_types or itype not in stamp.stamp_types:
-                    stamp.add()
-                return setattrs(stamp)  # return value for deferreds
-            return d.addErrback(self.recordFailure)
-            
-        item = self.rv.findUUID(uuid)
-        d = Deferred().addCallback(setattrs).addErrback(self.recordFailure)
-        if item is None:    # Create the item
-            if isinstance(uuid, basestring):
-                uuid = UUID(uuid)
-            item = itype(itsView=self.rv, _uuid=uuid)
-            
-        if isinstance(item, itype):
-            d.callback(item)
-            return d
-            
-        if not issubclass(itype, type(item)):
-            # Can't load the item yet; put callbacks on the queue
-            self.loadQueue.setdefault(item, []).append((itype, d))
-            return d
-           
-        # Upgrade the item type, set attributes, and run setups       
-        old_type = item.__class__
-        item.__class__ = itype
-        item.itsKind = itype.getKind(self.rv)
-
-        ivs, setups = schema._initializers_for(itype, old_type.__mro__)
-        for k,f in ivs: setattr(item, k, f(item))
-        setattrs(item)
-        for c,s in setups: s(item)
-
-        # run callbacks for any pending types that are now resolved
-        if item in self.loadQueue:
-            q = self.loadQueue[item]
-            for t, cbd in q[:]:
-                if isinstance(item, t):
-                    cbd.callback(item)
-                    q.remove((t,cbd))
-                    if not q:
-                        del self.loadQueue[item]
-        d.callback(item)
-        return d
+        def decorator(func):
+            try:
+                if issubclass(itype, ItemAddOn):
+                    add_on = itype(item)
+                    if issubclass(itype, Extension):
+                        if not itype.installed_on(item):
+                            add_on.add()
+                    setattrs(add_on)
+                    return func(add_on)
+                else:
+                    setattrs(item)
+                    return func(item)
+            except Exception, e:
+                self.recordFailure(e)
+        return decorator
 
     def smart_setattr(self, val, ob, attr):
         if val is Inherit:
-            if hasattr(ob, attr): delattr(ob, attr)
-        elif isinstance(val, Deferred):
-            val.addCallback(self.smart_setattr, ob, attr)
-            val.addErrback(self.recordFailure)
+            cell_attribute = getattr(type(ob), attr)
+            setattr(ob, attr, cell_attribute.initial_value(ob))
         elif val is not NoChange:
             setattr(ob, attr, val)
-        return ob   # return value for deferreds
 
     def getUUIDForAlias(self, alias):
         return alias
 
     def getAliasForItem(self, item):
-        return item.itsUUID.str16()
+        return str(EIM(item).uuid)
 
     failure = None
+    failureTraceback = ""
 
     def recordFailure(self, failure):
         self.failure = failure
-        logger.error(failure.getTraceback())
+        self.failureTraceback = traceback.format_exc()
+        logger.error(self.failureTraceback)
 
 
 def create_default_converter(t):
@@ -1105,7 +1074,7 @@ add_converter(ClobType, unicode, unicode)
 add_converter(BytesType, str, str)
 
 UUIDType = TextType("cid:uuid_type@osaf.us", size=36)
-typedef(schema.UUID, UUIDType)
+# typedef(schema.UUID, UUIDType)
 
 def uuid_converter(uuid):
     return str(uuid)
@@ -1118,8 +1087,8 @@ def normalize_uuid_string(uuid_or_alias):
     uuid, colon, recurrence_id = uuid_or_alias.partition(":")
     return u"".join((uuid.lower(), colon, recurrence_id))
 
-add_converter(UUIDType, UUID, uuid_converter)
-add_converter(UUIDType, schema.Item, item_uuid_converter)
+# add_converter(UUIDType, UUID, uuid_converter)
+# add_converter(UUIDType, schema.Item, item_uuid_converter)
 add_converter(UUIDType, str, normalize_uuid_string)
 add_converter(UUIDType, unicode, normalize_uuid_string)
 

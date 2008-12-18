@@ -13,6 +13,9 @@ setup(
     test_loader = 'test_suite:TestLoader',
     packages = find_packages(),
     namespace_packages = ['chandler'],
+    install_requires=[
+        'simplegeneric>=0.6,==dev',
+    ],
     entry_points = """
     [chandler.domain.triage]
     event = chandler.event:event_triage
