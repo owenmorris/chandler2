@@ -109,8 +109,7 @@ that can be applied to the collection:
 >>> s.filters
 <chandler.core.Choice object at 0x...>
 
-By default, the "All" collection (i.e. don't filter out any items) is
-selected:
+By default, the "All" filter (i.e. include all items) is selected:
 
 >>> s.filters.chosen_item.label
 u'All'
@@ -129,13 +128,15 @@ throw some items in them, and add them to the Sidebar:
 <chandler.event.Event object at 0x...>
 
 Now, we're ready to see how filtering and the Sidebar work. First, the
+:attr:`~Sidebar.selected_item` attribute tells us the currently
+selected :attr:`~core.Collection`:
 
 >>> s.selected_item
 <SidebarEntry(Home) at 0x...>
 
 The :attr:`~Sidebar.filtered_items` attribute consists of all the
-items in :attr:`Sidebar.filtered_items`, filtered appropriately.
-So, in the above case, where "Home" has one item, hello, we see:
+items in :attr:`~Sidebar.selected_item`, filtered appropriately.  So,
+in the above case, where "Home" has one item, ``hello``, we see:
 
 >>> len(s.filtered_items)
 1
@@ -160,8 +161,9 @@ and that this change has been propagated to the
 >>> s.filtered_items.predicate
 <bound method classy_class.installed_on of <class 'chandler.event.Event'>>
 
-Since, ``hello``, the only member of "Home", is empty, we expect
-``filtered_items`` to be empty now:
+Since, ``hello``, the only member of "Home", is not an
+:class:`~chandler.event.Event`, we expect ``filtered_items`` to be
+empty now:
 
 >>> s.filtered_items
 FilteredSubset([])
