@@ -20,6 +20,10 @@ from peak.events import activity
 from peak.util import plugins
 from copy import deepcopy
 
+# silence annoying logger warnings
+import logging
+logging.raiseExceptions = 0
+
 def setUp(test_case):
     # use a different Time for each test, so time changes don't
     # trigger unnecessary recalculations in previous tests

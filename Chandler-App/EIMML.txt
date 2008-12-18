@@ -8,7 +8,7 @@ First define a record type::
 
 
     >>> from chandler.core import Item
-    >>> from chandler import eim, eimml
+    >>> from chandler import eim, eimml, sharing_model
     >>> from chandler.eim import Inherit, RecordSet as rs, NoChange as nc, Diff
     >>> import datetime, decimal
     >>> class TestRecord(eim.Record):

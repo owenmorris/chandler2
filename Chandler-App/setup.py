@@ -15,6 +15,7 @@ setup(
     namespace_packages = ['chandler'],
     install_requires=[
         'simplegeneric>=0.6,==dev',
+        'vobject>=0.7.1,==dev',
     ],
     entry_points = """
     [chandler.domain.triage]

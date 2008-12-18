@@ -12,10 +12,9 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-import eim
-from application import schema
-from i18n import ChandlerMessageFactory as _
+import chandler.eim as eim
 import logging
+from uuid import UUID
 logger = logging.getLogger(__name__)
 
 
@@ -77,24 +76,24 @@ class ItemRecord(eim.Record):
     uuid = eim.key(aliasableUUID)
 
     # ContentItem.displayName
-    title = eim.field(text1024, _(u"Title"))
+    title = eim.field(text1024, "Title")
 
     # ContentItem.[triageStatus, triageStatusChanged, doAutoTriageOnDateChange]
-    triage = eim.field(text256, _(u"Triage status"), filters=[triageFilter])
+    triage = eim.field(text256, "Triage status", filters=[triageFilter])
 
     # ContentItem.createdOn
     createdOn = eim.field(eim.DecimalType(digits=20, decimal_places=0),
-        _(u"Created on"), filters=[createdOnFilter])
+        "Created on", filters=[createdOnFilter])
 
     # ContentItem.modifiedFlags
-    hasBeenSent = eim.field(eim.IntType, _(u"Has been sent"),
+    hasBeenSent = eim.field(eim.IntType, "Has been sent",
         filters=[hasBeenSentFilter])
 
     # ContentItem.needsReply
-    needsReply = eim.field(eim.IntType, _(u"Needs reply"), filters=[needsReplyFilter], default=0)
+    needsReply = eim.field(eim.IntType, "Needs reply", filters=[needsReplyFilter], default=0)
 
     # ContentItem.read
-    read = eim.field(eim.IntType, _(u"Has been read"), filters=[readFilter],
+    read = eim.field(eim.IntType, "Has been read", filters=[readFilter],
         default=0)
 
 
@@ -105,13 +104,13 @@ class ModifiedByRecord(eim.Record):
     uuid = eim.key(ItemRecord.uuid)
 
     # ContentItem.lastModifiedBy
-    userid = eim.key(text256, _(u"User ID"))
+    userid = eim.key(text256, "User ID")
 
     # ContentItem.lastModified (time)
-    timestamp = eim.key(eim.DecimalType(digits=12, decimal_places=2), _(u"Last modified"))
+    timestamp = eim.key(eim.DecimalType(digits=12, decimal_places=2), "Last modified")
 
     # ContentItem.lastModification (action)
-    action = eim.key(eim.IntType, _(u"Action"))
+    action = eim.key(eim.IntType, "Action")
 
 class NoteRecord(eim.Record):
     URI = "http://osafoundation.org/eim/note/0"
@@ -119,10 +118,10 @@ class NoteRecord(eim.Record):
     uuid = eim.key(ItemRecord.uuid)
 
     # ContentItem.body
-    body = eim.field(eim.ClobType, _(u"Body"))
+    body = eim.field(eim.ClobType, "Body")
 
     # Note.icalUid
-    icalUid = eim.field(text256, _(u"Icalendar UID"), filters=[icalUidFilter])
+    icalUid = eim.field(text256, "Icalendar UID", filters=[icalUidFilter])
 
     # Note.icalendarProperties - legacy, never used
     icalProperties = eim.field(text1024, filters=[nonStandardICalendarFilter])
@@ -166,11 +165,11 @@ class EventRecord(eim.Record):
     uuid = eim.key(NoteRecord.uuid)
 
     # EventStamp.[allDay, anyTime, duration, startTime]
-    dtstart = eim.field(text20, _(u"Start time"))
-    duration = eim.field(text20, _(u"Duration"))
+    dtstart = eim.field(text20, "Start time")
+    duration = eim.field(text20, "Duration")
 
     # EventStamp.location
-    location = eim.field(text256, _(u"Location"))
+    location = eim.field(text256, "Location")
 
     # EventStamp.[recurrenceID, rruleset, etc.]
     rrule = eim.field(rrule_field)
@@ -179,7 +178,7 @@ class EventRecord(eim.Record):
     exdate = eim.field(rdate_field, filters=[occurrenceDeletion])
 
     # EventStamp.transparency
-    status = eim.field(text256, _(u"Event status"), filters=[eventStatusFilter])
+    status = eim.field(text256, "Event status", filters=[eventStatusFilter])
 
     # timestamp of the most recent occurrence, for calculating triage status
     lastPastOccurrence = eim.field(text20, default=u"", filters=[triageFilter])
@@ -190,41 +189,41 @@ class DisplayAlarmRecord(eim.Record):
     URI = "http://osafoundation.org/eim/displayAlarm/0"
 
     uuid = eim.key(EventRecord.uuid)
-    description = eim.field(text1024, _(u"Alarm description"), filters=[remindersFilter])
-    trigger = eim.field(text1024, _(u"Alarm trigger"), filters=[remindersFilter])
-    duration = eim.field(text1024, _(u"Alarm duration"), filters=[remindersFilter])
-    repeat = eim.field(eim.IntType, _(u"Alarm repeat"), filters=[remindersFilter])
+    description = eim.field(text1024, "Alarm description", filters=[remindersFilter])
+    trigger = eim.field(text1024, "Alarm trigger", filters=[remindersFilter])
+    duration = eim.field(text1024, "Alarm duration", filters=[remindersFilter])
+    repeat = eim.field(eim.IntType, "Alarm repeat", filters=[remindersFilter])
 
 
 class MailMessageRecord(eim.Record):
     URI = "http://osafoundation.org/eim/mail/0"
 
     uuid = eim.key(NoteRecord.uuid)
-    messageId = eim.field(text256, _(u"Message ID"), filters=[messageIdFilter])
-    headers = eim.field(eim.ClobType, _(u"Message headers"), filters=[headersFilter])
+    messageId = eim.field(text256, "Message ID", filters=[messageIdFilter])
+    headers = eim.field(eim.ClobType, "Message headers", filters=[headersFilter])
     # Will contain the RFC 822 from address
-    fromAddress = eim.field(text256, _(u"From"))
-    toAddress = eim.field(text1024, _(u"To"))
-    ccAddress = eim.field(text1024, _(u"CC"))
-    bccAddress = eim.field(text1024, _(u"BCC"), filters=[bccFilter])
+    fromAddress = eim.field(text256, "From")
+    toAddress = eim.field(text1024, "To")
+    ccAddress = eim.field(text1024, "CC")
+    bccAddress = eim.field(text1024, "BCC", filters=[bccFilter])
 
     # Can contain text or email addresses ie. from The Management Team
-    originators = eim.field(text1024, _(u"Originators"))
+    originators = eim.field(text1024, "Originators")
 
     # date sent is populated by MailStamp.dateSentString
-    dateSent = eim.field(text256, _(u"Date sent"), filters=[dateSentFilter])
+    dateSent = eim.field(text256, "Date sent", filters=[dateSentFilter])
 
-    inReplyTo = eim.field(text256, _(u"In-Reply-to"), filters=[inReplyToFilter])
+    inReplyTo = eim.field(text256, "In-Reply-to", filters=[inReplyToFilter])
 
     #The list of message-id's a mail message references
     # can be quite long and can easily exceed 1024 characters
-    references = eim.field(eim.ClobType, _(u"References"), filters=[referencesFilter])
+    references = eim.field(eim.ClobType, "References", filters=[referencesFilter])
 
     # Values required for Dump and Reload
-    mimeContent = eim.field(eim.ClobType, _(u"MIME content"), filters=[mimeContentFilter])
-    rfc2822Message = eim.field(eim.ClobType, _(u"RFC2822 message"), filters=[rfc2822MessageFilter])
-    previousSender = eim.field(text256, _(u"Previous sender"), filters=[previousSenderFilter])
-    replyToAddress = eim.field(text256, _(u"Reply-to address"), filters=[replyToAddressFilter])
+    mimeContent = eim.field(eim.ClobType, "MIME content", filters=[mimeContentFilter])
+    rfc2822Message = eim.field(eim.ClobType, "RFC2822 message", filters=[rfc2822MessageFilter])
+    previousSender = eim.field(text256, "Previous sender", filters=[previousSenderFilter])
+    replyToAddress = eim.field(text256, "Reply-to address", filters=[replyToAddressFilter])
 
     # Contains bit wise flags indicating state.
     # A state integer was chosen over individual
@@ -232,7 +231,7 @@ class MailMessageRecord(eim.Record):
     # Chandler mail specific flag requirements from
     # EIM.
 
-    messageState = eim.field(eim.IntType, _(u"Message state"), filters=[messageStateFilter])
+    messageState = eim.field(eim.IntType, "Message state", filters=[messageStateFilter])
 
 
 
@@ -261,7 +260,7 @@ class PasswordRecord(eim.Record):
 class PasswordPrefsRecord(eim.Record):
     URI = "http://osafoundation.org/eim/password/prefs/0"
 
-    dummyPassword = eim.field(schema.UUID)
+    dummyPassword = eim.field(UUID)
     masterPassword = eim.field(eim.IntType) # boolean
     timeout = eim.field(eim.IntType)
     protect = eim.field(eim.IntType, default=0) # 0 = None, 1 = True, 2 = False
@@ -287,7 +286,7 @@ class MailAccountRecord(eim.Record):
 class IMAPAccountFoldersRecord(eim.Record):
     URI = "http://osafoundation.org/eim/pim/imapaccountfolders/0"
 
-    imapAccountUUID = eim.key(schema.UUID)
+    imapAccountUUID = eim.key(UUID)
     imapFolderUUID = eim.key(aliasableUUID)
 
 
@@ -295,7 +294,7 @@ class SMTPAccountRecord(eim.Record):
     URI = "http://osafoundation.org/eim/sharing/smtpccount/0"
 
     uuid = eim.key(ItemRecord.uuid)
-    password = eim.field(schema.UUID)
+    password = eim.field(UUID)
     fromAddress = eim.field(text256)
     useAuth = eim.field(eim.IntType)
     port = eim.field(eim.IntType)
@@ -306,14 +305,14 @@ class SMTPAccountRecord(eim.Record):
 class SMTPAccountQueueRecord(eim.Record):
     URI = "http://osafoundation.org/eim/pim/smtpaccountqueue/0"
 
-    smtpAccountUUID = eim.key(schema.UUID)
+    smtpAccountUUID = eim.key(UUID)
     itemUUID = eim.key(aliasableUUID)
 
 class IMAPAccountRecord(eim.Record):
     URI = "http://osafoundation.org/eim/sharing/imapaccount/0"
 
     uuid = eim.key(ItemRecord.uuid)
-    password = eim.field(schema.UUID)
+    password = eim.field(UUID)
     replyToAddress = eim.field(text256)
     port = eim.field(eim.IntType)
 
@@ -325,7 +324,7 @@ class POPAccountRecord(eim.Record):
     URI = "http://osafoundation.org/eim/sharing/popaccount/0"
 
     uuid = eim.key(ItemRecord.uuid)
-    password = eim.field(schema.UUID)
+    password = eim.field(UUID)
     replyToAddress = eim.field(text256)
     type = eim.field(eim.TextType(size=50))
     delete = eim.field(eim.IntType)
@@ -412,8 +411,8 @@ class ShareRecord(eim.Record):
     URI = "http://osafoundation.org/eim/sharing/share/0"
 
     uuid = eim.key(ItemRecord.uuid)
-    contents = eim.field(schema.UUID)
-    conduit = eim.field(schema.UUID)
+    contents = eim.field(UUID)
+    conduit = eim.field(UUID)
     subscribed = eim.field(eim.IntType)
     error = eim.field(eim.ClobType)
     errorDetails = eim.field(eim.ClobType)
@@ -456,12 +455,12 @@ class ShareHTTPConduitRecord(eim.Record):
     ticket_rw = eim.field(text1024)
     ticket_ro = eim.field(text1024)
 
-    account = eim.field(schema.UUID) # if provided, the following are ignored
+    account = eim.field(UUID) # if provided, the following are ignored
     host = eim.field(text256)
     port = eim.field(eim.IntType)
     ssl = eim.field(eim.IntType)
     username = eim.field(text256)
-    password = eim.field(schema.UUID)
+    password = eim.field(UUID)
 
 class ShareCosmoConduitRecord(eim.Record):
     URI = "http://osafoundation.org/eim/sharing/cosmoconduit/0"
@@ -478,10 +477,10 @@ class ShareStateRecord(eim.Record):
     URI = "http://osafoundation.org/eim/sharing/sharestate/0"
 
     uuid = eim.key(ItemRecord.uuid)
-    share = eim.field(schema.UUID)
+    share = eim.field(UUID)
     alias = eim.field(text1024)
-    conflict_item = eim.field(schema.UUID)
-    conflict_share = eim.field(schema.UUID)
+    conflict_item = eim.field(UUID)
+    conflict_share = eim.field(UUID)
     agreed = eim.field(eim.BlobType)    # obsolete
     pending = eim.field(eim.BlobType)   # obsolete
     stateRecords = eim.field(eim.BlobType, default='')
@@ -491,8 +490,8 @@ class SharePeerStateRecord(eim.Record):
     URI = "http://osafoundation.org/eim/sharing/peerstate/0"
 
     uuid = eim.key(ItemRecord.uuid)
-    peer = eim.field(schema.UUID)
-    item = eim.field(schema.UUID)
+    peer = eim.field(UUID)
+    item = eim.field(UUID)
     peerrepo = eim.field(text1024)
     peerversion = eim.field(eim.IntType)
 
@@ -506,8 +505,8 @@ class ShareResourceStateRecord(eim.Record):
 class ShareSharedInRecord(eim.Record):
     URI = "http://osafoundation.org/eim/sharing/sharedin/0"
 
-    item = eim.key(schema.UUID)
-    share = eim.key(schema.UUID)
+    item = eim.key(UUID)
+    share = eim.key(UUID)
 
 class ShareAccountRecord(eim.Record):
     URI = "http://osafoundation.org/eim/sharing/account/0"
@@ -518,7 +517,7 @@ class ShareAccountRecord(eim.Record):
     ssl = eim.field(eim.IntType)
     path = eim.field(text1024)
     username = eim.field(text256)
-    password = eim.field(schema.UUID)
+    password = eim.field(UUID)
 
 class ShareWebDAVAccountRecord(eim.Record):
     URI = "http://osafoundation.org/eim/sharing/webdavaccount/0"
@@ -552,7 +551,7 @@ class ShareProxyRecord(eim.Record):
     protocol = eim.field(text256)
     useAuth = eim.field(eim.IntType)
     username = eim.field(text256)
-    password = eim.field(schema.UUID)
+    password = eim.field(UUID)
     active = eim.field(eim.IntType)
     bypass = eim.field(text256, default=u'')
 
@@ -580,16 +579,16 @@ class ApplicationPrefsRecord(eim.Record):
     isOnline = eim.field(eim.IntType, default=1) # 1 = online, 0 = offline
 
     backupOnQuit = eim.field(eim.IntType, default=0) # 0 = None, 1 = True, 2 = False
-    
-    showTip = eim.field(eim.IntType, default=1) # 0 = False, 1 = True    
+
+    showTip = eim.field(eim.IntType, default=1) # 0 = False, 1 = True
     tipIndex = eim.field(eim.IntType, default=0)
 
 class UpdateCheckPrefsRecord(eim.Record):
     URI = "http://osafoundation.org/eim/preferences/updates/0"
-    
+
     numDays = eim.field(eim.IntType)
-    
-    
+
+
 class AutoRestorePrefsRecord(eim.Record):
     URI = "http://osafoundation.org/eim/preferences/autorestore/0"
 

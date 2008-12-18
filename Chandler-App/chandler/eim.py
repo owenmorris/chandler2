@@ -1074,7 +1074,7 @@ add_converter(ClobType, unicode, unicode)
 add_converter(BytesType, str, str)
 
 UUIDType = TextType("cid:uuid_type@osaf.us", size=36)
-# typedef(schema.UUID, UUIDType)
+typedef(UUID, UUIDType)
 
 def uuid_converter(uuid):
     return str(uuid)
@@ -1087,7 +1087,7 @@ def normalize_uuid_string(uuid_or_alias):
     uuid, colon, recurrence_id = uuid_or_alias.partition(":")
     return u"".join((uuid.lower(), colon, recurrence_id))
 
-# add_converter(UUIDType, UUID, uuid_converter)
+add_converter(UUIDType, UUID, uuid_converter)
 # add_converter(UUIDType, schema.Item, item_uuid_converter)
 add_converter(UUIDType, str, normalize_uuid_string)
 add_converter(UUIDType, unicode, normalize_uuid_string)
