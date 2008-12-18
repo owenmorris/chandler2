@@ -5,15 +5,21 @@ from chandler.recurrence import *
 from chandler.event import Event
 from chandler.triage import *
 from chandler.time_services import TimeZone, setNow
+from peak.events import activity
 
 class RecurrenceTestCase(unittest.TestCase):
 
     def setUp(self):
+        self.context = activity.Time.new()
+        self.context.__enter__()
         self.item = Item()
         self.dtstart = datetime(2008, 11, 30, 9, tzinfo=TimeZone.pacific)
         setNow(self.dtstart + timedelta(days=1))
         self.event = Event(self.item).add(base_start=self.dtstart)
         self.recurrence = Recurrence(self.item).add()
+
+    def tearDown(self):
+        self.context.__exit__(None, None, None)
 
     def test_dashboard_entry_count(self):
         """Recurrence entries appear and go away if recurrence is removed."""
