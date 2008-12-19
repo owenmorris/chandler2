@@ -97,21 +97,21 @@ Interaction Model: The Sidebar
 
 The Sidebar itself is a :class:`chandler.core.Table` subclass.
 
->>> s = Sidebar()
->>> s.icon_column
+>>> sidebar = Sidebar()
+>>> sidebar.icon_column
 <chandler.core.TableColumn object at 0x...>
->>> s.name_column
+>>> sidebar.name_column
 <chandler.core.TableColumn object at 0x...>
 
 A subcomponent of the :class:`Sidebar` is the :attr:`~Sidebar.filters`
 that can be applied to the collection:
 
->>> s.filters
+>>> sidebar.filters
 <chandler.core.Choice object at 0x...>
 
 By default, the "All" filter (i.e. include all items) is selected:
 
->>> s.filters.chosen_item.label
+>>> sidebar.filters.chosen_item.label
 u'All'
 
 For demonstration purposes, let's create a couple of collections,
@@ -120,7 +120,7 @@ throw some items in them, and add them to the Sidebar:
 >>> import chandler.event as event
 >>> home = core.Collection(title=u'Home')
 >>> work = core.Collection(title=u'Work')
->>> s.model.update(SidebarEntry(collection=c) for c in (home, work))
+>>> sidebar.model.update(SidebarEntry(collection=c) for c in (home, work))
 >>> hello = core.Item(title=u'Hello, World!',
 ...                  collections=(home, work))
 >>> meeting = event.Event(core.Item(title=u'Meeting', collections=(work,)))
@@ -131,50 +131,50 @@ Now, we're ready to see how filtering and the Sidebar work. First, the
 :attr:`~Sidebar.selected_item` attribute tells us the currently
 selected :attr:`~core.Collection`:
 
->>> s.selected_item
+>>> sidebar.selected_item
 <SidebarEntry(Home) at 0x...>
 
 The :attr:`~Sidebar.filtered_items` attribute consists of all the
 items in :attr:`~Sidebar.selected_item`, filtered appropriately.  So,
 in the above case, where "Home" has one item, ``hello``, we see:
 
->>> len(s.filtered_items)
+>>> len(sidebar.filtered_items)
 1
->>> set(s.filtered_items) == set([hello])
+>>> set(sidebar.filtered_items) == set([hello])
 True
 
 Let's filter the current collection by event:
 
->>> s.filters.new_choice = s.filters.choices[1]
+>>> sidebar.filters.new_choice = sidebar.filters.choices[1]
 
 We can double-check that this chosen item is correct:
 
->>> s.filters.chosen_item.label
+>>> sidebar.filters.chosen_item.label
 u'Calendar'
->>> s.filters.chosen_item.value == event.Event.installed_on
+>>> sidebar.filters.chosen_item.value == event.Event.installed_on
 True
 
 and that this change has been propagated to the
 :attr:`~core.FilteredSubset.predicate` of
 :attr:`~Sidebar.filtered_items`:
 
->>> s.filtered_items.predicate
+>>> sidebar.filtered_items.predicate
 <bound method classy_class.installed_on of <class 'chandler.event.Event'>>
 
 Since, ``hello``, the only member of "Home", is not an
 :class:`~chandler.event.Event`, we expect ``filtered_items`` to be
 empty now:
 
->>> s.filtered_items
+>>> sidebar.filtered_items
 FilteredSubset([])
 
 However, switching the Sidebar's collection to "Work" should leave us
 with one filtered item:
 
->>> s.items[1]
+>>> sidebar.items[1]
 <SidebarEntry(Work) at 0x...>
->>> s.selected_item = s.items[1]
->>> s.filtered_items
+>>> sidebar.selected_item = sidebar.items[1]
+>>> sidebar.filtered_items
 FilteredSubset([<chandler.core.Item object at 0x...>])
 
 Sorting
@@ -184,6 +184,6 @@ The :class:`Sidebar` is sorted by the :attr:`~SidebarEntry.sort_key`
 attribute. So, for example, if we add a "special" entry with negative
 :attr:`~SidebarEntry.sort_key`, it'll appear first in the list:
 
->>> s.model.add(SidebarEntry(collection=core.Collection(title=u'Special'), sort_key=-1))
->>> s.items[0]
+>>> sidebar.model.add(SidebarEntry(collection=core.Collection(title=u'Special'), sort_key=-1))
+>>> sidebar.items[0]
 <SidebarEntry(Special) at 0x...>
