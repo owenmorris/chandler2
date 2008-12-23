@@ -40,7 +40,7 @@ def timestamp(dt):
     # enough for our purposes, but make tests expect a float, in
     # case we decide to replace it with something with a little more
     # resolution
-    return float(timegm(dt.astimezone(TimeZone.utc).timetuple()))
+    return float(timegm(dt.utctimetuple()))
 
 def setNow(dt):
     if dt is not None and dt.tzinfo is None:
