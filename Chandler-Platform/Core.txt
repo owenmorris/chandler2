@@ -108,6 +108,7 @@ More generally, any object is considered_ a collection if it has:
 XXX What should add and remove do for read-only collections? Raise an
 exception?
 
+
 Filtered Subsets
 ----------------
 
@@ -200,11 +201,11 @@ contents: [8, 9]
 Extensions
 ----------
 
-Of course, a titled object is not particularly interesting. Items
-support having sets of ``extensions`` installed. These extensions can
-be used to customize object attributes and behaviour. In fact, to make
-it possible for different plugins to extend
-:class:`~chandler.core.Item` co-operatively, subclassing
+Of course, a titled object is not particularly interesting. Items and
+Collections support having sets of ``extensions`` installed. These
+extensions can be used to customize object attributes and
+behaviour. In fact, to make it possible for different plugins to
+extend :class:`~chandler.core.Item` co-operatively, subclassing
 :class:`~chandler.core.Item` is not recommended.
 
 An item starts out with no extensions installed:
@@ -270,6 +271,22 @@ As you might expect from the ``add()`` case above, it is an error to try to
 Traceback (most recent call last):
 ...
 ValueError: Extension <class 'chandler.core.Extension'> is not present
+
+Entities
+~~~~~~~~
+
+:class:`Collection` and :class:`Item` have a common base class,
+:class:`Entity`.  Any :class:`Entity` can be extended:
+
+>>> entity = Entity()
+>>> len(entity.extensions)
+0
+>>> isinstance(houses, Entity)
+True
+>>> extended_collection = Extension(houses).add()
+>>> Extension.installed_on(houses)
+True
+
 
 Subclassing  :class:`~chandler.core.Extension`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

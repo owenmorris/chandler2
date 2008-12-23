@@ -7,7 +7,7 @@ import chandler.time_services as time_services
 import time
 import sys
 
-__all__ = ('Item', 'Extension', 'DashboardEntry', 'Collection',
+__all__ = ('Item', 'Extension', 'DashboardEntry', 'Collection', 'Entity',
            'One', 'Many', 'FilteredSubset',
            'ItemAddOn', 'inherited_attrs',
            'InteractionComponent', 'Feature', 'Scope',
@@ -247,7 +247,14 @@ class FilteredSubset(trellis.Set):
         cell = self._data.get(obj)
         return cell is not None and cell.get_value()
 
-class Item(trellis.Component, plugins.Extensible):
+class Entity(trellis.Component):
+    _extension_types = trellis.make(trellis.Set)
+
+    @trellis.maintain
+    def extensions(self):
+        return frozenset(t(self) for t in self._extension_types)
+
+class Item(Entity, plugins.Extensible):
     extend_with = plugins.Hook('chandler.domain.item_addon')
 
     trellis.attrs(
@@ -270,10 +277,6 @@ class Item(trellis.Component, plugins.Extensible):
     def __init__(self, **kwargs):
         trellis.Component.__init__(self, **kwargs)
         self.load_extensions() # plugins.Extensible method
-
-    @trellis.maintain
-    def extensions(self):
-        return frozenset(t(self) for t in self._extension_types)
 
     def inherited_value(self, add_on_instance, name):
         """Inheritance rule for cells defined by inherited_attrs."""
@@ -334,7 +337,7 @@ class Extension(ItemAddOn):
             obj = obj._item
         except AttributeError:
             pass
-        return isinstance(obj, Item) and cls in obj._extension_types
+        return isinstance(obj, Entity) and cls in obj._extension_types
 
 class DashboardEntry(trellis.Component, plugins.Extensible):
     extend_with = plugins.Hook('chandler.domain.dashboard_entry_addon')
@@ -358,7 +361,7 @@ class DashboardEntry(trellis.Component, plugins.Extensible):
         self.load_extensions() # plugins.Extensible methods
 
 
-class Collection(trellis.Component):
+class Collection(Entity):
     title = trellis.attr(initially=u'')
 
     items = Many(inverse=Item.collections)
