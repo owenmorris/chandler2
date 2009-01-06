@@ -12,7 +12,7 @@ called the recurrence *series*.
 To add recurrence to an Item, use the :class:`Recurrence` extension:
 
 >>> from chandler.core import *
->>> from chandler.recurrence import Recurrence
+>>> from chandler.recurrence import Recurrence, to_hashable
 >>> item = Item(title="Book Club")
 >>> recur = Recurrence(item).add()
 
@@ -32,7 +32,7 @@ A recurring item must be associated with a start time.  The default
 >>> setNow(halloween + timedelta(days=2))
 >>> print recur.start
 None
->>> event = Event(item).add(base_start=halloween, base_duration=timedelta(hours=3))
+>>> event = Event(item).add(base_start=halloween, base_duration=timedelta(hours=3), tzinfo=TimeZone.pacific)
 >>> print recur.start
 2008-10-31 19:00:00-07:00
 
@@ -181,6 +181,18 @@ True
 >>> Event(second).start == halloween + timedelta(days=7)
 True
 
+Working with Recurrence IDs
+---------------------------
+
+When Occurrences are stored in dictionaries, they're usually stored by
+recurrence id.  However, datetimes using Chandler's floating timezone
+aren't suitable for use as keys in dictionaries.  As a result, the key
+used for dictionaries will be the result of the :func:`to_hashable` function.
+
+>>> to_hashable(halloween)
+1225504800.0
+>>> first.hashable_recurrence_id == to_hashable(halloween)
+True
 
 Triage and Occurrences
 ----------------------
@@ -219,16 +231,13 @@ Note that "before" includes the date given.
 
 Exceptions to the pattern of :const:`~chandler.triage.DONE` before a
 certain date, :const:`~chandler.triage.LATER` in the future,
-:const:`~chandler.triage.NOW` otherwise are expressed by adding to
-:attr:`Recurrence.triaged_recurrence_ids`, which is a Trellis Dict_ of
-(timestamp, status) tuples for particular recurrence-id keys.
+:const:`~chandler.triage.NOW` otherwise are expressed using
+:meth:`~Recurrence.triage_occurrence` and
+:meth:`~Recurrence.clear_occurrence_triage`
 
->>> recur.triaged_recurrence_ids
-{}
->>> pair = (timestamp(halloween + timedelta(days=2)), LATER)
->>> recur.triaged_recurrence_ids[halloween] = pair
+>>> recur.triage_occurrence(halloween, timestamp(halloween + timedelta(days=2)), LATER)
 first changed to: 200.0
->>> del recur.triaged_recurrence_ids[halloween]
+>>> recur.clear_occurrence_triage(halloween)
 first changed to: 300.0
 
 XXX for some reason Triage doesn't recalculate unless setNow happens
@@ -247,7 +256,7 @@ modify an Occurrence is with the :meth:`~Occurrence.modify` method.
 >>> len(recur.modification_recipes)
 0
 >>> first.modify()
->>> recur.modification_recipes[halloween]
+>>> recur.modification_recipes[to_hashable(halloween)]
 <chandler.recurrence.ModificationRecipe object at ...>
 
 Without arguments, :meth:`~Occurrence.modify` creates a

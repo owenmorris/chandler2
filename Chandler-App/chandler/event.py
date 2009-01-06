@@ -16,18 +16,19 @@ class Event(Extension):
         base_duration = one_hour,   # a timedelta
         all_day = False,
         base_any_time = False,
+        tzinfo = TimeZone.floating,
 
         # miscellaneous cells that don't affect time
         location = None,
         base_transparency = 'confirmed'
     )
 
-    @trellis.compute
+    @property
     def start(self):
         if self.base_start is None:
             return None
         if not self.is_day:
-            return self.base_start
+            return self.base_start.astimezone(self.tzinfo)
         else:
             return datetime.combine(self.base_start.date(), midnight)
 
@@ -44,7 +45,7 @@ class Event(Extension):
         else:
             return timedelta(self.base_duration.days + 1)
 
-    @trellis.compute
+    @property
     def end(self):
         return (self.start + self.duration if self.start is not None
                                           else None)

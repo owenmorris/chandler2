@@ -6,13 +6,28 @@ import dateutil.rrule
 
 from chandler.core import *
 from chandler.event import Event
-from chandler.time_services import timestamp, getNow
+from chandler.time_services import timestamp, getNow, TimeZone
 from chandler.triage import DONE, LATER, NOW, Triage
 
 def to_dateutil_frequency(freq):
     """Return the dateutil constant associated with the given frequency."""
     return getattr(dateutil.rrule, freq.upper())
 
+def to_hashable(dt):
+    """
+    Take a datetime with tzinfo and return either a timestamp or a naive
+    datetime, either of which are suitable as dictionary keys (datetimes
+    with floating tzinfo are *not*, because their __hash__ is mutable).
+
+    Pass through non-datetimes.
+
+    """
+    if not isinstance(dt, datetime) or dt.tzinfo is None:
+        return dt
+    if dt.tzinfo is TimeZone.floating:
+        return dt.replace(tzinfo=None)
+    else:
+        return timestamp(dt)
 
 class Recurrence(Extension):
     trellis.attrs(
@@ -103,6 +118,7 @@ class Recurrence(Extension):
 
     def get_occurrence(self, recurrence_id):
         """Return Occurrence for recurrence_id, cache it for later."""
+        recurrence_id = to_hashable(recurrence_id)
         occ = self._occurrence_cache.get(recurrence_id)
         if not occ:
             occ = Occurrence(self.item, recurrence_id)
@@ -132,7 +148,7 @@ class Recurrence(Extension):
                 # probably should be optimized by walking backwards from triaged_done_before
                 triage = Triage(self.get_occurrence(recurrence_id)).calculated
                 if triage not in (LATER, DONE):
-                    new_set.add(recurrence_id)
+                    new_set.add(to_hashable(recurrence_id))
                 else:
                     if triage == DONE and recurrence_id < now_dt:
                         past_done = recurrence_id
@@ -142,7 +158,7 @@ class Recurrence(Extension):
 
             for recurrence_id in past_done, future_later:
                 if recurrence_id is not None:
-                    new_set.add(recurrence_id)
+                    new_set.add(to_hashable(recurrence_id))
 
             new_set.update(self.triaged_recurrence_ids)
             new_set.update(self.modification_recipes)
@@ -181,7 +197,16 @@ class Recurrence(Extension):
 
     def pick_dashboard_entry(self, recurrence_id):
         """Return the DashboardEntry associated with recurrence_id, or None."""
-        return self._recurrence_dashboard_entries.get(recurrence_id)
+        return self._recurrence_dashboard_entries.get(to_hashable(recurrence_id))
+
+    def triage_occurrence(self, recurrence_id, timestamp, status):
+#         import pdb;pdb.set_trace()
+        self.triaged_recurrence_ids[to_hashable(recurrence_id)] = (timestamp, status)
+
+    def clear_occurrence_triage(self, recurrence_id):
+        recurrence_id = to_hashable(recurrence_id)
+        if recurrence_id in self.triaged_recurrence_ids:
+            del self.triaged_recurrence_ids[recurrence_id]
 
 class Occurrence(Item):
 
@@ -221,9 +246,16 @@ class Occurrence(Item):
     def collections(self):
         return self.master.collections
 
+    @property
+    def recurrence_id(self):
+        if isinstance(self.hashable_recurrence_id, datetime):
+            return self.hashable_recurrence_id.replace(tzinfo=TimeZone.floating)
+        master_event = Recurrence(self.master).start_extension(self.master)
+        return datetime.fromtimestamp(self.hashable_recurrence_id, master_event.tzinfo)
+
     def __init__(self, master, recurrence_id):
         self.master = master
-        self.recurrence_id = recurrence_id
+        self.hashable_recurrence_id = to_hashable(recurrence_id)
         return super(Occurrence, self).__init__()
 
     def __repr__(self):
@@ -239,24 +271,24 @@ class Occurrence(Item):
 
         """
         recipes = Recurrence(self.master).modification_recipes
-        recipe = recipes.get(self.recurrence_id)
+        recipe = recipes.get(self.hashable_recurrence_id)
         if not recipe:
-            recipe = recipes.added.get(self.recurrence_id)
+            recipe = recipes.added.get(self.hashable_recurrence_id)
         if not recipe:
             recipe = ModificationRecipe()
-            recipes[self.recurrence_id] = recipe
+            recipes[self.hashable_recurrence_id] = recipe
 
         if name:
             recipe.make_change(add_on, name, value)
 
     @trellis.compute
     def modification_recipe(self):
-        return Recurrence(self.master).modification_recipes.get(self.recurrence_id)
+        return Recurrence(self.master).modification_recipes.get(self.hashable_recurrence_id)
 
     @trellis.modifier
     def unmodify(self):
         if self.modification_recipe:
-            del Recurrence(self.master).modification_recipes[self.recurrence_id]
+            del Recurrence(self.master).modification_recipes[self.hashable_recurrence_id]
 
 
 
@@ -284,20 +316,11 @@ def occurrence_triage(item):
         master = Recurrence(item.master)
         done_before = master.triaged_done_before
         start = master.start_for(item)
-        if item.recurrence_id in master.triaged_recurrence_ids:
-            return (master.triaged_recurrence_ids[item.recurrence_id],)
+        if item.hashable_recurrence_id in master.triaged_recurrence_ids:
+            return (master.triaged_recurrence_ids[item.hashable_recurrence_id],)
         elif not done_before or done_before < start:
             return ()
         else:
             return ((timestamp(start), DONE),)
 
 plugins.Hook('chandler.domain.triage').register(occurrence_triage)
-
-def inherit_via_recurrence(item):
-    if isinstance(item, Occurrence):
-        return (item.master, item.recurrence_id)
-    else:
-        return (None, None)
-
-plugins.Hook('chandler.domain.inherit_from').register(inherit_via_recurrence)
-

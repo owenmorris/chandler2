@@ -63,6 +63,7 @@ True
 
 But if :attr:`~chandler.event.Event.start` is set, :attr:`~Reminder.trigger` will be, too.
 
+>>> event.tzinfo = time_services.TimeZone.eastern
 >>> event.base_start = april_fools + timedelta(hours=3)
 >>> rem.trigger
 datetime.datetime(2006, 4, 1, 16, 0, tzinfo=<ICUtzinfo: US/Eastern>)

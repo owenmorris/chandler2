@@ -37,11 +37,14 @@ Normally, however, you'll want events to have a start time.
 >>> from chandler.time_services import TimeZone, setNow
 >>> cinco_de_mayo = datetime(2008, 5, 5, 18, tzinfo=TimeZone.pacific)
 >>> event.base_start = cinco_de_mayo
+>>> event.tzinfo = TimeZone.pacific
 >>> event.start
 datetime.datetime(2008, 5, 5, 18, 0, tzinfo=<ICUtzinfo: US/Pacific>)
 
 You can't set ``end`` directly.  It's calculated from ``start`` and
 ``duration``.  The default ``duration`` for an event is one hour.
+
+The timezone for ``start`` and ``end`` is determined by the ``tzinfo`` cell.
 
 >>> event.end
 datetime.datetime(2008, 5, 5, 19, 0, tzinfo=<ICUtzinfo: US/Pacific>)
@@ -332,10 +335,9 @@ The floating timezone will change any time the PyICU default time changes,
 datetimes using floating time can be compared to timezoned datetimes, and
 changes to the default timezone will be tracked by the Trellis.
 
->>> floater = cinco_de_mayo.replace(year=2007, tzinfo=TimeZone.floating)
->>> floater < cinco_de_mayo
-True
+>>> floater = cinco_de_mayo.replace(year=2007)
 >>> event.base_start = floater
+>>> event.tzinfo = TimeZone.floating
 >>> event.end
 datetime.datetime(2007, 5, 5, 19, 0, tzinfo=FloatingTZ(...))
 
