@@ -418,11 +418,11 @@ Further Reading
 
 The `basic design`_ of this API was originally laid out by Phillip
 J. Eby, drawing on ideas from the Model View Presenter pattern, for
-example in `Taligent`_ and `Dolphin Smalltalk`_. Martin Fowler has an
+example in `Taligent [PDF]`_ and `Dolphin Smalltalk [PDF]`_. Martin Fowler has an
 interesting overview and some history of `GUI architectures`_.
 
 .. _Trellis: http://peak.telecommunity.com/DevCenter/Trellis
-.. _basic design: <http://www.eby-sarna.com/pipermail/peak/2007-November/002799.html>
-.. _Taligent: <http://www.wildcrest.com/Potel/Portfolio/mvp.pdf>
-.. _Dolphin Smalltalk: <http://www.object-arts.com/papers/TwistingTheTriad.PDF>
-.. _GUI architectures: <http://martinfowler.com/eaaDev/uiArchs.html>
+.. _basic design: http://www.eby-sarna.com/pipermail/peak/2007-November/002799.html
+.. _Taligent [PDF]: http://www.wildcrest.com/Potel/Portfolio/mvp.pdf
+.. _Dolphin Smalltalk [PDF]: http://www.object-arts.com/papers/TwistingTheTriad.PDF
+.. _GUI architectures: http://martinfowler.com/eaaDev/uiArchs.html
