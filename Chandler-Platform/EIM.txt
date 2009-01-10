@@ -726,8 +726,8 @@ The default implementation simply uses an item's UUID as its alias::
    >>> t.getAliasForItem(an_item)
    '0c7c6c5c-4a04-4d5a-8997-2fcef848c92d'
 
-   >>> t.getUUIDForAlias('0c7c6c5c-4a04-4d5a-8997-2fcef848c92d')
-   '0c7c6c5c-4a04-4d5a-8997-2fcef848c92d'
+   >>> t.getItemForAlias('0c7c6c5c-4a04-4d5a-8997-2fcef848c92d') is an_item
+   True
 
 Import Error Handling
 ---------------------

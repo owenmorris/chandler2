@@ -173,7 +173,7 @@ def getRecurrenceFields(event):
         elif recur.until:
             floating = event.start.tzinfo == TimeZone.floating
             until_tzinfo = TimeZone.floating if floating else TimeZone.utc
-            until = recur.until.astimezone(tzinfo)
+            until = recur.until.astimezone(until_tzinfo)
             rrule_dict['UNTIL'] = formatDateTime(until, False, False)
 
         for attr, tup in rrule_attr_dispatch.items():
@@ -302,43 +302,29 @@ class SharingTranslator(eim.Translator):
         else:
             return text
 
-    def getUUIDForAlias(self, alias):
-        if ':' not in alias:
-            return alias
+    def getItemForAlias(self, alias):
+        uuid, recurrence_id = splitUUID(alias)
+        if not recurrence_id:
+            return super(SharingTranslator, self).getItemForAlias(alias)
 
-        uuid, recurrenceID = splitUUID(alias)
-
-        # find the occurrence and return itsUUID
-        master = eim.get_item_for_uuid(uuid)
-        if master is not None and pim.has_stamp(master, pim.EventStamp):
-            masterEvent = pim.EventStamp(master)
-            occurrence = masterEvent.getExistingOccurrence(recurrenceID)
-            if occurrence is not None:
-                if self.getAliasForItem(occurrence) != alias:
-                    # don't get fooled by getExistingOccurrence( ) which
-                    # thinks that a floating tz matches a non-floater
-                    # (related to bug 9207)
-                    return None
-                return occurrence.itsItem.itsUUID.str16()
-
-        return None
-
+        master = eim.item_for_uuid(uuid)
+        return Recurrence(master).get_occurrence(recurrence_id)
 
     def getAliasForItem(self, item):
         return getAliasForItem(item)
 
 
-    def withItemForUUID(self, uuid, itype=Item, **attrs):
+    def withItemForUUID(self, alias, itype=Item, **attrs):
         """Handle recurrence modification aliases."""
-        uuid, recurrence_id = splitUUID(uuid)
+        uuid, recurrence_id = splitUUID(alias)
         if not recurrence_id:
             return super(SharingTranslator, self).withItemForUUID(uuid, itype, **attrs)
 
-        master = eim.item_for_uuid(uuid)
+        occurrence = self.getItemForAlias(alias)
+        master = self.getItemForAlias(uuid)
         master_recur = Recurrence(master)
 
         add_on = itype if itype is not Item else None
-        occurrence = master_recur.get_occurrence(recurrence_id)
 
         # recurrence triage is a special case
         if add_on is Triage and 'manual' in attrs and 'manual_timestamp' in attrs:
@@ -494,7 +480,7 @@ class SharingTranslator(eim.Translator):
 
         @self.withItemForUUID(record.uuid, Event,
             base_start=start,
-            tzinfo=start.tzinfo,
+            tzinfo=start.tzinfo if start not in emptyValues else eim.NoChange,
             all_day=all_day,
             base_any_time=any_time,
             base_duration=with_nochange(record.duration, fromICalendarDuration),
@@ -659,8 +645,12 @@ class SharingTranslator(eim.Translator):
 
     @model.DisplayAlarmRecord.deleter
     def delete_alarm(self, record):
-        item = eim.get_item_for_uuid(self.getUUIDForAlias(record.uuid))
-        item.reminders = []
+        # XXX
+#         item.reminders = []
+        pass
+
+
+
 
 
 

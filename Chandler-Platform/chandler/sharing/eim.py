@@ -1068,8 +1068,8 @@ class Translator:
         elif val is not NoChange:
             setattr(ob, attr, val)
 
-    def getUUIDForAlias(self, alias):
-        return alias
+    def getItemForAlias(self, alias):
+        return get_item_for_uuid(alias)
 
     def getAliasForItem(self, item):
         return str(EIM(item).uuid)
