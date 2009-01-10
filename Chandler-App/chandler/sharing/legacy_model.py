@@ -134,8 +134,8 @@ class NoteRecord(eim.Record):
     # Note.icalendarExtra
     icalExtra = eim.field(eim.TextType(size=4096), default=u"",
                           filters=[nonStandardICalendarFilter])
-    
- 
+
+
 class TaskRecord(eim.Record):
     URI = "http://osafoundation.org/eim/task/0"
 
@@ -377,7 +377,7 @@ class CollectionRecord(eim.Record):
 
     uuid = eim.key(ItemRecord.uuid)
     mine = eim.field(eim.IntType)
-    
+
     # We represent color as 4 values instead of 1 integer since eim.IntType is signed
     # and so far it doesn't seem worth adding a new type for color
     colorRed = eim.key(eim.IntType)

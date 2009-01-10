@@ -263,7 +263,7 @@ class Item(Entity, plugins.Extensible):
     )
 
     created = trellis.make(lambda x: time_services.nowTimestamp(),
-                           optional=False)
+                           optional=False, writable=True)
 
     _extension_types = trellis.make(trellis.Set)
 

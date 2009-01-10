@@ -1,0 +1,534 @@
+============
+ Translator
+============
+
+SharingTranslator implements the callbacks for converting between items and
+records.
+
+    >>> from datetime import datetime, timedelta
+    >>> from decimal import Decimal
+
+    >>> from chandler.triage import Triage
+    >>> from chandler.event import Event
+    >>> from chandler.time_services import TimeZone
+    >>> TimeZone.default = TimeZone.pacific
+
+    >>> from chandler.sharing import translator, legacy_model, eim
+    >>> t = translator.SharingTranslator()
+
+
+ItemRecord type
+===============
+
+Importing
+---------
+
+    >>> t.startImport()
+
+    >>> rec = legacy_model.ItemRecord(
+    ...         uuid='f230dcd4-7c32-4c3f-908b-d92081cc9a89',
+    ...         title='Translator test',
+    ...         triage='200 -1167792143.00 1',
+    ...         createdOn=Decimal("1164803131"),
+    ...         hasBeenSent=0,
+    ...         needsReply=0,
+    ...         read=0,
+    ... )
+
+    >>> rs = eim.RecordSet([rec])
+
+    >>> t.importRecords(rs)
+    >>> t.finishImport()
+
+    >>> item = eim.get_item_for_uuid('f230dcd4-7c32-4c3f-908b-d92081cc9a89')
+    >>> item is not None
+    True
+
+    >>> item.title
+    u'Translator test'
+
+    >>> Triage(item).manual
+    200.0
+    >>> Triage(item).manual_timestamp
+    1167792143.0
+
+    >>> item.created
+    1164803131.0
+
+
+Exporting
+---------
+
+    >>> t.startExport()
+    >>> records = list(t.exportItem(item))
+    >>> records
+    [ItemRecord('f230dcd4-7c32-4c3f-908b-d92081cc9a89', u'Translator test', '200 -1167792143.00 0', Decimal("1164803131"), NoChange, NoChange, NoChange), NoteRecord('f230dcd4-7c32-4c3f-908b-d92081cc9a89', u'', Inherit, Inherit, Inherit, Inherit), DisplayAlarmRecord('f230dcd4-7c32-4c3f-908b-d92081cc9a89', None, None, None, None)]
+
+
+NoteRecord type
+===============
+
+Importing
+---------
+
+    >>> rec = legacy_model.NoteRecord(
+    ...         uuid='f230dcd4-7c32-4c3f-908b-d92081cc9a89',
+    ...         body='This is the body',
+    ...         icalUid='f230dcd4-7c32-4c3f-908b-d92081cc9a89',
+    ...         icalProperties=None,
+    ...         icalParameters=None,
+    ...         icalExtra=None,
+    ... )
+
+    >>> rs = eim.RecordSet([rec])
+
+    >>> t.startImport()
+    >>> t.importRecords(rs)
+    >>> t.finishImport()
+
+    >>> item.body
+    u'This is the body'
+    >>> eim.EIM(item).ical_extra is None
+    True
+    >>> eim.EIM(item).ical_uid
+    u'f230dcd4-7c32-4c3f-908b-d92081cc9a89'
+
+
+Exporting
+---------
+
+    >>> t.startExport()
+    >>> records = list(t.exportItem(item))
+    >>> records
+    [ItemRecord('f230dcd4-7c32-4c3f-908b-d92081cc9a89', u'Translator test', '200 -1167792143.00 0', Decimal("1164803131"), NoChange, NoChange, NoChange), NoteRecord('f230dcd4-7c32-4c3f-908b-d92081cc9a89', u'This is the body', u'f230dcd4-7c32-4c3f-908b-d92081cc9a89', Inherit, Inherit, Inherit), DisplayAlarmRecord('f230dcd4-7c32-4c3f-908b-d92081cc9a89', None, None, None, None)]
+
+
+EventRecord type
+================
+
+Importing
+---------
+
+    >>> Event.installed_on(item)
+    False
+
+    >>> rec = legacy_model.EventRecord(
+    ...         uuid='f230dcd4-7c32-4c3f-908b-d92081cc9a89',
+    ...         dtstart = ';VALUE=DATE-TIME;TZID=America/Los_Angeles:20070201T140000',
+    ...         duration = 'PT1H',
+    ...         location = 'Nowhere',
+    ...         rrule = None,
+    ...         exrule = None,
+    ...         rdate = None,
+    ...         exdate = None,
+    ...         status = 'CANCELLED',
+    ...         lastPastOccurrence = None,
+    ... )
+
+Explain the record:
+
+    >>> for field in sorted(rec.explain()):
+    ...     print field[:2]
+    ('Duration', '1:00:00 (hh:mm:ss)')
+    ('Event status', u'FYI')
+    ('Location', u'Nowhere')
+    ('Start time', '2007-02-01 14:00:00-08:00')
+    ('exdate', None)
+    ('exrule', None)
+    ('lastPastOccurrence', None)
+    ('rdate', None)
+    ('rrule', None)
+
+    >>> rs = eim.RecordSet([rec])
+
+    >>> t.startImport()
+    >>> t.importRecords(rs)
+    >>> t.finishImport()
+
+    >>> Event.installed_on(item)
+    True
+    >>> event = Event(item)
+    >>> event.transparency
+    'fyi'
+    >>> event.location
+    u'Nowhere'
+    >>> event.start
+    datetime.datetime(2007, 2, 1, 14, 0, tzinfo=<ICUtzinfo: America/Los_Angeles>)
+    >>> event.duration
+    datetime.timedelta(0, 3600)
+
+Exporting
+---------
+
+    >>> t.startExport()
+    >>> records = [r for r in t.exportItem(item) if isinstance(r, legacy_model.EventRecord)]
+    >>> records
+    [EventRecord('f230dcd4-7c32-4c3f-908b-d92081cc9a89', u';VALUE=DATE-TIME;TZID=America/Los_Angeles:20070201T140000', u'PT1H', u'Nowhere', None, None, None, None, u'CANCELLED', NoChange)]
+
+
+Recurrence
+==========
+
+Importing
+---------
+
+    >>> new_rec = legacy_model.EventRecord(
+    ...             uuid='f230dcd4-7c32-4c3f-908b-d92081cc9a89',
+    ...             dtstart = rec.dtstart,
+    ...             duration = rec.duration,
+    ...             location = rec.location,
+    ...             rrule = 'FREQ=WEEKLY;COUNT=5;BYDAY=TU,TH',
+    ...             exrule = None,
+    ...             rdate = ';VALUE=DATE-TIME;TZID=America/Los_Angeles:20070225T140000,20070223T140000',
+    ...             exdate = ';VALUE=DATE-TIME;TZID=America/Los_Angeles:20070206T140000',
+    ...             status = rec.status,
+    ...             lastPastOccurrence = None,
+    ... )
+
+    >>> rs = eim.RecordSet([new_rec])
+
+    >>> t.startImport()
+    >>> t.importRecords(rs)
+    >>> t.finishImport()
+
+    >>> [i.day for i in event.createDateUtilFromRule()]
+    [1, 8, 13, 15, 23, 25]
+
+Exporting
+---------
+
+    >>> t.startExport()
+    >>> allRecords = list(t.exportItem(item))
+    >>> records = [r for r in allRecords if isinstance(r, legacy_model.EventRecord)]
+    >>> len(records) == 1
+    True
+    >>> record = records[0]
+    >>> record.rrule
+    u'BYDAY=TU,TH;COUNT=5;FREQ=WEEKLY'
+    >>> record.exrule is None
+    True
+    >>> record.rdate
+    u';VALUE=DATE-TIME;TZID=America/Los_Angeles:20070223T140000,20070225T140000'
+    >>> record.exdate
+    u';VALUE=DATE-TIME;TZID=America/Los_Angeles:20070206T140000'
+
+Triage status isn't meaningful for master events, so it should be NoChange for
+the recurrence master.
+
+    >>> itemRecords = [r for r in allRecords if isinstance(r, legacy_model.ItemRecord)]
+    >>> len(itemRecords) == 1
+    True
+    >>> itemRecord = itemRecords[0]
+    >>> itemRecord.triage
+    NoChange
+
+
+Modifications
+=============
+
+    >>> mod_rec = legacy_model.ItemRecord(
+    ...         uuid='f230dcd4-7c32-4c3f-908b-d92081cc9a89:20070223T220000Z',
+    ...         title='Changed title',
+    ...         triage='100 -1167792143.00 1',
+    ...         createdOn=sharing.Inherit,
+    ...         hasBeenSent=sharing.Inherit,
+    ...         needsReply=sharing.Inherit,
+    ...         read=sharing.Inherit,
+    ... )
+
+The explain method should handle Inherit values:
+
+    >>> for field in sorted(mod_rec.explain()):
+    ...     print field[:2]
+    (u'Created on', u'Inherit')
+    (u'Has been read', u'Inherit')
+    (u'Has been sent', u'Inherit')
+    (u'Needs reply', u'Inherit')
+    (u'Title', u'Changed title')
+    (u'Triage status', u'Now')
+
+Importing
+---------
+
+    >>> rs = sharing.Diff([mod_rec])
+
+    >>> t.startImport()
+    >>> t.importRecords(rs)
+    >>> t.finishImport()
+
+    >>> mod = event.getRecurrenceID(event.startTime + timedelta(22))
+    >>> mod.itsItem.displayName
+    u'Changed title'
+
+    >>> mod.itsItem.triageStatus
+    TriageEnum.now
+
+Exporting
+---------
+
+    >>> mod.itsItem.setTriageStatus(pim.TriageEnum.done)
+    >>> mod.itsItem.resetAutoTriageOnDateChange()
+
+    >>> t.startExport()
+    >>> records = list(t.exportItem(mod.itsItem))
+    >>> event_records = [r for r in records if isinstance(r, legacy_model.EventRecord)]
+    >>> len(event_records) == 1
+    True
+    >>> event_record = event_records[0]
+    >>> event_record.dtstart
+    Inherit
+    >>> event_record.duration
+    Inherit
+    >>> item_records = [r for r in records if isinstance(r, legacy_model.ItemRecord)]
+    >>> len(item_records) == 1
+    True
+    >>> item_record = item_records[0]
+    >>> item_record.title
+    u'Changed title'
+    >>> item_record.triage
+    Inherit
+
+Custom Reminders
+================
+
+Importing
+---------
+
+    >>> t.startImport()
+
+    >>> item_rec = legacy_model.ItemRecord(
+    ...              uuid='a9b019a4-d995-11db-f269-0016cbca6aed',
+    ...              title='Item with reminder',
+    ...              triage='200 -1167792143.00 1',
+    ...              createdOn=Decimal("1164803131"),
+    ...              hasBeenSent=0,
+    ...              needsReply=0,
+    ...              read=0,
+    ... )
+    >>> alarm_rec = legacy_model.DisplayAlarmRecord(
+    ...               uuid='a9b019a4-d995-11db-f269-0016cbca6aed',
+    ...               description="Don't forget!",
+    ...               trigger=';VALUE=DATE-TIME:20060304T220000Z',
+    ...               duration="PT1H",
+    ...               repeat=1,
+    ... )
+
+    >>> rs = sharing.Diff([item_rec, alarm_rec])
+
+    >>> t.importRecords(rs)
+    >>> t.finishImport()
+
+    >>> item = eim.get_item_for_uuid('a9b019a4-d995-11db-f269-0016cbca6aed')
+    >>> len(item.reminders)
+    1
+    >>> item.reminders.first()
+    <Reminder (new): ...>
+    >>> item.reminders.first().absoluteTime
+    datetime.datetime(2006, 3, 4, 14, 0, tzinfo=<ICUtzinfo: America/Los_Angeles>)
+    >>> item.reminders.first().description
+    u"Don't forget!"
+
+Exporting
+---------
+
+    >>> t.startExport()
+    >>> records = list(t.exportItem(item))
+    >>> len(records)
+    3
+    >>> records[0]
+    ItemRecord('a9b019a4-d995-11db-f269-0016cbca6aed', u'Item with reminder', '200 -1167792143.00 1', Decimal("1164803131"), 0, 0, 0)
+    >>> records[1]
+    ModifiedByRecord(...)
+    >>> records[2]
+    DisplayAlarmRecord('a9b019a4-d995-11db-f269-0016cbca6aed', u"Don't forget!", u';VALUE=DATE-TIME:20060304T220000Z', u'PT1H', 1)
+
+    >>> del item.reminders.first().duration
+    >>> del item.reminders.first().repeat
+    >>> t.startExport()
+    >>> records = list(t.exportItem(item))
+    >>> records[2]
+    DisplayAlarmRecord('a9b019a4-d995-11db-f269-0016cbca6aed', u"Don't forget!", u';VALUE=DATE-TIME:20060304T220000Z', None, None)
+
+Relative Reminders
+==================
+
+Importing
+---------
+
+    >>> item_rec = legacy_model.ItemRecord(
+    ...              uuid='800644b6-dd73-11db-f79a-0016cbca6aed',
+    ...              title='Event Item with reminder',
+    ...              triage='200 -1167792996.00 1',
+    ...              createdOn=Decimal("1164805552"),
+    ...              hasBeenSent=0,
+    ...              needsReply=1,
+    ...              read=0,
+    ... )
+    >>> note_rec = legacy_model.NoteRecord(
+    ...         uuid='800644b6-dd73-11db-f79a-0016cbca6aed',
+    ...         body='This is the body',
+    ...         icalUid=None,
+    ...         icalExtra=None,
+    ...         icalProperties=None,
+    ...         icalParameters=None,
+    ... )
+    >>> event_rec = legacy_model.EventRecord(
+    ...         uuid='800644b6-dd73-11db-f79a-0016cbca6aed',
+    ...         dtstart = ';VALUE=DATE-TIME;TZID=America/Los_Angeles:20070516T180000',
+    ...         duration = 'PT1H',
+    ...         location = 'Nowhere',
+    ...         rrule = None,
+    ...         exrule = None,
+    ...         rdate = None,
+    ...         exdate = None,
+    ...         status = 'CONFIRMED',
+    ...         lastPastOccurrence = None,
+    ... )
+    >>> relative_alarm_rec = legacy_model.DisplayAlarmRecord(
+    ...         uuid='800644b6-dd73-11db-f79a-0016cbca6aed',
+    ...         description="Time to go!",
+    ...         trigger='-PT5M',
+    ...         duration=sharing.Inherit,
+    ...         repeat=sharing.Inherit,
+    ... )
+    >>> rs = sharing.Diff([item_rec, note_rec, event_rec,
+    ...                         relative_alarm_rec])
+
+    >>> t.importRecords(rs)
+    >>> t.finishImport()
+
+    >>> item = eim.get_item_for_uuid('800644b6-dd73-11db-f79a-0016cbca6aed')
+    >>> pim.has_stamp(item, pim.EventStamp)
+    True
+    >>> len(item.reminders)
+    1
+    >>> item.reminders.first()
+    <RelativeReminder (new): ...>
+    >>> item.reminders.first().delta
+    datetime.timedelta(-1, 86100)
+    >>> item.reminders.first().description
+    u'Time to go!'
+
+Exporting
+---------
+
+    >>> t.startExport()
+    >>> records = list(t.exportItem(item))
+    >>> len(records)
+    5
+    >>> records[0]
+    ItemRecord('800644b6-dd73-11db-f79a-0016cbca6aed', u'Event Item with reminder', '200 -1167792996.00 1', Decimal("1164805552"), 0, 1, 0)
+    >>> records[1]
+    ModifiedByRecord(...)
+    >>> records[2]
+    DisplayAlarmRecord('800644b6-dd73-11db-f79a-0016cbca6aed', u'Time to go!', u'-PT5M', None, None)
+    >>> records[3]
+    NoteRecord('800644b6-dd73-11db-f79a-0016cbca6aed', ...)
+    >>> records[4]
+    EventRecord('800644b6-dd73-11db-f79a-0016cbca6aed', ...)
+
+
+Collection Membership
+=====================
+
+Verify the special behavior in collection membership record, where a collection
+is specified either by well-known name, by UUID, or by repository path::
+
+    >>> d = sharing.translator.DumpTranslator(rv)
+
+By well-known name::
+    >>> p = Parcel(itsParent=rv.findPath("//parcels/osaf"), itsName="app")
+    >>> sidebar = pim.ListCollection(itsParent=p, itsName="sidebarCollection")
+    >>> note = pim.Note(itsView=rv)
+    >>> rec = legacy_model.CollectionMembershipRecord(
+    ...         collectionID="@sidebar",
+    ...         itemUUID=note.itsUUID,
+    ...         index=0,
+    ... )
+    >>> rs = sharing.Diff([rec])
+    >>> d.startImport()
+    >>> d.importRecords(rs)
+    >>> d.finishImport()
+    >>> note in sidebar
+    True
+
+    >>> list(d.export_collection_memberships(sidebar))
+    [CollectionMembershipRecord(u'@sidebar', '...', 0)]
+
+By UUID::
+    >>> parcels = rv.findPath("//parcels")
+    >>> collection = pim.SmartCollection(itsParent=parcels, itsName="testColl")
+    >>> note = pim.Note(itsView=rv)
+    >>> rec = legacy_model.CollectionMembershipRecord(
+    ...         collectionID=collection.itsUUID.str16(),
+    ...         itemUUID=note.itsUUID,
+    ...         index=0,
+    ... )
+    >>> rs = sharing.Diff([rec])
+    >>> d.startImport()
+    >>> d.importRecords(rs)
+    >>> d.finishImport()
+    >>> note in collection
+    True
+
+By path (although this likely won't be used)::
+    >>> note = pim.Note(itsView=rv)
+    >>> rec = legacy_model.CollectionMembershipRecord(
+    ...         collectionID='//parcels/testColl',
+    ...         itemUUID=note.itsUUID,
+    ...         index=1,
+    ... )
+    >>> rs = sharing.Diff([rec])
+    >>> d.startImport()
+    >>> d.importRecords(rs)
+    >>> d.finishImport()
+    >>> note in collection
+    True
+
+
+Cosmo workarounds
+=================
+
+Verify the special converters we put in place for turning None to NoChange
+for event status, and empty string to NoChange for triage are working
+
+    >>> rec = legacy_model.ItemRecord(
+    ...         uuid='f230dcd4-7c32-4c3f-908b-d92081cc9a89',
+    ...         title='triage test',
+    ...         triage='',
+    ...         createdOn=Decimal("1164803131"),
+    ...         hasBeenSent=0,
+    ...         needsReply=0,
+    ...         read=0,
+    ... )
+    >>> rec.triage
+    NoChange
+
+    >>> rec = legacy_model.EventRecord(
+    ...         uuid='f230dcd4-7c32-4c3f-908b-d92081cc9a89',
+    ...         dtstart = ';VALUE=DATE-TIME;TZID=America/Los_Angeles:20070201T140000',
+    ...         duration = 'PT1H',
+    ...         location = 'Nowhere',
+    ...         rrule = None,
+    ...         exrule = None,
+    ...         rdate = None,
+    ...         exdate = None,
+    ...         status = None,
+    ...         lastPastOccurrence = None,
+    ... )
+    >>> rec.status
+    NoChange
+
+    >>> rec = legacy_model.EventRecord(
+    ...         uuid='f230dcd4-7c32-4c3f-908b-d92081cc9a89',
+    ...         dtstart = ';VALUE=DATE-TIME;TZID=America/Los_Angeles:20070201T140000',
+    ...         duration = None,
+    ...         location = 'Nowhere',
+    ...         rrule = None,
+    ...         exrule = None,
+    ...         rdate = None,
+    ...         exdate = None,
+    ...         status = None,
+    ... )
+    >>> rec.duration
+    'PT0S'

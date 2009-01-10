@@ -29,7 +29,7 @@ import errors
 import logging
 logger = logging.getLogger(__name__)
 
-from chandler.core import Item, ItemAddOn, Extension
+from chandler.core import Entity, Item, ItemAddOn, Extension
 import peak.events.trellis as trellis
 from uuid import UUID, uuid4
 import traceback
@@ -37,6 +37,10 @@ import traceback
 
 class EIM(Extension):
     uuid = trellis.make(lambda x: uuid4())
+    trellis.attrs(
+        ical_uid=None,
+        ical_extra=None,
+    )
 
     @trellis.modifier
     def add(self, **kw):
@@ -44,13 +48,13 @@ class EIM(Extension):
         set_item_for_uuid(self.uuid, self._item)
         return self
 
-_items_by_uuuid = {}
+_items_by_uuid = {}
 
 def set_item_for_uuid(uuid, item):
-    _items_by_uuuid[str(uuid)] = item
+    _items_by_uuid[str(uuid)] = item
 
 def get_item_for_uuid(uuid):
-    return _items_by_uuuid.get(uuid)
+    return _items_by_uuid.get(uuid)
 
 def item_for_uuid(uuid):
     """Return existing Item, or create and return a new Item."""
@@ -64,8 +68,8 @@ def item_for_uuid(uuid):
 def exporter(*types):
     """Mark a translator method as exporting the specified item type(s)"""
     for t in types:
-        if not issubclass(t, (Item, ItemAddOn)) or t is Extension or t is ItemAddOn:
-            raise TypeError("%r is not an `Item`, `ItemAddOn` or `Extension`"
+        if not issubclass(t, (Entity, ItemAddOn)) or t is Extension or t is ItemAddOn:
+            raise TypeError("%r is not an `Entity`, `ItemAddOn` or `Extension`"
                 % (t,)
             )
     def decorate(func):
@@ -1012,20 +1016,26 @@ class Translator:
             # Inherit attrs
             for attr, val in attrs.iteritems(): self.smart_setattr(val, ob, attr)
 
+        try:
+            if issubclass(itype, ItemAddOn):
+                add_on = itype(item)
+                if issubclass(itype, Extension):
+                    if not itype.installed_on(item):
+                        add_on.add()
+                setattrs(add_on)
+            else:
+                add_on = item
+            setattrs(add_on)
+        except Exception, e:
+            self.recordFailure(e)
+            return None
+
         def decorator(func):
             try:
-                if issubclass(itype, ItemAddOn):
-                    add_on = itype(item)
-                    if issubclass(itype, Extension):
-                        if not itype.installed_on(item):
-                            add_on.add()
-                    setattrs(add_on)
-                    return func(add_on)
-                else:
-                    setattrs(item)
-                    return func(item)
+                return func(add_on)
             except Exception, e:
                 self.recordFailure(e)
+
         return decorator
 
     def smart_setattr(self, val, ob, attr):
@@ -1079,13 +1089,15 @@ typedef(UUID, UUIDType)
 def uuid_converter(uuid):
     return str(uuid)
 
-def item_uuid_converter(item):
-    return str(item.itsUUID)
+def addon_uuid_converter(add_on):
+    return str(EIM(add_on._item).uuid)
 
 def normalize_uuid_string(uuid_or_alias):
     """Tolerate uppercase uuid strings."""
     uuid, colon, recurrence_id = uuid_or_alias.partition(":")
     return u"".join((uuid.lower(), colon, recurrence_id))
+
+add_converter(UUIDType, ItemAddOn, addon_uuid_converter)
 
 add_converter(UUIDType, UUID, uuid_converter)
 # add_converter(UUIDType, schema.Item, item_uuid_converter)

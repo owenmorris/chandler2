@@ -1284,14 +1284,14 @@ subclasses::
     ...     return []
     Traceback (most recent call last):
       . . .
-    TypeError: <type 'object'> is not an `Item`, `ItemAddOn` or `Extension`
+    TypeError: <type 'object'> is not an `Entity`, `ItemAddOn` or `Extension`
 
     >>> @eim.exporter(Extension)    # has to be a *subclass* of Extension
     ... def wont_work(self, item):
     ...     return []
     Traceback (most recent call last):
       . . .
-    TypeError: <class 'chandler.core.Extension'> is not an `Item`, `ItemAddOn` or `Extension`
+    TypeError: <class 'chandler.core.Extension'> is not an `Entity`, `ItemAddOn` or `Extension`
 
 Diff ``_merge()`` method should handle multiple encounters w/conflicting
 records::
