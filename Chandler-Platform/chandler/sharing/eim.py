@@ -29,7 +29,8 @@ import errors
 import logging
 logger = logging.getLogger(__name__)
 
-from chandler.core import Entity, Item, ItemAddOn, Extension, reset_cell_default
+from chandler.core import (Entity, Item, Collection, ItemAddOn,
+                           Extension, reset_cell_default)
 import peak.events.trellis as trellis
 from uuid import UUID, uuid4
 import traceback
@@ -37,24 +38,36 @@ import traceback
 
 class EIM(Extension):
     uuid = trellis.make(lambda x: uuid4())
+    well_known_name = trellis.compute(lambda self: self._well_known_name)
     trellis.attrs(
+        _well_known_name=None,
         ical_uid=None,
         ical_extra=None,
     )
 
     @trellis.modifier
-    def add(self, **kw):
+    def add(self, name=None, **kw):
         super(EIM, self).add(**kw)
-        set_item_for_uuid(self.uuid, self._item)
+        if name is not None:
+            self._well_known_name = name
+            set_item_for_name(name, self.item)
+        set_item_for_uuid(self.uuid, self.item)
         return self
 
 _items_by_uuid = {}
+_well_known_names = {}
 
 def set_item_for_uuid(uuid, item):
     _items_by_uuid[str(uuid)] = item
 
+def set_item_for_name(name, item):
+    _well_known_names[name] = item
+
 def get_item_for_uuid(uuid):
-    return _items_by_uuid.get(uuid)
+    return _items_by_uuid.get(str(uuid))
+
+def get_item_for_name(name):
+    return _well_known_names.get(name)
 
 def item_for_uuid(uuid):
     """Return existing Item, or create and return a new Item."""
@@ -64,6 +77,18 @@ def item_for_uuid(uuid):
         EIM(item).add(uuid=UUID(uuid))
     return item
 
+def collection_for_name(name_or_uuid):
+    kw = {}
+    try:
+        kw['uuid'] = uuid = UUID(name_or_uuid)
+        collection = get_item_for_uuid(uuid)
+    except ValueError:
+        collection = get_item_for_name(name_or_uuid)
+        kw['name'] = name_or_uuid
+    if not collection:
+        collection = Collection()
+        EIM(collection).add(**kw)
+    return collection
 
 def exporter(*types):
     """Mark a translator method as exporting the specified item type(s)"""
@@ -1088,7 +1113,7 @@ def uuid_converter(uuid):
     return str(uuid)
 
 def addon_uuid_converter(add_on):
-    return str(EIM(add_on._item).uuid)
+    return str(EIM(add_on.item).uuid)
 
 def normalize_uuid_string(uuid_or_alias):
     """Tolerate uppercase uuid strings."""
@@ -1098,7 +1123,7 @@ def normalize_uuid_string(uuid_or_alias):
 add_converter(UUIDType, ItemAddOn, addon_uuid_converter)
 
 add_converter(UUIDType, UUID, uuid_converter)
-# add_converter(UUIDType, schema.Item, item_uuid_converter)
+add_converter(TextType, UUID, uuid_converter)
 add_converter(UUIDType, str, normalize_uuid_string)
 add_converter(UUIDType, unicode, normalize_uuid_string)
 

@@ -8,6 +8,7 @@ records.
     >>> from datetime import datetime, timedelta
     >>> from decimal import Decimal
 
+    >>> from chandler.core import Item, Collection
     >>> from chandler.triage import Triage
     >>> from chandler.event import Event
     >>> from chandler.recurrence import Recurrence
@@ -435,60 +436,46 @@ Exporting
 Collection Membership
 =====================
 
-Verify the special behavior in collection membership record, where a collection
-is specified either by well-known name, by UUID, or by repository path::
+Collections can be specified either by well-known name or UUID.
 
-    >>> d = eim.translator.DumpTranslator(rv)
+    >>> d = translator.DumpTranslator()
 
-By well-known name::
-    >>> p = Parcel(itsParent=rv.findPath("//parcels/osaf"), itsName="app")
-    >>> sidebar = pim.ListCollection(itsParent=p, itsName="sidebarCollection")
-    >>> note = pim.Note(itsView=rv)
+Well-Known Name
+---------------
+
+    >>> note = Item()
     >>> rec = legacy_model.CollectionMembershipRecord(
-    ...         collectionID="@sidebar",
-    ...         itemUUID=note.itsUUID,
+    ...         collectionID="@dashboard",
+    ...         itemUUID=eim.EIM(note).add().uuid,
     ...         index=0,
     ... )
     >>> rs = eim.Diff([rec])
     >>> d.startImport()
     >>> d.importRecords(rs)
     >>> d.finishImport()
-    >>> note in sidebar
+    >>> dashboard = eim.collection_for_name("@dashboard")
+    >>> note in dashboard.items
     True
 
-    >>> list(d.export_collection_memberships(sidebar))
-    [CollectionMembershipRecord(u'@sidebar', '...', 0)]
+    >>> list(d.export_collection_memberships(dashboard))
+    [CollectionMembershipRecord(u'@dashboard', '...', NoChange)]
 
-By UUID::
-    >>> parcels = rv.findPath("//parcels")
-    >>> collection = pim.SmartCollection(itsParent=parcels, itsName="testColl")
-    >>> note = pim.Note(itsView=rv)
+By UUID
+-------
+
+    >>> collection = Collection()
+    >>> note = Item()
     >>> rec = legacy_model.CollectionMembershipRecord(
-    ...         collectionID=collection.itsUUID.str16(),
-    ...         itemUUID=note.itsUUID,
+    ...         collectionID=eim.EIM(collection).add().uuid,
+    ...         itemUUID=eim.EIM(note).add().uuid,
     ...         index=0,
     ... )
     >>> rs = eim.Diff([rec])
     >>> d.startImport()
     >>> d.importRecords(rs)
     >>> d.finishImport()
-    >>> note in collection
+    >>> note in collection.items
     True
-
-By path (although this likely won't be used)::
-    >>> note = pim.Note(itsView=rv)
-    >>> rec = legacy_model.CollectionMembershipRecord(
-    ...         collectionID='//parcels/testColl',
-    ...         itemUUID=note.itsUUID,
-    ...         index=1,
-    ... )
-    >>> rs = eim.Diff([rec])
-    >>> d.startImport()
-    >>> d.importRecords(rs)
-    >>> d.finishImport()
-    >>> note in collection
-    True
-
 
 Cosmo workarounds
 =================

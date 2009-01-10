@@ -160,7 +160,7 @@ def getRecurrenceFields(event):
     or all of which may be None.
 
     """
-    item = event._item
+    item = event.item
     if not Recurrence.installed_on(item) or not Recurrence(item).rruleset:
         return (None, None, None, None)
 
@@ -497,13 +497,13 @@ class SharingTranslator(eim.Translator):
             if recurrence_id:
                 return
             add_recurrence = not all_empty(record, 'rdate', 'rrule')
-            recurrence_installed = Recurrence.installed_on(event._item)
+            recurrence_installed = Recurrence.installed_on(event.item)
             if not recurrence_installed and not add_recurrence:
                 pass # no recurrence, nothing to do
             elif recurrence_id:
                 pass # modification, no rules to set
             else:
-                recur = Recurrence(event._item)
+                recur = Recurrence(event.item)
                 if add_recurrence and not recurrence_installed:
                     recur.add()
                 for datetype in 'rdate', 'exdate':
@@ -665,29 +665,9 @@ class DumpTranslator(SharingTranslator):
     version = 1
     description = u"Translator for Chandler items (PIM and non-PIM)"
 
-
-    # Mapping for well-known names to/from their current repository path
-    path_to_name = {
-        "//parcels/osaf/app/sidebarCollection" : "@sidebar",
-    }
-    name_to_path = dict([[v, k] for k, v in path_to_name.items()])
-
-
     def exportItem(self, item):
-        """
-        Export an item and its stamps, if any.
-
-        Recurrence changes:
-        - Avoid exporting occurrences unless they're modifications.
-        - Don't serialize recurrence rule items
-
-        """
-
-        if not isinstance(item, self.approvedClasses):
-            return
-
-        elif isinstance(item, Occurrence):
-            if not EventStamp(item).modificationFor:
+        if isinstance(item, Occurrence):
+            if not item.modification_recipe:
                 return
 
         for record in super(DumpTranslator, self).exportItem(item):
@@ -733,38 +713,15 @@ class DumpTranslator(SharingTranslator):
 
 
     def export_collection_memberships(self, collection):
-        index = 0
+        eim_wrapped = eim.EIM(collection)
+        collection_id = eim_wrapped.well_known_name or eim_wrapped.uuid
 
-        # For well-known collections, use their well-known name rather than
-        # their UUID
-        collectionID = self.path_to_name.get(str(collection.itsPath),
-            collection.itsUUID.str16())
-
-        for item in collection.inclusions:
-            # We iterate inclusions directly because we want the proper
-            # trash behavior to get reloaded -- we want to keep track that
-            # a trashed item was in the inclusions of a collection.
-            # By default we don't include items that are in
-            # //parcels since they are not created by the user
-
-
-            # For items in the sidebar, if they're not of an approved class
-            # then skip them.
-            # TODO: When we have a better solution for filtering plugin data
-            # this check should be removed:
-            if (collectionID == "@sidebar" and
-                not isinstance(item, self.approvedClasses)):
-                continue
-
-
-            if (not str(item.itsPath).startswith("//parcels") and
-                not isinstance(item, Occurrence)):
-                yield model.CollectionMembershipRecord(
-                    collectionID,
-                    item.itsUUID,
-                    index,
+        for item in collection.items:
+            yield model.CollectionMembershipRecord(
+                collection_id,
+                eim.EIM(item).uuid,
+                eim.NoChange,
                 )
-                index = index + 1
 
     @model.CollectionMembershipRecord.importer
     def import_collectionmembership(self, record):
@@ -773,37 +730,9 @@ class DumpTranslator(SharingTranslator):
         if record.itemUUID != getMasterAlias(record.itemUUID):
             return
 
-        id = record.collectionID
+        collection = eim.collection_for_name(record.collectionID)
+        collection.add(eim.item_for_uuid(record.itemUUID))
 
-        # Map old hard-coded sidebar UUID to its well-known name
-        if id == "3c58ae62-d8d6-11db-86bb-0017f2ca1708":
-            id = "@sidebar"
-
-        id = self.name_to_path.get(id, id)
-
-        if id.startswith("//"):
-            collection = self.rv.findPath(id)
-            # We're preserving order of items in collections
-            # assert (self.indexIsInSequence (collection, record.index))
-            @self.withItemForUUID(record.itemUUID, pim.ContentItem)
-            def do(item):
-                collection.add(item)
-
-        else:
-            # Assume that non-existent collections should be created as
-            # SmartCollections; otherwise don't upgrade from ContentCollection
-            # base
-            collectionType = (
-                pim.SmartCollection if eim.get_item_for_uuid(id) is None
-                else pim.ContentCollection
-            )
-            @self.withItemForUUID(id, collectionType)
-            def do(collection):
-                # We're preserving order of items in collections
-                # assert (self.indexIsInSequence (collection, record.index))
-                @self.withItemForUUID(record.itemUUID, pim.ContentItem)
-                def do(item):
-                    collection.add(item)
 
 
     @model.DashboardMembershipRecord.importer
