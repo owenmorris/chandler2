@@ -226,7 +226,7 @@ class Occurrence(Item):
         key = cls, name
         recipe = self.modification_recipe
         if recipe and key in recipe.changes:
-            return recipe.changes[key].value
+            return recipe.changes[key]
         elif (cls  == Recurrence(self.master).start_extension and
               name == Recurrence(self.master).recurrence_id_override):
             return self.recurrence_id
@@ -293,20 +293,13 @@ class Occurrence(Item):
 
 
 class ModificationRecipe(trellis.Component):
-    # a dictionary of (AddOn, attr_name) keys, with Cells as values
+    # a dictionary of (AddOn, attr_name) keys, values override master
     changes = trellis.make(trellis.Dict)
 
     @trellis.modifier
     def make_change(self, add_on, name, value):
         key = (add_on, name)
-        cell = self.changes.get(key)
-        if not cell:
-            if self.changes.added.get(key):
-                # multiple changes to the same attribute, bad
-                raise Exception, "Can't change the same attribute twice: %s" % key
-            self.changes[key] = trellis.Value(value)
-        else:
-            cell.value = value
+        self.changes[key] = value
 
 def occurrence_triage(item):
     """Hook for triage of an occurrence."""
