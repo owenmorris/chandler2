@@ -20,9 +20,9 @@ from chandler.sharing.utility import (
     splitUUID, fromICalendarDateTime, getMasterAlias
 )
 
-from chandler.core import Item, Collection, reset_cell_default
+from chandler.core import Item, Collection, reset_cell_default, Extension
 from chandler.event import Event
-from chandler.recurrence import Recurrence
+from chandler.recurrence import Recurrence, Occurrence, ModificationMask
 from chandler.triage import Triage
 from chandler.reminder import ReminderList
 
@@ -46,6 +46,10 @@ oneDay = timedelta(1)
 noChangeOrInherit = (eim.NoChange, eim.Inherit)
 emptyValues = (eim.NoChange, eim.Inherit, None)
 
+class SharingMask(ModificationMask):
+    def __init__(self, delegate):
+        super(SharingMask, self).__init__(delegate, eim.Inherit)
+
 def with_nochange(value, converter):
     """Convert value, as long as value isn't a special eim value."""
     if value in (eim.NoChange, eim.Inherit):
@@ -55,8 +59,11 @@ def with_nochange(value, converter):
 def datetimes_really_equal(dt1, dt2):
     return dt1.tzinfo == dt2.tzinfo and dt1 == dt2
 
+def decimal_int(x):
+    return Decimal(int(x))
+
 def datetimeToDecimal(dt):
-    return Decimal(int(timestamp(dt)))
+    return decimal_int(timestamp(dt))
 
 def decimalToDatetime(decimal):
     return datetime.fromtimestamp(decimal, TimeZone.default)
@@ -76,6 +83,14 @@ def from_transparency(val):
     elif out not in ('confirmed', 'tentative'):
         out = 'confirmed'
     return out
+
+def to_transparency(val):
+    if val in emptyValues:
+        return val
+    val = str(val).upper()
+    if val == 'FYI':
+        val = 'CANCELLED'
+    return val
 
 def fromICalendarDuration(text):
     return stringToDurations(text)[0]
@@ -145,10 +160,11 @@ def getRecurrenceFields(event):
     or all of which may be None.
 
     """
-    recur = Recurrence(event._item)
-    if recur.rruleset is None:
+    item = event._item
+    if not Recurrence.installed_on(item) or not Recurrence(item).rruleset:
         return (None, None, None, None)
 
+    recur = Recurrence(item)
     if recur.frequency:
         rrule_dict = {}
         if recur.count:
@@ -201,15 +217,16 @@ rrule_attr_dispatch = { # RFC2445 name  # eim->model
 def getAliasForItem(item_or_addon):
     item = getattr(item_or_addon, '_item', item_or_addon)
     if getattr(item, 'recurrence_id', None):
+        recurrence_id = item.recurrence_id
         master = item.master
-        tzinfo = item.recurrence_id.tzinfo
+        tzinfo = recurrence_id.tzinfo
         # If recurrence_id isn't floating but the master is allDay or anyTime,
         # we have an off-rule modification, its recurrence-id shouldn't be
         # treated as date valued.
         date_value = Event(master).is_day and tzinfo == TimeZone.floating
         if tzinfo != TimeZone.floating:
             recurrence_id = recurrence_id.astimezone(TimeZone.utc)
-        recurrence_id = formatDateTime(recurrence_id, dateValue, dateValue)
+        recurrence_id = formatDateTime(recurrence_id, date_value, date_value)
         return str(eim.EIM(master).uuid) + ":" + recurrence_id
     else:
         return str(eim.EIM(item).uuid)
@@ -230,7 +247,12 @@ def lipsum(length):
         if len(ret) >= length:
             return ret[:length]
 
-
+def all_empty(obj, *attr_names):
+    """True if obj.attr for all attr_names is in emptyValues."""
+    for attr in attr_names:
+        if getattr(obj, attr) not in emptyValues:
+            return False
+    return True
 
 eim.add_converter(model.aliasableUUID, Item, getAliasForItem)
 # eim.add_converter(model.aliasableUUID, pim.Stamp, getAliasForItem)
@@ -298,6 +320,47 @@ class SharingTranslator(eim.Translator):
         return getAliasForItem(item)
 
 
+    def withItemForUUID(self, uuid, itype=Item, **attrs):
+        """Handle recurrence modification aliases."""
+        uuid, recurrence_id = splitUUID(uuid)
+        if not recurrence_id:
+            return super(SharingTranslator, self).withItemForUUID(uuid, itype, **attrs)
+
+        master = eim.item_for_uuid(uuid)
+        master_recur = Recurrence(master)
+
+        add_on = itype if itype is not Item else None
+        occurrence = master_recur.get_occurrence(recurrence_id)
+
+        # recurrence triage is a special case
+        if add_on is Triage and 'manual' in attrs and 'manual_timestamp' in attrs:
+            status, timestamp = attrs['manual'], attrs['manual_timestamp']
+            if status is eim.Inherit:
+                master_recur.clear_occurrence_triage(recurrence_id)
+            else:
+                master_recur.triage_occurrence(recurrence_id, timestamp, status)
+            del attrs['manual']
+            del attrs['manual_timestamp']
+
+        for name, value in attrs.items():
+            if value is eim.Inherit:
+                occurrence.remove_change(add_on, name)
+            elif value is not eim.NoChange:
+                occurrence.modify(add_on, name, value)
+
+        value = occurrence if add_on is None else add_on(occurrence)
+        if issubclass(itype, Extension):
+            if not itype.installed_on(occurrence) and attrs:
+                value.add()
+
+        def decorator(func):
+            try:
+                return func(value)
+            except Exception, e:
+                self.recordFailure(e)
+
+        return decorator
+
 
     # ItemRecord -------------
 
@@ -328,6 +391,8 @@ class SharingTranslator(eim.Translator):
 
     @eim.exporter(Item)
     def export_item(self, item):
+        mask = SharingMask(item)
+
         triage = Triage(item)
         recurring = Recurrence.installed_on(item) and Recurrence(item).rruleset
         if recurring:
@@ -340,20 +405,20 @@ class SharingTranslator(eim.Translator):
             encoded_triage = eim.Inherit
 
         yield model.ItemRecord(
-            item,                            # uuid
-            self.obfuscate(item.title),      # title
-            encoded_triage,                  # triage
-            Decimal(int(item.created)),      # createdOn
-            eim.NoChange,                    # hasBeenSent
-            eim.NoChange,                    # needsReply
-            eim.NoChange,                    # read
+            item,                                        # uuid
+            self.obfuscate(mask.title),                  # title
+            encoded_triage,                              # triage
+            with_nochange(mask.created, decimal_int),    # createdOn
+            eim.NoChange,                                # hasBeenSent
+            eim.NoChange,                                # needsReply
+            eim.NoChange,                                # read
         )
 
         eim_wrapped = eim.EIM(item)
 
         yield model.NoteRecord(
             item,                                        # uuid
-            self.obfuscate(item.body),                   # body
+            self.obfuscate(mask.body),                   # body
             empty_as_inherit(eim_wrapped, 'ical_uid'),   # icalUid
             eim.Inherit,                                 # icalendarProperties
             eim.Inherit,                                 # icalendarParameters
@@ -411,24 +476,15 @@ class SharingTranslator(eim.Translator):
     @model.NoteRecord.importer
     def import_note(self, record):
         body = record.body if record.body is not None else eim.Inherit
-        if record.uuid != getMasterAlias(record.uuid):
-            # An occurrence
-            ical_uid = eim.Inherit
-        else:
-            ical_uid = record.icalUid
-            if ical_uid is None:
-                ical_uid = eim.NoChange
-
-        ical_extra = record.icalExtra
-        ical_extra = ical_extra if ical_extra is not None else eim.NoChange
 
         self.withItemForUUID(record.uuid, Item,
             body=body
         )
-        self.withItemForUUID(record.uuid, eim.EIM,
-            ical_uid = ical_uid,
-            ical_extra = ical_extra
-        )
+        if record.uuid == getMasterAlias(record.uuid):
+            self.withItemForUUID(record.uuid, eim.EIM,
+                ical_uid = empty_as_inherit(record, 'icalUid'),
+                ical_extra = empty_as_inherit(record, 'icalExtra')
+            )
 
     # EventRecord -------------
 
@@ -447,7 +503,9 @@ class SharingTranslator(eim.Translator):
             base_transparency=with_nochange(record.status, from_transparency),
         )
         def do(event):
-            add_recurrence = not (record.rdate in emptyValues and record.rrule in emptyValues)
+            if recurrence_id:
+                return
+            add_recurrence = not all_empty(record, 'rdate', 'rrule')
             recurrence_installed = Recurrence.installed_on(event._item)
             if not recurrence_installed and not add_recurrence:
                 pass # no recurrence, nothing to do
@@ -504,12 +562,17 @@ class SharingTranslator(eim.Translator):
     @eim.exporter(Event)
     def export_event(self, event):
 
-        transparency = str(event.transparency).upper()
-        if transparency == "FYI":
-            transparency = "CANCELLED"
+        event_mask = SharingMask(event)
+        transparency = to_transparency(event_mask.base_transparency)
 
-        start = toICalendarDateTime(event.start, event.all_day, event.any_time)
-        duration = timedeltaToString(event.duration)
+        if all_empty(event_mask, 'base_start', 'all_day', 'base_any_time', 'tzinfo'):
+            start = eim.Inherit
+        else:
+            start = toICalendarDateTime(event.start, event.all_day, event.any_time)
+        if all_empty(event_mask, 'base_duration', 'all_day', 'base_any_time'):
+            duration = eim.Inherit
+        else:
+            duration = timedeltaToString(event.duration)
 
 #         lastPast = eim.NoChange
 #         if event.occurrenceFor is None and event.rruleset is not None:

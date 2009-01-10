@@ -222,7 +222,6 @@ class Recurrence(Extension):
         return self._recurrence_dashboard_entries.get(to_hashable(recurrence_id))
 
     def triage_occurrence(self, recurrence_id, timestamp, status):
-#         import pdb;pdb.set_trace()
         self.triaged_recurrence_ids[to_hashable(recurrence_id)] = (timestamp, status)
 
     def clear_occurrence_triage(self, recurrence_id):
@@ -303,6 +302,13 @@ class Occurrence(Item):
         if name:
             recipe.make_change(add_on, name, value)
 
+    @trellis.modifier
+    def remove_change(self, add_on=None, name=None):
+        """Remove a single change from existing ModificationRecipes."""
+        if self.modification_recipe:
+            self.modification_recipe.remove_change(add_on, name)
+
+
     @trellis.compute
     def modification_recipe(self):
         return Recurrence(self.master).modification_recipes.get(self.hashable_recurrence_id)
@@ -322,6 +328,30 @@ class ModificationRecipe(trellis.Component):
     def make_change(self, add_on, name, value):
         key = (add_on, name)
         self.changes[key] = value
+
+    @trellis.modifier
+    def remove_change(self, add_on, name):
+        key = (add_on, name)
+        if key in self.changes:
+            del self.changes[key]
+
+class ModificationMask(object):
+    def __init__(self, delegate, default):
+        self.__delegate = delegate
+        if isinstance(delegate, Item):
+            self.__item = delegate
+            self.__key = None
+        else:
+            self.__item = delegate._item
+            self.__key = type(delegate)
+        self.__is_occurrence = isinstance(self.__item, Occurrence)
+        self.__default = default
+
+    def __getattr__(self, name):
+        if not self.__is_occurrence:
+            return getattr(self.__delegate, name)
+        return self.__item.modification_recipe.changes.get((self.__key, name), self.__default)
+
 
 def occurrence_triage(item):
     """Hook for triage of an occurrence."""

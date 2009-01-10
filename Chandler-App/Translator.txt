@@ -262,21 +262,18 @@ Importing
     >>> t.importRecords(rs)
     >>> t.finishImport()
 
-    >>> mod = event.getRecurrenceID(event.startTime + timedelta(22))
-    >>> mod.itsItem.displayName
+    >>> mod = recurrence.get_occurrence(event.start + timedelta(22))
+    >>> mod.title
     u'Changed title'
 
-    >>> mod.itsItem.triageStatus
-    TriageEnum.now
+    >>> Triage(mod).calculated
+    100.0
 
 Exporting
 ---------
 
-    >>> mod.itsItem.setTriageStatus(pim.TriageEnum.done)
-    >>> mod.itsItem.resetAutoTriageOnDateChange()
-
     >>> t.startExport()
-    >>> records = list(t.exportItem(mod.itsItem))
+    >>> records = list(t.exportItem(mod))
     >>> event_records = [r for r in records if isinstance(r, legacy_model.EventRecord)]
     >>> len(event_records) == 1
     True

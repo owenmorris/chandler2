@@ -275,7 +275,14 @@ If you're modifying an attribute on :class:`~chandler.core.Item`, use None for t
 >>> first.title
 'Special book club outing!'
 
-A modification can be unmodified, too.
+To remove a single changed attribute, use :meth:`~Occurrence.remove_change`:
+
+>>> first.remove_change(None, 'title')
+>>> first.title
+'Book Club'
+>>> first.modify(None, 'title', "Book club outing is back on!")
+
+If you want to remove all changes from a modification, use :meth:`~Occurrence.unmodify`:
 
 >>> first.unmodify()
 >>> print Event(first).duration, first.title
