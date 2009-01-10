@@ -168,6 +168,21 @@ Exporting
     >>> records
     [EventRecord('f230dcd4-7c32-4c3f-908b-d92081cc9a89', u';VALUE=DATE-TIME;TZID=America/Los_Angeles:20070201T140000', u'PT1H', u'Nowhere', None, None, None, None, u'CANCELLED', NoChange)]
 
+    >>> item2 = Item(title="Item for export that wasn't imported")
+    >>> dt = datetime(2008, 10, 1, 18, tzinfo = TimeZone.pacific)
+    >>> event2 = Event(item2).add(base_start=dt, tzinfo=TimeZone.pacific)
+    >>> eim.EIM.installed_on(item2)
+    False
+    >>> for r in t.exportItem(item2):
+    ...     print r
+    ItemRecord(..., u"Item for export that wasn't imported", Inherit, ...)
+    NoteRecord(..., u'', Inherit, Inherit, Inherit, Inherit)
+    DisplayAlarmRecord('...', None, None, None, None)
+    EventRecord('...', u';VALUE=DATE-TIME;TZID=US/Pacific:20081001T180000', u'PT1H', None, None, None, None, None, u'CONFIRMED', NoChange)
+    >>> eim.EIM.installed_on(item2)
+    True
+    >>> eim.item_for_uuid(str(eim.EIM(item2).uuid)) is item2
+    True
 
 Recurrence
 ==========
@@ -433,12 +448,41 @@ Exporting
     EventRecord('800644b6-dd73-11db-f79a-0016cbca6aed', u';VALUE=DATE-TIME;TZID=America/Los_Angeles:20070516T180000', u'PT1H', u'Nowhere', None, None, None, None, u'CONFIRMED', ...)
 
 
+Collections
+===========
+
+    >>> d = translator.DumpTranslator()
+
+    >>> rec1 = legacy_model.ItemRecord(
+    ...         "d3ba7961-c9b4-4e73-a860-cc8cbb40acc7",
+    ...         "Interesting Collection Title",
+    ...         eim.NoChange, eim.NoChange, eim.NoChange, eim.NoChange, eim.NoChange
+    ... )
+    >>> rec2 = legacy_model.CollectionRecord(
+    ...         "d3ba7961-c9b4-4e73-a860-cc8cbb40acc7",
+    ...         0,
+    ...         0, 0, 0, 0
+    ... )
+
+    >>> rs = eim.Diff([rec1, rec2])
+    >>> d.startImport()
+    >>> d.importRecords(rs)
+    >>> d.finishImport()
+    >>> collection = eim.collection_for_name("d3ba7961-c9b4-4e73-a860-cc8cbb40acc7")
+    >>> collection
+    <Collection: Interesting Collection Title>
+
+    >>> d.startExport()
+    >>> for record in eim.sort_records(d.exportItem(collection)):
+    ...     print record
+    CollectionRecord('d3ba7961-c9b4-4e73-a860-cc8cbb40acc7', 0, None, None, None, None, 0)
+    ItemRecord('d3ba7961-c9b4-4e73-a860-cc8cbb40acc7', u'Interesting Collection Title', ...)
+
+
 Collection Membership
 =====================
 
 Collections can be specified either by well-known name or UUID.
-
-    >>> d = translator.DumpTranslator()
 
 Well-Known Name
 ---------------

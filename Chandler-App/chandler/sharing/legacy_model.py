@@ -71,11 +71,28 @@ previousSenderFilter = eim.Filter('cid:previousSender-filter@osaf.us', u"Previou
 replyToAddressFilter = eim.Filter('cid:replyToAddress-filter@osaf.us', u"ReplyTo Address")
 messageStateFilter = eim.Filter('cid:messageState-filter@osaf.us', u"Message State")
 
+class CollectionRecord(eim.Record):
+    URI = "http://osafoundation.org/eim/pim/collection/0"
+
+    uuid = eim.key(aliasableUUID)
+    mine = eim.field(eim.IntType)
+
+    # We represent color as 4 values instead of 1 integer since eim.IntType is signed
+    # and so far it doesn't seem worth adding a new type for color
+    colorRed = eim.key(eim.IntType)
+    colorGreen = eim.key(eim.IntType)
+    colorBlue = eim.key(eim.IntType)
+    colorAlpha = eim.key(eim.IntType)
+    checked = eim.field(eim.IntType, default=0)
+
 
 class ItemRecord(eim.Record):
     URI = "http://osafoundation.org/eim/item/0"
 
-    uuid = eim.key(aliasableUUID)
+    # ItemRecord depends on CollectionRecord so that it's processed
+    # after CollectionRecord creates an appropriate Collection,
+    # instead of an Item
+    uuid = eim.key(CollectionRecord.uuid)
 
     # ContentItem.displayName
     title = eim.field(text1024, "Title")
@@ -371,20 +388,6 @@ class EmailAddressRecord(eim.Record):
 
 
 # collection ------------------------------------------------------------------
-
-class CollectionRecord(eim.Record):
-    URI = "http://osafoundation.org/eim/pim/collection/0"
-
-    uuid = eim.key(ItemRecord.uuid)
-    mine = eim.field(eim.IntType)
-
-    # We represent color as 4 values instead of 1 integer since eim.IntType is signed
-    # and so far it doesn't seem worth adding a new type for color
-    colorRed = eim.key(eim.IntType)
-    colorGreen = eim.key(eim.IntType)
-    colorBlue = eim.key(eim.IntType)
-    colorAlpha = eim.key(eim.IntType)
-    checked = eim.field(eim.IntType, default=0)
 
 class CollectionMembershipRecord(eim.Record):
     # A membership record for a collection that is not "out of the box"

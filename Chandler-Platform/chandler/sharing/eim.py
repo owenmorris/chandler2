@@ -973,7 +973,7 @@ class Translator:
         return ()
 
     def importRecords(self, rs):
-        for r in rs.inclusions:
+        for r in sort_records(rs.inclusions):
             self.importRecord(r)
         for r in rs.exclusions:
             deleter = self.deleters.get(type(r))

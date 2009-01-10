@@ -30,6 +30,7 @@ from itertools import chain
 import os
 from datetime import datetime, date, timedelta
 from decimal import Decimal
+import colorsys
 
 from vobject.icalendar import timedeltaToString, stringToDurations
 from chandler.time_services import getNow, TimeZone, timestamp, olsonize
@@ -214,6 +215,12 @@ rrule_attr_dispatch = { # RFC2445 name  # eim->model
     'byday':            ('BYDAY',       no_op),
 }
 
+def str_uuid_for(item):
+    eim_wrapped = eim.EIM(item)
+    if not eim.EIM.installed_on(item):
+        eim_wrapped.add()
+    return str(eim_wrapped.uuid)
+
 def getAliasForItem(item_or_addon):
     item = getattr(item_or_addon, '_item', item_or_addon)
     if getattr(item, 'recurrence_id', None):
@@ -227,9 +234,9 @@ def getAliasForItem(item_or_addon):
         if tzinfo != TimeZone.floating:
             recurrence_id = recurrence_id.astimezone(TimeZone.utc)
         recurrence_id = formatDateTime(recurrence_id, date_value, date_value)
-        return str(eim.EIM(master).uuid) + ":" + recurrence_id
+        return str_uuid_for(master) + ":" + recurrence_id
     else:
-        return str(eim.EIM(item).uuid)
+        return str_uuid_for(item)
 
 def lipsum(length):
     # Return some text that has properties real text would have.
@@ -255,6 +262,7 @@ def all_empty(obj, *attr_names):
     return True
 
 eim.add_converter(model.aliasableUUID, Item, getAliasForItem)
+eim.add_converter(model.aliasableUUID, Collection, getAliasForItem)
 # eim.add_converter(model.aliasableUUID, pim.Stamp, getAliasForItem)
 
 
@@ -677,38 +685,36 @@ class DumpTranslator(SharingTranslator):
     # - - Collection  - - - - - - - - - - - - - - - - - - - - - - - - - - -
     @model.CollectionRecord.importer
     def import_collection(self, record):
-        @self.withItemForUUID(record.uuid, pim.SmartCollection)
-        def add_source(collection):
-            if record.mine == 1:
-                schema.ns('osaf.pim', self.rv).mine.addSource(collection)
-            if record.colorRed is not None:
-                UserCollection(collection).color = ColorType(
-                    record.colorRed, record.colorGreen, record.colorBlue,
-                    record.colorAlpha
-                )
-            UserCollection(collection).checked = bool(record.checked)
+        collection = eim.collection_for_name(record.uuid)
+        if not isinstance(collection, Collection):
+            raise TypeError("An Item was created instead of a Collection")
+
+        # XXX need to assign color to appropriate SidebarEntries
 
     @eim.exporter(Collection)
     def export_collection(self, collection):
-        try:
-            color = UserCollection (collection).color
-            red = color.red
-            green = color.green
-            blue = color.blue
-            alpha = color.alpha
-        except AttributeError: # collection has no color
-            red = green = blue = alpha = None
+        red = green = blue = alpha = None
+
+        yield model.ItemRecord(
+            collection,                                  # uuid
+            collection.title,                            # title
+            eim.NoChange,                                # triage
+            eim.NoChange,                                # createdOn
+            eim.NoChange,                                # hasBeenSent
+            eim.NoChange,                                # needsReply
+            eim.NoChange,                                # read
+        )
 
         yield model.CollectionRecord(
             collection,
-            int (collection in schema.ns('osaf.pim', self.rv).mine.sources),
+            0, #mine
             red,
             green,
             blue,
             alpha,
-            int(UserCollection(collection).checked)
+            0 # checked
         )
-        for record in self.export_collection_memberships (collection):
+        for record in self.export_collection_memberships(collection):
             yield record
 
 
