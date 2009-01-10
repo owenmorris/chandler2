@@ -31,8 +31,7 @@ import os
 from datetime import datetime, date, timedelta
 from decimal import Decimal
 
-from vobject.icalendar import (RecurringComponent, VEvent, timedeltaToString,
-                               stringToDurations)
+from vobject.icalendar import timedeltaToString, stringToDurations
 from chandler.time_services import getNow, TimeZone, timestamp, olsonize
 
 __all__ = [
@@ -120,7 +119,7 @@ def toICalendarDateTime(dt_or_dtlist, allDay, anyTime=False):
     if isinstance(dt_or_dtlist, datetime):
         dtlist = [dt_or_dtlist]
     else:
-        dtlist = dt_or_dtlist
+        dtlist = tuple(dt_or_dtlist)
 
     output = ''
     if allDay or anyTime:
@@ -146,46 +145,41 @@ def getRecurrenceFields(event):
     or all of which may be None.
 
     """
-    if event.occurrenceFor is not None:
-        return (eim.Inherit, eim.Inherit, eim.Inherit, eim.Inherit)
-    elif event.rruleset is None:
+    recur = Recurrence(event._item)
+    if recur.rruleset is None:
         return (None, None, None, None)
 
-    vobject_event = RecurringComponent()
-    vobject_event.behavior = VEvent
-    start = event.startTime
-    if event.allDay or event.anyTime:
-        start = start.date()
-    elif start.tzinfo is TimeZone.floating:
-        start = start.replace(tzinfo=None)
-    vobject_event.add('dtstart').value = start
-    vobject_event.rruleset = event.createDateUtilFromRule(False, True, False)
+    if recur.frequency:
+        rrule_dict = {}
+        if recur.count:
+            rrule_dict['COUNT'] = str(recur.count)
+        elif recur.until:
+            floating = event.start.tzinfo == TimeZone.floating
+            until_tzinfo = TimeZone.floating if floating else TimeZone.utc
+            until = recur.until.astimezone(tzinfo)
+            rrule_dict['UNTIL'] = formatDateTime(until, False, False)
 
-    if hasattr(vobject_event, 'rrule'):
-        rrules = vobject_event.rrule_list
-        rrule = ':'.join(obj.serialize(lineLength=1000)[6:].strip() for obj in rrules)
+        for attr, tup in rrule_attr_dispatch.items():
+            rule_key, ignore = tup
+            value = getattr(recur, attr)
+            if value:
+                rrule_dict[rule_key] = str(value).upper()
+
+        rrule = ";".join("=".join(tup) for tup in rrule_dict.items())
     else:
         rrule = None
 
-    if hasattr(vobject_event, 'exrule'):
-        exrules = vobject_event.exrule_list
-        exrule = ':'.join(obj.serialize(lineLength=1000)[7:].strip() for obj in exrules)
+    if len(recur.rdates) > 0:
+        rdates = toICalendarDateTime(recur.rdates, event.is_day, False)
     else:
-        exrule = None
+        rdates = None
 
-    rdates = getattr(event.rruleset, 'rdates', [])
-    if len(rdates) > 0:
-        rdate = toICalendarDateTime(rdates, event.allDay, event.anyTime)
+    if len(recur.exdates) > 0:
+        exdates = toICalendarDateTime(recur.exdates, event.is_day, False)
     else:
-        rdate = None
+        exdates = None
 
-    exdates = getattr(event.rruleset, 'exdates', [])
-    if len(exdates) > 0:
-        exdate = toICalendarDateTime(exdates, event.allDay, event.anyTime)
-    else:
-        exdate = None
-
-    return rrule, exrule, rdate, exdate
+    return rrule, None, rdates, exdates
 
 def empty_as_inherit(item, attr):
     value = getattr(item, attr)
@@ -335,7 +329,10 @@ class SharingTranslator(eim.Translator):
     @eim.exporter(Item)
     def export_item(self, item):
         triage = Triage(item)
-        if triage.manual and triage.manual_timestamp:
+        recurring = Recurrence.installed_on(item) and Recurrence(item).rruleset
+        if recurring:
+            encoded_triage = eim.NoChange
+        elif triage.manual and triage.manual_timestamp:
             code = normalize_triage_code(triage.manual)
             manual_timestamp = -1 * triage.manual_timestamp
             encoded_triage = "%s %.2f 0" % (code, manual_timestamp)
@@ -525,7 +522,7 @@ class SharingTranslator(eim.Translator):
 #                 lastPast = toICalendarDateTime(lastPast, event.allDay,
 #                                                event.anyTime)
 
-        rrule = exrule = rdate = exdate = None
+        rrule, exrule, rdates, exdates = getRecurrenceFields(event)
 
         yield model.EventRecord(
             event,                            # uuid
@@ -534,8 +531,8 @@ class SharingTranslator(eim.Translator):
             self.obfuscate(event.location),   # location
             rrule,                            # rrule
             exrule,                           # exrule
-            rdate,                            # rdate
-            exdate,                           # exdate
+            rdates,                           # rdate
+            exdates,                          # exdate
             transparency,                     # status
             eim.NoChange,                     # lastPastOccurrence
         )

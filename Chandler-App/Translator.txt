@@ -236,27 +236,27 @@ Modifications
     ...         uuid='f230dcd4-7c32-4c3f-908b-d92081cc9a89:20070223T220000Z',
     ...         title='Changed title',
     ...         triage='100 -1167792143.00 1',
-    ...         createdOn=sharing.Inherit,
-    ...         hasBeenSent=sharing.Inherit,
-    ...         needsReply=sharing.Inherit,
-    ...         read=sharing.Inherit,
+    ...         createdOn=eim.Inherit,
+    ...         hasBeenSent=eim.Inherit,
+    ...         needsReply=eim.Inherit,
+    ...         read=eim.Inherit,
     ... )
 
 The explain method should handle Inherit values:
 
     >>> for field in sorted(mod_rec.explain()):
     ...     print field[:2]
-    (u'Created on', u'Inherit')
-    (u'Has been read', u'Inherit')
-    (u'Has been sent', u'Inherit')
-    (u'Needs reply', u'Inherit')
-    (u'Title', u'Changed title')
-    (u'Triage status', u'Now')
+    ('Created on', Inherit)
+    ('Has been read', Inherit)
+    ('Has been sent', Inherit)
+    ('Needs reply', Inherit)
+    ('Title', u'Changed title')
+    ('Triage status', u'Now')
 
 Importing
 ---------
 
-    >>> rs = sharing.Diff([mod_rec])
+    >>> rs = eim.Diff([mod_rec])
 
     >>> t.startImport()
     >>> t.importRecords(rs)
@@ -319,7 +319,7 @@ Importing
     ...               repeat=1,
     ... )
 
-    >>> rs = sharing.Diff([item_rec, alarm_rec])
+    >>> rs = eim.Diff([item_rec, alarm_rec])
 
     >>> t.importRecords(rs)
     >>> t.finishImport()
@@ -394,10 +394,10 @@ Importing
     ...         uuid='800644b6-dd73-11db-f79a-0016cbca6aed',
     ...         description="Time to go!",
     ...         trigger='-PT5M',
-    ...         duration=sharing.Inherit,
-    ...         repeat=sharing.Inherit,
+    ...         duration=eim.Inherit,
+    ...         repeat=eim.Inherit,
     ... )
-    >>> rs = sharing.Diff([item_rec, note_rec, event_rec,
+    >>> rs = eim.Diff([item_rec, note_rec, event_rec,
     ...                         relative_alarm_rec])
 
     >>> t.importRecords(rs)
@@ -440,7 +440,7 @@ Collection Membership
 Verify the special behavior in collection membership record, where a collection
 is specified either by well-known name, by UUID, or by repository path::
 
-    >>> d = sharing.translator.DumpTranslator(rv)
+    >>> d = eim.translator.DumpTranslator(rv)
 
 By well-known name::
     >>> p = Parcel(itsParent=rv.findPath("//parcels/osaf"), itsName="app")
@@ -451,7 +451,7 @@ By well-known name::
     ...         itemUUID=note.itsUUID,
     ...         index=0,
     ... )
-    >>> rs = sharing.Diff([rec])
+    >>> rs = eim.Diff([rec])
     >>> d.startImport()
     >>> d.importRecords(rs)
     >>> d.finishImport()
@@ -470,7 +470,7 @@ By UUID::
     ...         itemUUID=note.itsUUID,
     ...         index=0,
     ... )
-    >>> rs = sharing.Diff([rec])
+    >>> rs = eim.Diff([rec])
     >>> d.startImport()
     >>> d.importRecords(rs)
     >>> d.finishImport()
@@ -484,7 +484,7 @@ By path (although this likely won't be used)::
     ...         itemUUID=note.itsUUID,
     ...         index=1,
     ... )
-    >>> rs = sharing.Diff([rec])
+    >>> rs = eim.Diff([rec])
     >>> d.startImport()
     >>> d.importRecords(rs)
     >>> d.finishImport()
