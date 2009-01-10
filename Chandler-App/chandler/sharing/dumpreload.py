@@ -17,13 +17,9 @@
 
 from __future__ import with_statement
 
-import logging, cPickle, sys, os, wx, tempfile
-from osaf import sharing
-from osaf.sharing.eim import uri_registry, RecordClass
-from application import schema
-from osaf.framework import password, MasterPassword
-from osaf.framework.twisted import waitForDeferred
-from i18n import ChandlerMessageFactory as _
+import logging, cPickle, sys, os, platform, tempfile
+from gzip import GzipFile
+from chandler.sharing import eim, translator
 from pkg_resources import iter_entry_points
 
 logger = logging.getLogger(__name__)
@@ -32,8 +28,8 @@ class UnknownRecord(object):
     """Class representing an unknown record type"""
     def __init__(self, *args):
         self.data = args
-        
-    
+
+
 class PickleSerializer(object):
     """ Serializes to a byte-length string, followed by newline, followed by
         a pickle string of the specified length """
@@ -49,7 +45,7 @@ class PickleSerializer(object):
     def loads(cls, s):
         from cStringIO import StringIO
         return cls.loader(StringIO(s))()
-        
+
     @classmethod
     def dumper(cls, output):
         pickler = cPickle.Pickler(output, 2)
@@ -60,67 +56,89 @@ class PickleSerializer(object):
     def loader(cls, input):
         unpickler = cPickle.Unpickler(input)
         unpickler.persistent_load = cls.persistent_load
+        unpickler.find_global = cls.find_global
         return unpickler.load
 
     @staticmethod
+    def find_global(module, name):
+        """Work around Symbol namespace differences when importing."""
+        if module == 'osaf.sharing.eim':
+            module = 'chandler.sharing.eim'
+        if module not in sys.modules:
+            __import__(module)
+        return getattr(sys.modules[module], name)
+
+    @staticmethod
     def persistent_id(ob):
-        if isinstance(ob, RecordClass):
+        if isinstance(ob, eim.RecordClass):
             # save record classes by URI *and* module
-            return ob.URI, ob.__module__   
+            return ob.URI, ob.__module__
 
     @staticmethod
     def persistent_load((uri, module)):
         try:
-            return uri_registry[uri]
+            return eim.uri_registry[uri]
         except KeyError:
             pass
         # It wasn't in the registry by URI, see if we can import it
         if module not in sys.modules:
             try:
-                schema.importString(module)
+                __import__(module)
             except ImportError:
                 pass
         try:
             # Maybe it's in the registry now...
-            return uri_registry[uri]
+            return eim.uri_registry[uri]
         except KeyError:
             # Create a dummy record type for the object
             # XXX this really should try some sort of persistent registry
             #     before falling back to a fake record type
             #
             rtype = type("Unknown", (UnknownRecord,), dict(URI=uri))
-            uri_registry[uri] = rtype
+            eim.uri_registry[uri] = rtype
             return rtype
 
-def dump(rv, path, uuids=None, serializer=PickleSerializer,
-    activity=None, obfuscate=False):
-    """
-    Dumps EIM records to a file, file permissions 0600.
-    """
+def dump(stream, uuids, serializer=PickleSerializer, obfuscate=False, gzip=False):
 
-    if activity is not None:
-        activity.started()
-    translator = getTranslator()
+    translator_class = getTranslator()
 
-
-    trans = translator(rv)
+    trans = translator_class()
     trans.obfuscation = obfuscate
 
-    aliases = list()
-
-    if uuids:
-        for uuid in uuids:
-            aliases.append(trans.getAliasForItem(rv.findUUID(uuid)))
-    else:
-        for item in schema.Item.iterItems(rv):
-            if not str(item.itsPath).startswith("//parcels"):
-                aliases.append(trans.getAliasForItem(item))
+    if not uuids:
+        uuids = ()
+    aliases = [trans.getAliasForItem(eim.get_item_for_uuid(u)) for u in uuids]
 
     # Sort on alias so masters are dumped before occurrences
     aliases.sort()
 
     trans.startExport()
-    
+
+    if gzip:
+        stream = GzipFile(fileobj=stream)
+
+    dump = serializer.dumper(stream)
+
+    for alias in aliases:
+        item = trans.getItemForAlias(alias)
+        for record in trans.exportItem(item):
+            dump(record)
+
+    for record in trans.finishExport():
+        dump(record)
+
+    dump(None)
+    if gzip:
+        stream.close()
+
+    del dump
+
+
+def dump_to_path(path, uuids=None, serializer=PickleSerializer, obfuscate=False, gzip=False):
+    """
+    Dumps EIM records to a file, file permissions 0600.
+    """
+
     # Paths here:
     #
     #  temppath - a temporary path with a .temp extension. This helps avoid
@@ -134,7 +152,7 @@ def dump(rv, path, uuids=None, serializer=PickleSerializer,
     #
     dir, filename = os.path.split(path)
     basename, ext = os.path.splitext(filename)
-    
+
     fd, temppath = tempfile.mkstemp(ext + ".temp", basename, dir)
     completedpath = None
 
@@ -143,50 +161,18 @@ def dump(rv, path, uuids=None, serializer=PickleSerializer,
 
     try:
         with os.fdopen(fd, 'wb') as output:
-            dump = serializer.dumper(output)
-            count = len(aliases)
-
-            if activity is not None:
-                activity.update(msg=_(u"Exporting %(total)d items") % {'total':count}, totalWork=count)
-
-            recordCount = 0
-            for alias in aliases:
-                uuid = trans.getUUIDForAlias(alias)
-                item = rv.findUUID(uuid)
-                for record in trans.exportItem(item):
-                    recordCount += 1
-                    dump(record)
-                if activity is not None:
-                    activity.update(msg=_(u"Exported %(number)d records") % \
-                                    {'number':recordCount}, work=1)
-
-            if activity is not None:
-                activity.update(totalWork=None) # we don't know upcoming total work
-
-            for record in trans.finishExport():
-                if activity is not None:
-                    recordCount += 1
-                    activity.update(msg=_(u"Exporting additional record..."))
-
-                dump(record)
-
-            dump(None)
-            del dump
-
-        logger.info("Exported %d records from %d items", recordCount, count)
-        if activity is not None:
-            activity.update(msg=_(u"Exported %(total)d records") % {'total':recordCount})
+            dump(output, uuids, serializer, obfuscate, gzip)
 
         # Next, remove the .temp from the filename. This means that
         # we have a complete, recoverable .chex file on disk (yay).
         completedpath = os.path.splitext(temppath)[0]
         os.rename(temppath, completedpath)
         temppath = None
-        
+
         # Now, on Windows, where a rename on top of an existing file
         # will fail, remove the target file. At least we have a backup
         # at this point ...
-        if wx.Platform == '__WXMSW__':
+        if platform.system() == 'Windows':
             try:
                 os.remove(path)
             except OSError, err:
@@ -197,9 +183,6 @@ def dump(rv, path, uuids=None, serializer=PickleSerializer,
         # Now, rename the temporary .chex file to the actual
         os.rename(completedpath, path)
         completedpath = None
-        
-        if activity is not None:
-            activity.completed()
 
     except:
         logger.exception("Error during export")
@@ -212,137 +195,63 @@ def dump(rv, path, uuids=None, serializer=PickleSerializer,
         raise
 
 
-def reload(rv, filename, serializer=PickleSerializer, activity=None,
-    testmode=False):
+def reload(filename_or_stream, serializer=PickleSerializer, gzip=False):
     """ Loads EIM records from a file and applies them """
 
-    translator = getTranslator()
 
-    if not testmode:
-        oldMaster = waitForDeferred(MasterPassword.get(rv))
+    if isinstance(filename_or_stream, basestring):
+        input = open(filename_or_stream, "rb")
     else:
-        oldMaster = ''
-        newMaster = 'secret'
+        input = filename_or_stream
 
-    if activity is not None:
-        activity.update(totalWork=None, msg=_(u"Counting records..."))
-        input = open(filename, "rb")
-        load = serializer.loader(input)
-        i = 0
-        while True:
-            record = load()
-            if not record:
-                break
-            i += 1
-        input.close()
-        activity.update(totalWork=i)
+    original_input = input
+    if gzip:
+        input = GzipFile(fileobj=input)
 
 
-    trans = translator(rv)
+    translator_class = getTranslator()
+
+    trans = translator_class()
     trans.startImport()
 
-    input = open(filename, "rb")
     try:
         load = serializer.loader(input)
         i = 0
+        alias_in_progress = None
+        records = []
         while True:
             record = load()
             if not record:
+                trans.importRecords(eim.Diff(records))
                 break
-            trans.importRecord(record)
+            if not getattr(record, 'uuid', None):
+                if records:
+                    trans.importRecords(eim.Diff(records))
+                records = []
+                alias_in_progress = None
+                trans.importRecord(record)
+            elif record.uuid == alias_in_progress:
+                records.append(record)
+            elif not records:
+                alias_in_progress = record.uuid
+                records.append(record)
+            else:
+                trans.importRecords(eim.Diff(records))
+                records = [record]
+                alias_in_progress = record.uuid
             i += 1
-            if activity is not None:
-                activity.update(msg=_(u"Imported %(total)d records") % {'total':i}, work=1)
-            if i % 1000 == 0: # Commit every 1,000 records
-                if activity is not None:
-                    activity.update(msg=_(u"Saving..."))
-                rv.commit()
 
         logger.info("Imported %d records", i)
 
         del load
     finally:
         input.close()
+        original_input.close()
 
     trans.finishImport()
 
-    if activity is not None:
-        activity.update(msg=_(u"Saving..."))
-    rv.commit()
 
-
-    # Passwords that existed before reload are encrypted with oldMaster, and
-    # passwords that we reloaded are encrypted with newMaster, so now we need
-    # to go through all passwords and re-encrypt all the old ones with
-    # newMaster.
-    
-    # First, let's get the newMaster
-    waitForDeferred(MasterPassword.clear())
-    if not testmode:
-        prefs = schema.ns("osaf.framework.MasterPassword",
-                          rv).masterPasswordPrefs
-        if prefs.masterPassword:
-            wx.MessageBox (_(u"Please enter the master password you used to protect this file to reload account passwords."),
-                           _(u'Protect Passwords'),
-                           parent=wx.GetApp().mainFrame)
-        
-        dummy = schema.ns("osaf.framework.password",
-                          rv).passwordPrefs.dummyPassword
-
-        while True:
-            try:
-                newMaster = waitForDeferred(MasterPassword.get(rv, testPassword=dummy))
-                break
-            except password.NoMasterPassword:
-                if wx.MessageBox(_(u'If you do not remember your master password, all account passwords will be deleted. Delete account passwords?'),
-                                 _(u'Reset Master Password'),
-                                 style = wx.YES_NO,
-                                 parent=wx.GetApp().mainFrame) == wx.YES:
-                    MasterPassword.reset(rv)
-                    return
-    
-    # Then re-encrypt
-    for item in password.Password.iterItems(rv):
-        if not waitForDeferred(item.initialized()):
-            # Don't need to re-encrypt uninitialized passwords
-            continue
-        
-        try:
-            pw = waitForDeferred(item.decryptPassword(masterPassword=oldMaster))
-        except password.DecryptionError:
-            # Maybe this was one of the new passwords loaded from
-            # dump, so let's try the new master password
-            try:
-                waitForDeferred(item.decryptPassword(masterPassword=newMaster))
-            except password.DecryptionError:
-                # Oops, we are in trouble, can't really do much but
-                # reset() to avoid further problems.
-                logger.exception('found passwords that could not be decrypted; clearing passwords')
-                MasterPassword.reset(rv)
-                break
-            # Since this is already encrypted with the new
-            # master password we don't need to re-encrypt
-            continue
-
-        waitForDeferred(item.encryptPassword(pw, masterPassword=newMaster))
-
-
-def convertToTextFile(fromPath, toPath, serializer=PickleSerializer,
-    activity=None):
-
-    if activity is not None:
-        activity.update(totalWork=None, msg=_(u"Counting records..."))
-        input = open(fromPath, "rb")
-        load = serializer.loader(input)
-        i = 0
-        while True:
-            record = load()
-            if not record:
-                break
-            i += 1
-        input.close()
-        activity.update(totalWork=i)
-
+def convertToTextFile(fromPath, toPath, serializer=PickleSerializer):
 
     input = open(fromPath, "rb")
     output = open(toPath, "wb")
@@ -356,8 +265,6 @@ def convertToTextFile(fromPath, toPath, serializer=PickleSerializer,
             output.write(str(record))
             output.write("\n\n")
             i += 1
-            if activity is not None:
-                activity.update(msg=_(u"Converted %(total)d records") % {'total':i}, work=1)
 
         del load
     finally:
@@ -365,27 +272,24 @@ def convertToTextFile(fromPath, toPath, serializer=PickleSerializer,
         output.close()
 
 
-
-
-
-translator = None
+TRANSLATOR_CLASS = None
 
 def getTranslator():
-    global translator
+    global TRANSLATOR_CLASS
 
-    if translator is not None:
-        return translator
+    if TRANSLATOR_CLASS is not None:
+        return TRANSLATOR_CLASS
 
     mixins = [ep.load() for ep in iter_entry_points('chandler.chex_mixins')]
     if not mixins:
-        translator = sharing.DumpTranslator
+        TRANSLATOR_CLASS = translator.DumpTranslator
     else:
-        mixins.insert(0, sharing.DumpTranslator)
-        translator = type("Translator", tuple(mixins),
+        mixins.insert(0, translator.DumpTranslator)
+        TRANSLATOR_CLASS = type("Translator", tuple(mixins),
             {
                 'version'     : 1,
                 'URI'         : ' '.join(m.URI for m in mixins),
                 'description' : u'Mixed-in translator'
             }
         )
-    return translator
+    return TRANSLATOR_CLASS

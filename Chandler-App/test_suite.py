@@ -4,6 +4,7 @@ import pkg_resources
 
 from test_event import *
 from test_recurrence import *
+from test_chex import *
 
 from chandler.test_helper import AbstractTestLoader, setUp, tearDown
 

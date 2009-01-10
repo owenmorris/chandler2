@@ -721,39 +721,26 @@ class DumpTranslator(SharingTranslator):
 
     @model.CollectionMembershipRecord.importer
     def import_collectionmembership(self, record):
-
         # Don't add non-masters to collections:
         if record.itemUUID != getMasterAlias(record.itemUUID):
+            return
+
+        # Don't import Sidebar membership yet
+        if record.collectionID == '@sidebar':
             return
 
         collection = eim.collection_for_name(record.collectionID)
         collection.add(eim.item_for_uuid(record.itemUUID))
 
-
-
     @model.DashboardMembershipRecord.importer
     def import_dashboard_membership(self, record):
-
-        # Don't add non-masters to collections:
-        if record.itemUUID != getMasterAlias(record.itemUUID):
-            return
-
-        @self.withItemForUUID(record.itemUUID, pim.ContentItem)
-        def do(item):
-            dashboard = schema.ns("osaf.pim", self.rv).allCollection
-            dashboard.add(item)
-
+        pass
+#         collection = eim.collection_for_name("@dashboard")
+#         collection.add(eim.item_for_uuid(record.itemUUID))
 
     @model.PrefTimezonesRecord.importer
     def import_preftimezones(self, record):
-
-        pref = schema.ns('osaf.pim', self.rv).TimezonePrefs
-        pref.showUI = bool(record.showUI)
-        pref.showPrompt = bool(record.showPrompt)
-
-        tzitem = TimeZone.TimeZoneInfo.get(self.rv)
-        tzitem.default = self.rv.tzinfo.getInstance(record.default)
-        tzitem.wellKnownIDs = record.wellKnownIDs.split(',')
+        pass
 
     # Called from finishExport( )
     def export_preftimezones(self):
