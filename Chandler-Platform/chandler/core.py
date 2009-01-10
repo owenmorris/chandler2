@@ -9,7 +9,7 @@ import sys
 
 __all__ = ('Item', 'Extension', 'DashboardEntry', 'Collection', 'Entity',
            'One', 'Many', 'FilteredSubset',
-           'ItemAddOn', 'inherited_attrs',
+           'ItemAddOn', 'inherited_attrs', 'reset_cell_default',
            'InteractionComponent', 'Feature', 'Scope',
            'Command', 'Text', 'Table', 'TableColumn', 'Choice', 'ChoiceItem',
            'ConstraintError', 'Viewer',)
@@ -291,6 +291,9 @@ class ItemAddOn(trellis.Component, addons.AddOn):
         self._item = item
         super(ItemAddOn, self).__init__(**kwds)
 
+def reset_cell_default(component, attr):
+    cell_attribute = getattr(type(component), attr)
+    setattr(component, attr, cell_attribute.initial_value(component))
 
 def inherited_attrs(**attrs):
     """Like trellis.attrs, but creates maintain rules that handle inheritance."""

@@ -29,7 +29,7 @@ import errors
 import logging
 logger = logging.getLogger(__name__)
 
-from chandler.core import Entity, Item, ItemAddOn, Extension
+from chandler.core import Entity, Item, ItemAddOn, Extension, reset_cell_default
 import peak.events.trellis as trellis
 from uuid import UUID, uuid4
 import traceback
@@ -925,7 +925,6 @@ class TranslatorClass(type):
         return cls
 
 
-
 class Translator:
     """Base class for import/export between Items and Records"""
     __metaclass__ = TranslatorClass
@@ -1040,8 +1039,7 @@ class Translator:
 
     def smart_setattr(self, val, ob, attr):
         if val is Inherit:
-            cell_attribute = getattr(type(ob), attr)
-            setattr(ob, attr, cell_attribute.initial_value(ob))
+            reset_cell_default(ob, attr)
         elif val is not NoChange:
             setattr(ob, attr, val)
 

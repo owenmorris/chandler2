@@ -19,7 +19,7 @@ from dateutil.rrule import rrulestr
 import dateutil
 from vobject.icalendar import (DateOrDateTimeBehavior, MultiDateBehavior)
 from vobject.base import textLineToContentLine
-from chandler.time_services import TimeZone
+from chandler.time_services import TimeZone, force_datetime
 
 
 logger = logging.getLogger(__name__)
@@ -63,7 +63,7 @@ def fromICalendarDateTime(text, multivalued=False):
         start = [start]
     if type(start[0]) == datetime.date:
         allDay = not anyTime
-        start = [TimeZone.forceToDateTime(dt) for dt in start]
+        start = [force_datetime(dt) for dt in start]
     else:
         tzid = line.params.get('X-VOBJ-ORIGINAL-TZID')
         if tzid is None:

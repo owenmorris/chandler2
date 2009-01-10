@@ -20,24 +20,19 @@ from chandler.sharing.utility import (
     splitUUID, fromICalendarDateTime, getMasterAlias
 )
 
-from chandler.core import Item, Collection
+from chandler.core import Item, Collection, reset_cell_default
 from chandler.event import Event
 from chandler.triage import Triage
 from chandler.reminder import ReminderList
 
 from itertools import chain
 import os
-from calendar import timegm
 from datetime import datetime, date, timedelta
 from decimal import Decimal
 
 from vobject.icalendar import (RecurringComponent, VEvent, timedeltaToString,
                                stringToDurations)
-from chandler.time_services import getNow
-
-from dateutil.rrule import rrulestr
-import dateutil
-import logging
+from chandler.time_services import getNow, TimeZone, timestamp, olsonize
 
 __all__ = [
     'SharingTranslator',
@@ -45,10 +40,6 @@ __all__ = [
     'fromICalendarDuration',
     'toICalendarDateTime',
 ]
-
-from chandler.time_services import TimeZone
-
-logger = logging.getLogger(__name__)
 
 oneDay = timedelta(1)
 
@@ -65,7 +56,7 @@ def datetimes_really_equal(dt1, dt2):
     return dt1.tzinfo == dt2.tzinfo and dt1 == dt2
 
 def datetimeToDecimal(dt):
-    return Decimal(int(timegm(dt.utctimetuple())))
+    return Decimal(int(timestamp(dt)))
 
 def decimalToDatetime(decimal):
     return datetime.fromtimestamp(decimal, TimeZone.default)
@@ -138,7 +129,7 @@ def toICalendarDateTime(dt_or_dtlist, allDay, anyTime=False):
     else:
         isUTC = dtlist[0].tzinfo == TimeZone.utc
         output += timedParameter
-        tzinfo = eimml.olsonizeTzinfo(dtlist[0].tzinfo)
+        tzinfo = olsonize(dtlist[0].tzinfo)
         if not isUTC and tzinfo != TimeZone.floating:
             output += tzidFormat % tzinfo.tzid
 
@@ -146,6 +137,7 @@ def toICalendarDateTime(dt_or_dtlist, allDay, anyTime=False):
     output += ','.join(formatDateTime(dt, allDay, anyTime)
                        for dt in dtlist)
     return output
+
 
 def getRecurrenceFields(event):
     """
@@ -751,7 +743,7 @@ class DumpTranslator(SharingTranslator):
         yield model.PrefTimezonesRecord(
             pref.showUI,
             pref.showPrompt,
-            TimeZone.olsonizeTzinfo(tzitem.default).tzid,
+            olsonize(tzitem.default).tzid,
             ",".join(tzitem.wellKnownIDs)
         )
 
