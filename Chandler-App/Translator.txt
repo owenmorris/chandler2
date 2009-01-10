@@ -11,6 +11,7 @@ records.
     >>> from chandler.triage import Triage
     >>> from chandler.event import Event
     >>> from chandler.recurrence import Recurrence
+    >>> from chandler.reminder import ReminderList
     >>> from chandler.time_services import TimeZone
     >>> TimeZone.default = TimeZone.pacific
 
@@ -322,13 +323,14 @@ Importing
     >>> t.finishImport()
 
     >>> item = eim.get_item_for_uuid('a9b019a4-d995-11db-f269-0016cbca6aed')
-    >>> len(item.reminders)
+    >>> reminders = ReminderList(item).reminders
+    >>> len(reminders)
     1
-    >>> item.reminders.first()
-    <Reminder (new): ...>
-    >>> item.reminders.first().absoluteTime
-    datetime.datetime(2006, 3, 4, 14, 0, tzinfo=<ICUtzinfo: America/Los_Angeles>)
-    >>> item.reminders.first().description
+    >>> reminders[0]
+    <chandler.reminder.Reminder object at ...>
+    >>> reminders[0].fixed_trigger.astimezone(TimeZone.pacific)
+    datetime.datetime(2006, 3, 4, 14, 0, tzinfo=<ICUtzinfo: US/Pacific>)
+    >>> reminders[0].description
     u"Don't forget!"
 
 Exporting
@@ -339,18 +341,18 @@ Exporting
     >>> len(records)
     3
     >>> records[0]
-    ItemRecord('a9b019a4-d995-11db-f269-0016cbca6aed', u'Item with reminder', '200 -1167792143.00 1', Decimal("1164803131"), 0, 0, 0)
+    ItemRecord('a9b019a4-d995-11db-f269-0016cbca6aed', u'Item with reminder', '200 -1167792143.00 0', Decimal("1164803131"), ...)
     >>> records[1]
-    ModifiedByRecord(...)
+    NoteRecord('a9b019a4-d995-11db-f269-0016cbca6aed', u'', Inherit, Inherit, Inherit, Inherit)
     >>> records[2]
-    DisplayAlarmRecord('a9b019a4-d995-11db-f269-0016cbca6aed', u"Don't forget!", u';VALUE=DATE-TIME:20060304T220000Z', u'PT1H', 1)
+    DisplayAlarmRecord('a9b019a4-d995-11db-f269-0016cbca6aed', u"Don't forget!", u';VALUE=DATE-TIME:20060304T220000Z', ...)
 
-    >>> del item.reminders.first().duration
-    >>> del item.reminders.first().repeat
+    >>> reminders[0].delta = timedelta(hours=-2)
+    >>> reminders[0].fixed_trigger = None
     >>> t.startExport()
     >>> records = list(t.exportItem(item))
     >>> records[2]
-    DisplayAlarmRecord('a9b019a4-d995-11db-f269-0016cbca6aed', u"Don't forget!", u';VALUE=DATE-TIME:20060304T220000Z', None, None)
+    DisplayAlarmRecord('a9b019a4-d995-11db-f269-0016cbca6aed', u"Don't forget!", u'-PT2H', ...)
 
 Relative Reminders
 ==================
@@ -401,15 +403,16 @@ Importing
     >>> t.finishImport()
 
     >>> item = eim.get_item_for_uuid('800644b6-dd73-11db-f79a-0016cbca6aed')
-    >>> pim.has_stamp(item, pim.EventStamp)
+    >>> Event.installed_on(item)
     True
-    >>> len(item.reminders)
+    >>> len(ReminderList(item).reminders)
     1
-    >>> item.reminders.first()
-    <RelativeReminder (new): ...>
-    >>> item.reminders.first().delta
+    >>> reminder = ReminderList(item).reminders[0]
+    >>> reminder
+    <chandler.reminder.Reminder object at ...>
+    >>> reminder.delta
     datetime.timedelta(-1, 86100)
-    >>> item.reminders.first().description
+    >>> reminder.description
     u'Time to go!'
 
 Exporting
@@ -418,17 +421,15 @@ Exporting
     >>> t.startExport()
     >>> records = list(t.exportItem(item))
     >>> len(records)
-    5
+    4
     >>> records[0]
-    ItemRecord('800644b6-dd73-11db-f79a-0016cbca6aed', u'Event Item with reminder', '200 -1167792996.00 1', Decimal("1164805552"), 0, 1, 0)
+    ItemRecord('800644b6-dd73-11db-f79a-0016cbca6aed', u'Event Item with reminder', '200 -1167792996.00 0', Decimal("1164805552"), ...)
     >>> records[1]
-    ModifiedByRecord(...)
-    >>> records[2]
-    DisplayAlarmRecord('800644b6-dd73-11db-f79a-0016cbca6aed', u'Time to go!', u'-PT5M', None, None)
-    >>> records[3]
     NoteRecord('800644b6-dd73-11db-f79a-0016cbca6aed', ...)
-    >>> records[4]
-    EventRecord('800644b6-dd73-11db-f79a-0016cbca6aed', ...)
+    >>> records[2]
+    DisplayAlarmRecord('800644b6-dd73-11db-f79a-0016cbca6aed', u'Time to go!', u'-PT5M', ...)
+    >>> records[3]
+    EventRecord('800644b6-dd73-11db-f79a-0016cbca6aed', u';VALUE=DATE-TIME;TZID=America/Los_Angeles:20070516T180000', u'PT1H', u'Nowhere', None, None, None, None, u'CONFIRMED', ...)
 
 
 Collection Membership

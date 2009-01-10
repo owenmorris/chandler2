@@ -20,6 +20,7 @@ class Reminder(trellis.Component):
         item=None,
         delta=None,
         fixed_trigger=None,
+        description="",
         snooze=None,
         cleared=False,
         type='triage',

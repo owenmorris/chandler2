@@ -432,28 +432,19 @@ class SharingTranslator(eim.Translator):
             duration = None
             repeat = None
 
-        elif reminder.reminderItem is item: # this is our reminder
+        elif not getattr(item, 'recurrence_id', False):
+            reminder = ReminderList(item).reminders[0]
             trigger = None
-            if reminder.hasLocalAttributeValue('delta'):
+            if reminder.delta:
                 trigger = timedeltaToString(reminder.delta)
-            elif reminder.hasLocalAttributeValue('absoluteTime'):
-                # iCalendar Triggers are supposed to be expressed in UTC;
-                # EIM may not require that but might as well be consistent
-                reminderTime = reminder.absoluteTime.astimezone(TimeZone.utc)
-                trigger = toICalendarDateTime(reminderTime, False)
+            elif reminder.fixed_trigger:
+                fixed = reminder.fixed_trigger.astimezone(TimeZone.utc)
+                trigger = toICalendarDateTime(fixed, False)
 
-            if reminder.duration:
-                duration = timedeltaToString(reminder.duration)
-            else:
-                duration = None
-
-            if reminder.repeat:
-                repeat = reminder.repeat
-            else:
-                repeat = None
-
+            duration = eim.NoChange
+            repeat = eim.NoChange
             description = getattr(reminder, 'description', None)
-            if description is None:
+            if not description:
                 description = "Event Reminder"
 
         else: # we've inherited this reminder
@@ -618,60 +609,45 @@ class SharingTranslator(eim.Translator):
 
     @model.DisplayAlarmRecord.importer
     def import_alarm(self, record):
+        # XXX need to deal with recurrence + reminders
 
-        @self.withItemForUUID(record.uuid, pim.ContentItem)
-        def do(item):
+        @self.withItemForUUID(record.uuid, ReminderList)
+        def do(reminder_list):
             # Rather than simply leaving out a DisplayAlarmRecord, we're using
             # a trigger value of None to indicate there is no alarm:
             if record.trigger is None:
-                item.reminders = []
+                if reminder_list.reminders:
+                    reminder_list.reminders[:] = []
+                return
+            elif all_empty(record, 'trigger', 'description'):
+                # no changes we understand
+                return
 
-            elif record.trigger not in noChangeOrInherit:
-                # trigger translates to either a pim.Reminder (if a date(time),
-                # or a pim.RelativeReminder (if a timedelta).
-                kw = dict(itsView=item.itsView)
-                reminderFactory = None
+            if reminder_list.reminders:
+                reminder = reminder_list.reminders[0]
+            else:
+                reminder = reminder_list.add_reminder()
 
+            # trigger may be a delta, or a datetime
+            if record.trigger not in noChangeOrInherit:
                 try:
                     val = fromICalendarDateTime(record.trigger)[0]
-                    val = val.astimezone(TimeZone.default)
+                    reminder.fixed_trigger = val.astimezone(TimeZone.default)
                 except:
-                    pass
-                else:
-                    reminderFactory = pim.Reminder
-                    kw.update(absoluteTime=val)
-
-                if reminderFactory is None:
                     try:
-                        val = stringToDurations(record.trigger)[0]
+                        reminder.delta = stringToDurations(record.trigger)[0]
                     except:
                         pass
-                    else:
-                        reminderFactory = pim.RelativeReminder
-                        kw.update(delta=val)
 
-                if reminderFactory is not None:
-                    item.reminders = [reminderFactory(**kw)]
+            if (record.description not in noChangeOrInherit and
+                record.description is not None):
+                reminder.description = record.description
 
-
-            reminder = item.getUserReminder()
-            if reminder is not None:
-
-                if (record.description not in noChangeOrInherit and
-                    record.description is not None):
-                    reminder.description = record.description
-
-                if record.duration not in noChangeOrInherit:
-                    if record.duration is None:
-                        delattr(reminder, 'duration') # has a defaultValue
-                    else:
-                        reminder.duration = stringToDurations(record.duration)[0]
-
-                if record.repeat not in noChangeOrInherit:
-                    if record.repeat is None:
-                        reminder.repeat = 0
-                    else:
-                        reminder.repeat = record.repeat
+#             if record.repeat not in noChangeOrInherit:
+#                 if record.repeat is None:
+#                     reminder.repeat = 0
+#                 else:
+#                     reminder.repeat = record.repeat
 
     @model.DisplayAlarmRecord.deleter
     def delete_alarm(self, record):
