@@ -95,33 +95,35 @@ details.
 Full-day arithmetic
 -------------------
 
-Beware, full-day arithmetic can be confusing.
+Beware, full-day arithmetic can be confusing.  The confusion is
+hard to dispell completely because of two issues with describing
+events in English.
 
-The duration of a full-day-event is always the number of days of
-``base_duration`` plus one.  This ensures that every full-day-event
-has a duration of at least one day.  This isn't necessarily intuitive,
-and it can cause confusion.  The confusion is hard to dispell
-completely because of two issues with describing events in English.
+The duration of a full-day-event is the number of full days of
+``base_duration``, with a minimum of one full day.  Note that this is
+different from the original Chandler model for duration.
 
-First, what is the duration of an event that starts on May 5th and ends on
-May 6th?  If the times associated with those dates are both midnight,
-the answer is one day.  But in colloquial English, if no time is
-specified, it's an event lasting through two days.
+Consider the ambiguous duration of an event that starts on May 5th and
+ends on May 6th.  If the times associated with those dates are both
+midnight, the duration is one day.  But in colloquial English, if no
+time is specified, it's an event lasting two days.
 
-Secondly, for full-day-events in Chandler, ``end`` represents midnight
+For full-day-events in Chandler, ``end`` represents midnight
 at the end of the last day.  The date of this value will be the day
 after the event ends, not the date of the event's last full day.
 
 This means that when displaying ``is_day`` events, if users are shown
 a date and no time, they shouldn't be shown the date associated with
-``end``, but rather the date one day before ``end``.
+``end``, but rather the date one day before ``end``.  If a user inputs
+an event starting on May 5 and ending on May 6, ``base_duration``
+should be set to two days.
 
-On the other hand, if a user inputs an event starting on May 5 and
-ending on May 6, ``base_duration`` should be set to one day, not the
-actual two-day duration of the event.
-
+>>> event.duration
+datetime.timedelta(0)
 >>> event.all_day = True
->>> event.base_duration = timedelta(1)
+>>> event.duration
+datetime.timedelta(1)
+>>> event.base_duration = timedelta(days=2)
 >>> event.end
 datetime.datetime(2008, 5, 7, 0, 0, tzinfo=FloatingTZ(...))
 

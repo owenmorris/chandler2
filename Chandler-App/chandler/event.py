@@ -43,7 +43,7 @@ class Event(Extension):
         if not self.is_day:
             return self.base_duration
         else:
-            return timedelta(self.base_duration.days + 1)
+            return timedelta(max(1, self.base_duration.days))
 
     @property
     def end(self):
