@@ -10,6 +10,7 @@ records.
 
     >>> from chandler.triage import Triage
     >>> from chandler.event import Event
+    >>> from chandler.recurrence import Recurrence
     >>> from chandler.time_services import TimeZone
     >>> TimeZone.default = TimeZone.pacific
 
@@ -185,13 +186,18 @@ Importing
     ...             lastPastOccurrence = None,
     ... )
 
-    >>> rs = eim.RecordSet([new_rec])
+The rrule and rdate fields are order independent, so they're sorted alphabetically:
 
+    >>> new_rec.rrule
+    u'BYDAY=TU,TH;COUNT=5;FREQ=WEEKLY'
+
+    >>> rs = eim.RecordSet([new_rec])
     >>> t.startImport()
     >>> t.importRecords(rs)
     >>> t.finishImport()
 
-    >>> [i.day for i in event.createDateUtilFromRule()]
+    >>> recurrence = Recurrence(item)
+    >>> [i.day for i in recurrence.rruleset]
     [1, 8, 13, 15, 23, 25]
 
 Exporting

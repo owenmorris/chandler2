@@ -22,6 +22,7 @@ from chandler.sharing.utility import (
 
 from chandler.core import Item, Collection, reset_cell_default
 from chandler.event import Event
+from chandler.recurrence import Recurrence
 from chandler.triage import Triage
 from chandler.reminder import ReminderList
 
@@ -192,7 +193,16 @@ def empty_as_inherit(item, attr):
         return eim.Inherit
     return value
 
+def lower(s):
+    return s.lower()
 
+def no_op(x):
+    return x
+
+rrule_attr_dispatch = { # RFC2445 name  # eim->model
+    'frequency' :       ('FREQ',        lower),
+    'byday':            ('BYDAY',       no_op),
+}
 
 def getAliasForItem(item_or_addon):
     item = getattr(item_or_addon, '_item', item_or_addon)
@@ -248,8 +258,6 @@ eim.add_converter(model.ItemRecord.triage, unicode, emptyToNoChange)
 # Cosmo will generate a value of None for a zero-length duration, but Chandler
 # uses "PT0S"
 eim.add_converter(model.EventRecord.duration, type(None), lambda x: "PT0S")
-
-
 
 
 
@@ -441,9 +449,60 @@ class SharingTranslator(eim.Translator):
             location=record.location,
             base_transparency=with_nochange(record.status, from_transparency),
         )
+        def do(event):
+            add_recurrence = not (record.rdate in emptyValues and record.rrule in emptyValues)
+            recurrence_installed = Recurrence.installed_on(event._item)
+            if not recurrence_installed and not add_recurrence:
+                pass # no recurrence, nothing to do
+            elif recurrence_id:
+                pass # modification, no rules to set
+            else:
+                recur = Recurrence(event._item)
+                if add_recurrence and not recurrence_installed:
+                    recur.add()
+                for datetype in 'rdate', 'exdate':
+                    record_field = getattr(record, datetype)
+                    if record_field is not eim.NoChange:
+                        if record_field is None:
+                            dates = ()
+                        else:
+                            dates = fromICalendarDateTime(record_field, multivalued=True)[0]
+                        date_set = getattr(recur, datetype + 's')
+                        if date_set.symmetric_difference(dates):
+                            date_set.clear()
+                            date_set.update(dates)
 
-        # import recurrence fields
-        # Need to look at tzinfo on Occurrences, changes to master tzinfo
+                if record.rrule is not eim.NoChange:
+                    if record.rrule in emptyValues:
+                        recur.frequency = None
+                    else:
+                        # EIM serializes multiple RRULEs colon separated,
+                        # ignoring all but the first for now.
+                        rule_dict = {}
+                        first_rule, sep, later_rules = record.rrule.upper().partition(':')
+                        for key_value_string in first_rule.split(';'):
+                            key, sep, value = key_value_string.partition('=')
+                            rule_dict[key] = value
+
+                        # count and until are mutually exclusive, special case
+                        if 'COUNT' in rule_dict:
+                            recur.count = int(rule_dict['COUNT'])
+                        elif 'UNTIL' in rule_dict:
+                            recur.until = fromICalendarDateTime(rule_dict['UNTIL'])[0]
+                        else:
+                            recur.until = None
+
+                        for attr, tup in rrule_attr_dispatch.items():
+                            rule_key, convert = tup
+                            if rule_key in rule_dict:
+                                setattr(recur, attr, convert(rule_dict[rule_key]))
+                            else:
+                                reset_cell_default(recur, attr)
+
+                if not recur.frequency and not recur.rdates:
+                    if recurrence_installed:
+                        recur.remove()
+
 
     @eim.exporter(Event)
     def export_event(self, event):

@@ -9,10 +9,6 @@ from chandler.event import Event
 from chandler.time_services import timestamp, getNow, TimeZone
 from chandler.triage import DONE, LATER, NOW, Triage
 
-def to_dateutil_frequency(freq):
-    """Return the dateutil constant associated with the given frequency."""
-    return getattr(dateutil.rrule, freq.upper())
-
 def to_hashable(dt):
     """
     Take a datetime with tzinfo and return either a timestamp or a naive
@@ -29,9 +25,32 @@ def to_hashable(dt):
     else:
         return timestamp(dt)
 
+days = "MO TU WE TH FR SA SU".split()
+day_to_int = dict((v, k) for k, v in enumerate(days))
+
+def to_dateutil_frequency(freq):
+    """Return the dateutil constant associated with the given frequency."""
+    return getattr(dateutil.rrule, freq.upper())
+
+def to_dateutil_byweekday(byday):
+    """Turn a string like "2MO,TH" into an appropriate argument to rrule."""
+    if not byday:
+        return None
+    l = []
+    for wday in byday.split(','):
+        for i in range(len(wday)):
+            if wday[i] not in '+-0123456789':
+                break
+        n = wday[:i] or None
+        w = wday[i:]
+        if n: n = int(n)
+        l.append(dateutil.rrule.weekdays[day_to_int[w]](n))
+    return l
+
 class Recurrence(Extension):
     trellis.attrs(
         frequency=None,
+        byday='',
         triaged_done_before=None,
         start_extension=Event,
         start_extension_cellname='start',
@@ -67,6 +86,7 @@ class Recurrence(Extension):
         """
         kwds = dict(dtstart=self.start,
                     freq=to_dateutil_frequency(self.frequency),
+                    byweekday=to_dateutil_byweekday(self.byday),
                     cache=True)
 
         if count is not None:
@@ -85,6 +105,8 @@ class Recurrence(Extension):
         """The last possible date for the series."""
         if self.count is None:
             return self.until
+        elif not self.frequency:
+            pass
         else:
             rule = self.build_rrule(count=self.count)
             return rule[-1]
