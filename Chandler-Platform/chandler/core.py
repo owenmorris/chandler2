@@ -8,7 +8,7 @@ import time
 import sys
 
 __all__ = ('Item', 'Extension', 'DashboardEntry', 'Collection', 'Entity',
-           'One', 'Many', 'FilteredSubset',
+           'One', 'Many', 'FilteredSubset', 'AggregatedSet',
            'ItemAddOn', 'inherited_attrs', 'reset_cell_default',
            'InteractionComponent', 'Feature', 'Scope',
            'Command', 'Text', 'Table', 'TableColumn', 'Choice', 'ChoiceItem',
@@ -149,65 +149,144 @@ class TupleBackedSet(trellis.Set):
             trellis.Set.add(self, obj)
 
 
-class FilteredSubset(trellis.Set):
+class AggregatedSet(trellis.sets.ImmutableSet, trellis.Component):
+    """
+    Takes a Set of input objects, and a get_values() function, and
+    produces a Set of all values associated with the input objects.
+    """
 
-    predicate = trellis.attr(lambda obj: True)
-    base = trellis.make(writable=True)(trellis.Set)
+    # Implementation notes
+    #
+    #    - Like set, trellis.Set, maintains a _data dict. However,
+    #      in our case, the keys of _data are input objects, and
+    #      the values are (for now) Cells.
+    #
+    #    - The elements of _added and _removed are no longer quite so
+    #      simple, because they have to handle two different cases:
+    #
+    #        1. single elements being added/removed from items, in which
+    #           case all their associated values need to be added/removed.
+    #
+    #        2. values being added/removed due to start date/time changes,
+    #           or due to changes in things our get_values depends on.
+    #
+    #      So, we make _added and _removed dicts rather than sets. In the
+    #      face of a general change, we can figure out whether a particular
+    #      value should be considered to be added or removed (i.e. whether
+    #      it was present or not present before the start of the change).
+
+    def __init__(self, iterable=None, **kw):
+        if iterable is not None:
+            kw.update(input=trellis.Set(iterable))
+        trellis.Component.__init__(self, **kw)
+
+    input = trellis.make(trellis.Set, writable=True)
+
+    _added = trellis.todo(dict)
+    _removed = trellis.todo(dict)
+
+    to_add = _added.future
+    to_remove = _removed.future
+
+    def get_values(self, item):
+        """
+        Override this to iterate over the computed values corresponding
+        to ``item``.
+        """
+        return (item,)
+
+    def __iter__(self):
+        seen = set()
+        for cell in self._data.itervalues():
+            for value in cell.get_value():
+                if not value in seen:
+                    seen.add(value)
+                    yield value
+
+    def __contains__(self, obj):
+        if self._data is None:
+            return False
+        else:
+            return any(obj in cell.get_value()
+                       for cell in self._data.itervalues())
+
+    def __repr__(self):
+        return "%s([%s])" % (type(self).__name__,
+                             ", ".join(repr(x) for x in self))
+
+    def __len__(self):
+        return sum(1 for value in self.__iter__())
+
+    def __nonzero__(self):
+        return any(cell.get_value()
+                   for cell in self._data.itervalues())
 
     @trellis.compute
     def added(self):
-        return set(obj for obj in self._added if obj in self)
+        return self._added_and_removed[0]
+
+    @trellis.compute
+    def removed(self):
+        return self._added_and_removed[1]
+
+    @trellis.maintain
+    def _added_and_removed(self):
+        # Return a 2-element tuple of the newly added and newly
+        # removed objects.
+        added = set()
+        removed = set()
+
+        for item, values in self._added.iteritems():
+            added.update(v for v in values
+                         if not any(v in self._data[other].value and not v in self._added.get(other, ())
+                                     for other in self.input
+                                     if other is not item))
+        for item, values in self._removed.iteritems():
+            removed.update(v for v in values
+                           if all(v not in self._data[other].value or v in self._added.get(other, ())
+                                  for other in self.input
+                                  if other is not item))
+
+        return (added - removed, removed - added)
 
     @trellis.maintain(initially=None)
     def _data(self):
         """The dictionary containing the set cells."""
         if self._data is None: # could change make for this case
             data = dict()
-            added = self.base
+            added = self.input
             removed = ()
-        elif self._new_base:
+        elif self._new_input:
             data = self._data
-            added = iter(x for x in self._new_base if not x in self._data)
-            removed = set(x for x in self._data if not x in self._new_base)
+            added = iter(x for x in self._new_input if not x in self._data)
+            removed = set(x for x in self._data if not x in self._new_input)
         else:
             data = self._data
-            added = self.base.added
-            removed = self.base.removed
+            added = self.input.added
+            removed = self.input.removed
 
-        for obj in added:
-            data[obj] = cell = self._create_cell(obj)
-            if cell.value:
-                self.to_add.add(obj)
-
-        for obj in removed:
-            cell = data.get(obj, None)
+        for item in added:
+            cell = self._create_cell(item)
+            data[item] = cell
+            self.to_add[item] = cell.value
+        for item in removed:
+            cell = data.get(item, None)
             if cell is not None:
-                if cell.value:
-                    trellis.mark_dirty()
-                    self.to_remove.add(obj)
-                del data[obj]
-
+                self.to_remove[item] = cell.value
+                del data[item]
         return data
 
-    def _create_cell(self, obj):
-        def rule():
-            return self._maintain_one_cell(obj)
-        value = self.predicate(obj)
-        if value:
-            trellis.mark_dirty()
-        return trellis.Cell(rule=rule, value=value)
+    @trellis.compute(resetting_to=None)
+    def _new_input(self):
+        return self.input
 
-    def __repr__(self):
-        return "%s([%s])" % (type(self).__name__,
-                             ", ".join(repr(item) for item, cell in self._data.items() if cell.value))
-
-    def _maintain_one_cell(self, obj):
-        """This maintains the cell corresonding to obj in _data"""
+    def _maintain_one_cell(self, item):
+        """This maintains the cell corresponding to item in _data"""
 
         # Figure out the new value; this also causes the
         # trellis to calculate the cell's dependencies, and
         # thereby trigger later changes if necessary.
-        new_value = self.predicate(obj)
+        new_value = self.get_values(item)
 
         # If we were a real @maintain rule it would be
         # easy to figure out the old value here. Instead,
@@ -217,35 +296,29 @@ class FilteredSubset(trellis.Set):
         if self._data is None:
             return new_value
 
-        old_cell = self._data.get(obj, None)
-        if old_cell is None:
-            return new_value
+        old_cell = self._data.get(item, None)
+        old_value = getattr(old_cell, 'value', ())
 
-        if old_cell.value != new_value:
-            if new_value:
-                if obj in self.to_remove:
-                    self.to_remove.remove(obj)
-                else:
-                    self.to_add.add(obj)
-            else:
-                if obj in self.to_add:
-                    self.to_add.remove(obj)
-                else:
-                    self.to_remove.add(obj)
+        if old_value != new_value:
+            self.to_add[item] = tuple(e for e in new_value
+                                      if not e in old_value)
+            self.to_remove[item] = tuple(e for e in old_value
+                                         if not e in new_value)
 
         return new_value
 
-    @trellis.maintain(resetting_to=None)
-    def _new_base(self):
-        return self.base
+    def _create_cell(self, item):
+        def rule():
+            return self._maintain_one_cell(item)
+        return trellis.Cell(rule=rule, value=rule())
 
-    def __iter__(self):
-        return iter(obj for obj, cell in self._data.iteritems()
-                    if cell.get_value())
 
-    def __contains__(self, obj):
-        cell = self._data.get(obj)
-        return cell is not None and cell.get_value()
+class FilteredSubset(AggregatedSet):
+
+    predicate = trellis.attr(lambda obj: True)
+
+    def get_values(self, item):
+        return (item,) if self.predicate(item) else ()
 
 class Entity(trellis.Component):
     _extension_types = trellis.make(trellis.Set)

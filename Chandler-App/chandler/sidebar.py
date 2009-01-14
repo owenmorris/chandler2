@@ -51,7 +51,7 @@ class Sidebar(core.Table):
     @trellis.make
     def filtered_items(self):
         return core.FilteredSubset(
-            base=trellis.Cell(lambda: self.selected_item.collection.items),
+            input=trellis.Cell(lambda: self.selected_item.collection.items),
             predicate=trellis.Cell(lambda:self.filters.value))
 
     @trellis.maintain

@@ -118,7 +118,7 @@ set.  (For example, Chandler needs to do this to filter the items in
 Sidebar collections). :class:`FilteredSubset` is a utility class that
 models this situation.
 
-To create one, you need to supply :attr:`~FilteredSubset.base`, the
+To create one, you need to supply :attr:`~FilteredSubset.input`, the
 :class:`trellis.Set` you want to filter, and
 :attr:`~FilteredSubset.predicate`, a function that says whether
 objects are in the subset or not.
@@ -126,17 +126,17 @@ objects are in the subset or not.
 Let's create a simple example, using sets of integers:
 
 >>> import peak.events.trellis as trellis
->>> base = trellis.Set(xrange(10))
+>>> input = trellis.Set(xrange(10))
 
 Imagine we're interested in viewing only the even elements of
-``base``. Then a good predicate will be:
+``input``. Then a good predicate will be:
 
 >>> def is_even(i):
 ...     return i%2 == 0
 
 and our :class:`FilteredSubset` will just be:
 
->>> filtered = FilteredSubset(base=base, predicate=is_even)
+>>> filtered = FilteredSubset(input=input, predicate=is_even)
 
 To show how changes are propagated, we'll create a
 :class:`~trellis.Performer` cell to observe the contents of
@@ -154,12 +154,12 @@ contents: [0, 2, 4, 6, 8]
 Removing an item from the base set that isn't the subset doesn't cause
 a change to be propagated:
 
->>> base.remove(9)
+>>> input.remove(9)
 
 Removing a matching member of the base set does cause a notification,
 of course:
 
->>> base.remove(2)
+>>> input.remove(2)
 contents: [0, 4, 6, 8]
     removed: 2
 contents: [0, 4, 6, 8]
@@ -168,7 +168,7 @@ If objects are added to the base set, and some of them match
 :attr:`~FilteredSubset.predicate`, then we'll get added notifications
 for those:
 
->>> base.union_update(set([10, 11, 12]))
+>>> input.union_update(set([10, 11, 12]))
 contents: [0, 4, 6, 8, 10, 12]
     added: 10
     added: 12
@@ -184,9 +184,9 @@ contents: [8, 10, 11, 12]
     removed: 6
 contents: [8, 10, 11, 12]
 
-Finally, the same goes for :attr:`~FilteredSubset.base`:
+Finally, the same goes for :attr:`~FilteredSubset.input`:
 
->>> filtered.base = trellis.Set([6, 7, 8, 9])
+>>> filtered.input = trellis.Set([6, 7, 8, 9])
 contents: [8, 9]
     added: 9
     removed: 10
@@ -194,9 +194,126 @@ contents: [8, 9]
     removed: 12
 contents: [8, 9]
 
-**TODO:** Disallow :class:`trellis.Set` methods that change the
-  :class:`FilteredSubset` directly (e.g. :meth:`trellis.Set.add`), or
-  forward them on to :attr:`~FilteredSubset.base` if appropriate.
+"Aggregated" Sets
+-----------------
+
+:class:`FilteredSubset` is actually a subclass of a Trellis Set_-like
+class, :class:`AggregatedSet`. This deals with the following general
+situation:
+
+   - You have a :class:`~peak.events.trellis.Set` of objects, called
+     the :attr:`~AggregatedSet.input`.
+   - You have a function, :attr:`~AggregatedSet.get_values`, that returns
+     zero or more values for each object in the
+     :attr:`~AggregatedSet.input`.
+   - You would like to know the :class:`~peak.events.trellis.Set` of
+     all values of :attr:`~AggregatedSet.get_values` as you iterate over
+     all objects in :attr:`~AggregatedSet.input`.
+
+Chandler encounters the above situation in several cases. For example,
+the Dashboard (List) view needs to take a
+:class:`~peak.events.trellis.Set` of Items, and compute all the
+corresponding :class:`DashboardEntry` objects (and track changes via
+the usual :attr:`~peak.events.trellis.Set.added` and
+:attr:`~peak.events.trellis.Set.removed` cells). Another case is to
+take one or more :class:`Collection` objects, and compute all the
+Items they contain.
+
+For demonstration purposes, let's create a simple
+:class:`~peak.events.trellis.Component` subclass:
+
+>>> class Cake(trellis.Component):
+...    ingredients = trellis.make(tuple, writable=True)
+
+The idea is that we are going to specify a couple of ``Cakes``, and
+track the aggregate of all the ingredients we need.
+
+>>> chocolate = Cake(ingredients=("flour", "butter", "sugar", "chocolate"))
+>>> carrot = Cake(ingredients=("flour", "butter", "sugar", "carrots", "fertilizer"))
+
+(Naturally, this example is a little contrived: In the real world, it
+is highly likely we would be interested in details like how much of
+each ingredient we need. Of course, in the real world, the
+last-mentioned carrot cake ingredient would be too agricultural for
+most people's tastes!)
+
+OK, time to make a :class:`~peak.events.trellis.Set` of cakes:
+
+>>> cakes = trellis.Set([chocolate, carrot])
+
+and from these we'll aggregate all ingredients:
+
+>>> all_ingredients = AggregatedSet(input=cakes,
+...                               get_values=lambda cake: cake.ingredients)
+
+Let's check that we do indeed get the correct aggregation of all
+ingredients (we use ``sorted`` so that this doctest doesn't depend on
+the enumeration order of the set):
+
+>>> sorted(all_ingredients)
+['butter', 'carrots', 'chocolate', 'fertilizer', 'flour', 'sugar']
+
+Note that a :class:`AggregatedSet` is computed, so you can't directly
+modify its values:
+
+>>> all_ingredients.add('cod liver oil')
+Traceback (most recent call last):
+...
+AttributeError: 'AggregatedSet' object has no attribute 'add'
+
+
+Let's do our usual trick of using a
+:class:`~peak.events.trellis.Performer` cell to note what changes are
+being made to ``all_ingredients``:
+
+>>> def observe_ingredients():
+...     if all_ingredients.added or all_ingredients.removed:
+...         print "added:", " ".join(sorted(all_ingredients.added))
+...         print "removed:", " ".join(sorted(all_ingredients.removed))
+...         print "new contents:", " ".join(sorted(all_ingredients))
+>>> observer = trellis.Performer(observe_ingredients)
+
+Adding a splash of vanilla does change the aggregate all_ingredients as we
+expect:
+
+>>> chocolate.ingredients += ('vanilla',)
+added: vanilla
+removed: 
+new contents: butter carrots chocolate fertilizer flour sugar vanilla
+
+Adding the ever-popular fertilizer to our chocolate cake has no affect on
+our aggregate ingredients:
+
+>>> chocolate.ingredients += ("fertilizer",)
+
+Similarly, removing sugar from the chocolate cake does nothing:
+
+>>> chocolate.ingredients = ("flour", "butter", "chocolate", "vanilla")
+
+But once it's gone from the carrot cake, it's gone:
+
+>>> carrot.ingredients = ("flour", "butter", "carrots", "fertilizer")
+added: 
+removed: sugar
+new contents: butter carrots chocolate fertilizer flour vanilla
+
+
+Adding a new ``Cake`` can result in changes:
+
+>>> cakes.add(Cake(ingredients=["flour", "walnuts", "spam"]))
+added: spam walnuts
+removed: 
+new contents: butter carrots chocolate fertilizer flour spam vanilla walnuts
+
+
+
+and finally, removing one or more ``Cakes`` will remove their ingredients if
+they're not used by any of the remaining ``Cakes``:
+
+>>> cakes.difference_update((chocolate, carrot))
+added: 
+removed: butter carrots chocolate fertilizer vanilla
+new contents: flour spam walnuts
 
 Extensions
 ----------

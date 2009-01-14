@@ -4,7 +4,7 @@ import pkg_resources
 from chandler.test_helper import AbstractTestLoader, setUp, tearDown
 
 from test_birefs import *
-from test_filtered_subset import *
+from test_sets import *
 
 
 def additional_tests():
