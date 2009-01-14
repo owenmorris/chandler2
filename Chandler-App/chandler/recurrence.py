@@ -188,7 +188,7 @@ class Recurrence(Extension):
         for recurrence_id in old_set - new_set:
             del self._recurrence_dashboard_entries[recurrence_id]
         for recurrence_id in new_set - old_set:
-            entry = DashboardEntry(Occurrence(self.item, recurrence_id))
+            entry = DashboardEntry(self.get_occurrence(recurrence_id))
             self._recurrence_dashboard_entries[recurrence_id] = entry
 
         return new_set

@@ -1035,6 +1035,7 @@ class Translator:
     def withItemForUUID(self, uuid, itype=Item, **attrs):
         item = item_for_uuid(uuid)
 
+        @trellis.modifier
         def setattrs(ob):
             # Set specified attributes, skipping NoChange attrs, and deleting
             # Inherit attrs
@@ -1046,7 +1047,6 @@ class Translator:
                 if issubclass(itype, Extension):
                     if not itype.installed_on(item):
                         add_on.add()
-                setattrs(add_on)
             else:
                 add_on = item
             setattrs(add_on)
