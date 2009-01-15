@@ -1,24 +1,32 @@
 import optparse
 import peak.events.trellis as trellis
-from chandler import runtime, keyword
+from chandler import runtime, core, keyword
+import chandler.sidebar as sidebar
 
 class ChandlerApplication(runtime.Application, trellis.Component):
     """The Chandler Application"""
+    sidebar_entries = trellis.make(trellis.Set, writable=True)
 
-    trellis.attrs(
-        collections=(),
-    )
+
+class ChandlerFrame(core.Frame):
+    model = trellis.make(trellis.Set, writable=True)
+
+    @trellis.maintain
+    def sidebar(self):
+        return sidebar.Sidebar(scope=self, model=self.model)
 
 def load_domain(app):
-    """Load up the interaction layer for ChandlerApplication"""
-    app.collections = trellis.List(keyword.Keyword(name) for name in (u"Home", u"Work"))
+    """Load up the domain model for ChandlerApplication"""
+    app.sidebar_entries = trellis.Set(
+            sidebar.SidebarEntry(collection=keyword.Keyword(name))
+            for name in (u"Home", u"Work")
+        )
 
 def load_interaction(app):
     load_domain(app)
 
     # IM-specific stuff here
-    from chandler.sidebar import load_interaction
-    load_interaction(app)
+    app.mainFrame = ChandlerFrame(model=app.sidebar_entries)
 
 def _headless(app):
     banner = """

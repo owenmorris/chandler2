@@ -43,7 +43,6 @@ class Sidebar(core.Table):
         return core.TableColumn(scope=self, label=u'Name',
             get_value=lambda entry:entry.collection.title)
 
-
     @trellis.make
     def columns(self):
         return trellis.List([self.icon_column, self.name_column])
