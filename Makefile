@@ -14,7 +14,7 @@ ALLSPHINXOPTS   = -d .build/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) .
 
 .PHONY: build install develop test help clean html web pickle htmlhelp latex changes linkcheck
 
-PROJECTS = Chandler-Platform Chandler-App
+PROJECTS = Chandler-Platform Chandler-App Chandler-Development
 SETUP_OPTS = 
 PYTHON = python
 

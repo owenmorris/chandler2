@@ -38,6 +38,17 @@ XXX This is a catch-all project for now; as it grows we will likely
 
    Chandler-App/README
 
+Chandler-Development
+--------------------
+
+Tools for developing and debugging Chandler. For the moment, this
+containts a PyShell window you can use for debugging.
+
+.. toctree::
+   :maxdepth: 3
+
+   Chandler-Development/README
+
 Hooks
 =====
 
