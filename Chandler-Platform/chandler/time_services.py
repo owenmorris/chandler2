@@ -23,7 +23,8 @@ from PyICU import ICUtzinfo
 import dateutil
 
 __all__ = ('getNow', 'timestamp', 'setNow', 'resetNow', 'nowTimestamp',
-           'TimeZone', 'Scheduled', 'is_past_timestamp',
+           'TimeZone', 'Scheduled', 'is_past_timestamp', 'is_past',
+           'fromtimestamp',
            'force_datetime', 'olsonize', )
 
 def getNow(tz=None):
@@ -44,6 +45,9 @@ def timestamp(dt):
     # case we decide to replace it with something with a little more
     # resolution
     return float(timegm(dt.utctimetuple()))
+
+def fromtimestamp(dt):
+    return datetime.fromtimestamp(dt, TimeZone.default)
 
 def setNow(dt):
     if dt is not None and dt.tzinfo is None:
@@ -67,6 +71,9 @@ def nowTimestamp():
 
 def is_past_timestamp(stamp):
     return bool(activity.Time[stamp - nowTimestamp()])
+
+def is_past(dt):
+    return is_past_timestamp(timestamp(dt))
 
 class TimeZone(trellis.Component, context.Service):
 

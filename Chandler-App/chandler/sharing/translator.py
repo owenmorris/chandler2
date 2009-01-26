@@ -33,7 +33,8 @@ from decimal import Decimal
 import colorsys
 
 from vobject.icalendar import timedeltaToString, stringToDurations
-from chandler.time_services import getNow, TimeZone, timestamp, olsonize
+from chandler.time_services import (getNow, TimeZone, timestamp, olsonize,
+                                    fromtimestamp)
 
 __all__ = [
     'SharingTranslator',
@@ -66,8 +67,7 @@ def decimal_int(x):
 def datetimeToDecimal(dt):
     return decimal_int(timestamp(dt))
 
-def decimalToDatetime(decimal):
-    return datetime.fromtimestamp(decimal, TimeZone.default)
+decimalToDatetime = fromtimestamp
 
 def normalize_triage_code(code):
     """Cosmo expects triage status to be 100, 200, or 300."""
