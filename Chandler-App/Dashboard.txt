@@ -30,15 +30,22 @@ Chandler's Application code expands on :ref:`basic dashboard entries
 >>> entry = list(item.dashboard_entries)[0]
 >>> app_entry = AppDashboardEntry(entry)
 
-:class:`AppDashboardEntry` defines
+:class:`AppDashboardEntry` defines several simple fields,
 :attr:`~AppDashboardEntry.is_event`,
 :attr:`~AppDashboardEntry.is_starred`,
 :attr:`~AppDashboardEntry.triage_status`,
-:attr:`~AppDashboardEntry.triage_position` and
-:attr:`~AppDashboardEntry.reminder_scheduled` cells.
+:attr:`~AppDashboardEntry.triage_position`, and
+:attr:`~AppDashboardEntry.triage_section`.  These are trivially pulled from :class:`~chandler.triage.Triage`, :class:`~chandler.event.Event` and :class:`~chandler.starred.Starred`.
+
+There are also a few more complicated fields,
+:attr:`~AppDashboardEntry.when`,
+:attr:`~AppDashboardEntry.reminder_scheduled`, and
+:attr:`~AppDashboardEntry.event_reminder_combined`.
 
 >>> app_entry.is_event
 False
+>>> app_entry.event_reminder_combined
+''
 >>> event = Event(item).add()
 >>> app_entry.is_event
 True
@@ -48,23 +55,41 @@ True
 True
 >>> app_entry.reminder_scheduled
 False
+>>> app_entry.event_reminder_combined
+'event'
 
 :attr:`~AppDashboardEntry.reminder_scheduled` will be ``True`` if the
 entry has a reminder scheduled in the **future**.
 
+:attr:`~AppDashboardEntry.event_reminder_combined` will be 'reminder'
+if a reminder is scheduled, or if there's no event information.  If
+it's not a reminder, and the entry is an event,
+:attr:`~AppDashboardEntry.event_reminder_combined` will be 'event',
+otherwise it'll be the empty string.
+
 >>> reminder = ReminderList(item).add_reminder()
 >>> app_entry.reminder_scheduled
 False
+>>> app_entry.event_reminder_combined
+'event'
 >>> reminder.fixed_trigger = november_first + timedelta(days=1)
 >>> app_entry.reminder_scheduled
 True
+>>> app_entry.event_reminder_combined
+'reminder'
 >>> reminder.fixed_trigger = november_first - timedelta(days=1)
 >>> app_entry.reminder_scheduled
 False
+>>> app_entry.event_reminder_combined
+'event'
+>>> Event(item).remove()
+>>> app_entry.event_reminder_combined
+'reminder'
+
+XXX add tests of when...
 
 TODO
 ====
-- when should probably be moved here
 - add created/edited/new/updated
 - add status (unread, mainly)
 
@@ -159,18 +184,27 @@ instances. Maybe we should change the name to ``rows`` or ``objects``.
 >>> db.items.data is db.model
 True
 
-For the moment, the :class:`Dashboard` only comes with a single
-column, which displays whether or not the entry in question is
-starred:
+Most :class:`Dashboard` columns use a :class:`~core.TableColumn`
+subclass, :class:`AppColumn` which get values from a particular
+:class:`AppDashboardEntry` cell.
 
 >>> db.star_column
-<chandler.core.TableColumn object at 0x...>
->>> list(db.columns) == [db.star_column]
-True
+<AppColumn "*" (is_starred)>
+>>> list(db.columns)
+[<AppColumn "*" (is_starred)>, <TableColumn "Title">, <AppColumn "(( ))" (event_reminder_combined)>, <AppColumn "Date" (when)>, <TriageColumn "Triage" (triage_status)>]
+
+:class:`TriageColumn` is an :class:`AppColumn` subclass that defines a
+special sort for triage.
 
 TODO
 ====
-- add more columns
 - demonstrate sorting
 - extending the Dashboard
 - (LATER) sections
+
+
+when column
+===========
+nearest future, or last past, of fixed_trigger/event_start
+ignore delta reminders
+otherwise, fall back to created

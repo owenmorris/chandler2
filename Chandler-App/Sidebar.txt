@@ -99,9 +99,9 @@ The Sidebar itself is a :class:`chandler.core.Table` subclass.
 
 >>> sidebar = Sidebar()
 >>> sidebar.icon_column
-<chandler.core.TableColumn object at 0x...>
+<TableColumn "Icon">
 >>> sidebar.name_column
-<chandler.core.TableColumn object at 0x...>
+<TableColumn "Name">
 
 A subcomponent of the :class:`Sidebar` is the :attr:`~Sidebar.filters`
 that can be applied to the collection:

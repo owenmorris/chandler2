@@ -661,16 +661,19 @@ class Table(Scope):
 
 
 class TableColumn(InteractionComponent):
+    trellis.attrs(
+        can_sort=True,
+        sort_ascending=False,
+    )
+
+    def __repr__(self):
+        return '<TableColumn "%s">' % self.label
+
     def get_value(self, item):
         return unicode(item)
 
     def sort_key(self, item):
         return self.get_value(item)
-
-    trellis.attrs(
-        can_sort=True,
-        sort_ascending=False,
-    )
 
 class Frame(Scope):
     """A top-level window/dialog in the UI"""
