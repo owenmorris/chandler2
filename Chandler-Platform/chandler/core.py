@@ -443,7 +443,7 @@ class Collection(Entity):
     items = Many(inverse=Item.collections)
 
     def __repr__(self):
-        return "<Collection: %s>" % self.title
+        return "<%s: %s>" % (type(self).__name__, self.title)
 
     def add(self, item):
         self.items.add(item)
@@ -667,7 +667,7 @@ class TableColumn(InteractionComponent):
     )
 
     def __repr__(self):
-        return '<TableColumn "%s">' % self.label
+        return '<%s "%s">' % (type(self).__name__, self.label)
 
     def get_value(self, item):
         return unicode(item)

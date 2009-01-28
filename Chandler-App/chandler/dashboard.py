@@ -22,36 +22,28 @@ class AppDashboardEntry(addons.AddOn, trellis.Component):
 
     @trellis.compute
     def triage_status(self):
-        if self._item:
-            return Triage(self._item).calculated
+        return Triage(self._item).calculated
 
     @trellis.compute
     def triage_position(self):
-        if self._item:
-            return TriagePosition(self._item).position
+        return TriagePosition(self._item).position
 
     @trellis.compute
     def triage_section(self):
-        if self._item:
-            return TriagePosition(self._item).triage_section
+        return TriagePosition(self._item).triage_section
 
     @trellis.compute
     def is_event(self):
-        if not self._item:
-            return False
         return Event.installed_on(self._item)
 
     @trellis.compute
     def is_starred(self):
-        if not self._item:
-            return False
         return Starred.installed_on(self._item)
 
     @trellis.compute
     def _reminder(self):
-        if self._item:
-            for reminder in ReminderList(self._item).reminders:
-                return reminder
+        for reminder in ReminderList(self._item).reminders:
+            return reminder
 
     @trellis.compute
     def _when_source(self):
@@ -62,34 +54,32 @@ class AppDashboardEntry(addons.AddOn, trellis.Component):
         The first-future, or last-past, user-defined date is used.
 
         """
-        if self._item:
-            past = []
-            future = []
-            if self._reminder and self._reminder.fixed_trigger:
-                fixed_trigger = self._reminder.fixed_trigger
-                l = past if is_past(fixed_trigger) else future
-                l.append((fixed_trigger, 'reminder'))
-            if self.is_event:
-                event_start = Event(self._item).start
-                l = past if is_past(event_start) else future
-                l.append((event_start, 'event'))
-            past.sort()
-            future.sort()
-            if future:
-                return future[0][1]
-            elif past:
-                return past[-1][1]
-            return 'created'
+        past = []
+        future = []
+        if self._reminder and self._reminder.fixed_trigger:
+            fixed_trigger = self._reminder.fixed_trigger
+            l = past if is_past(fixed_trigger) else future
+            l.append((fixed_trigger, 'reminder'))
+        if self.is_event:
+            event_start = Event(self._item).start
+            l = past if is_past(event_start) else future
+            l.append((event_start, 'event'))
+        past.sort()
+        future.sort()
+        if future:
+            return future[0][1]
+        elif past:
+            return past[-1][1]
+        return 'created'
 
     @trellis.compute
     def when(self):
-        if self._item:
-            if self._when_source == 'event':
-                return Event(self._item).start
-            elif self._when_source == 'reminder':
-                return self._reminder.trigger
-            else:
-                return self._item.created
+        if self._when_source == 'event':
+            return Event(self._item).start
+        elif self._when_source == 'reminder':
+            return self._reminder.trigger
+        else:
+            return self._item.created
 
     @trellis.compute
     def reminder_scheduled(self):
