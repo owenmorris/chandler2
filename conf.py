@@ -26,7 +26,7 @@ import sys, os
 extensions = ['sphinx.ext.doctest']
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['.templates']
+templates_path = ['sphinx_extensions/templates']
 
 # The suffix of source filenames.
 source_suffix = '.txt'
@@ -36,7 +36,7 @@ master_doc = 'README'
 
 # General information about the project.
 project = u'Chandler'
-copyright = u'2008, Open Source Applications Foundation'
+copyright = u'2009, Open Source Applications Foundation'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -92,7 +92,7 @@ html_style = 'default.css'
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
-#html_title = None
+html_title = "Chandler2 documentation"
 
 # A shorter title for the navigation bar.  Default is the same as html_title.
 #html_short_title = None
@@ -104,12 +104,12 @@ html_style = 'default.css'
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
 # pixels large.
-#html_favicon = None
+html_favicon = "favicon.ico"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-#html_static_path = ['.static']
+html_static_path = ['sphinx_extensions/static']
 
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.

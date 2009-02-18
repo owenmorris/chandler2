@@ -1,0 +1,14 @@
+body {
+    border: 0;
+    margin: 0 80px !important;
+    min-width: 740px;
+}
+
+.header img{
+    border: none;
+}
+
+.header {
+    padding: 8px 5px 5px 8px;
+    background-color: white;
+}
