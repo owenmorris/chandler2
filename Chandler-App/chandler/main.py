@@ -7,6 +7,8 @@ class ChandlerApplication(runtime.Application, trellis.Component):
     """The Chandler Application"""
     sidebar_entries = trellis.make(trellis.Set, writable=True)
 
+    top_level = trellis.make(trellis.Set)
+
 
 class ChandlerFrame(core.Frame):
     model = trellis.make(trellis.Set, writable=True)
@@ -26,7 +28,8 @@ def load_interaction(app):
     load_domain(app)
 
     # IM-specific stuff here
-    app.mainFrame = ChandlerFrame(model=app.sidebar_entries)
+    app.top_level.add(ChandlerFrame(model=app.sidebar_entries,
+                                    label=u'Chandler2 Demo'))
 
 def _headless(app):
     banner = """
