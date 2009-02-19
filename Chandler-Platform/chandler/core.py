@@ -1,6 +1,7 @@
 import peak.events.trellis as trellis
 import peak.events.collections as collections
 import peak.events.activity as activity
+from simplegeneric import generic
 from peak.util import addons, plugins
 from datetime import datetime
 import chandler.time_services as time_services
@@ -475,6 +476,8 @@ class InteractionComponent(trellis.Component):
         visible=True,
         help=None,
     )
+    
+    hints = trellis.make(dict)
 
 
 class Feature(InteractionComponent):
@@ -568,6 +571,7 @@ class Choice(Feature):
             return self.chosen_item.value
 
     new_choice = trellis.attr(resetting_to=None)
+
 
 class Table(Scope):
     """A Table is responsible for managing the display of a C{trellis.Set}"""
@@ -700,3 +704,23 @@ class Viewer(trellis.Component):
         value = getattr(self.component, self.cell_name, None)
         if None not in (self.component, self.cell_name, value):
             print "%s changed to: %s" % (self.formatted_name, value)
+
+#
+# Initial presentation support (such as it is)
+#
+
+@generic
+def present(obj, parent=None):
+    """
+    Turn an interaction/presentation object into
+    something usable by a GUI library.
+    """
+    #print "Generic rendering of %s" % (obj,)
+    return obj
+
+@present.when_type(Scope)
+def present_scope(scope, parent=None):
+    #print "Rendering scope %s" % (scope,)
+    for subcomponent in scope.subcomponents:
+        present(subcomponent, parent)
+
