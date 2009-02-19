@@ -39,5 +39,5 @@ setup(
     test_suite = 'test_suite',
     test_loader = 'test_suite:TestLoader',
     packages = find_packages(),
-    namespace_packages = ['chandler', 'chandler.sharing'],
+    namespace_packages = ['chandler', 'chandler.sharing', 'chandler.wxui'   ],
 )
