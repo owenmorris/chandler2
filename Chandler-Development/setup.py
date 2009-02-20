@@ -30,7 +30,7 @@ setup(
     test_suite = 'chandler.debug',
     packages = find_packages(),
     entry_points = """
-    [chandler.launch.app]
+    [chandler.launch.wxui]
     PyCrust = chandler.debug.py_crust:LaunchPyCrust
     [console_scripts]
     chandler-debug = chandler.debug.py_crust:debug_main
