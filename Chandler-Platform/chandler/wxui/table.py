@@ -28,7 +28,14 @@ import chandler.wxui.multi_state as multi_state
 import chandler.wxui.drawing as drawing
 from chandler.wxui.image import get_image, get_raw_image
 
-EXTENDED_WX = True
+#
+# Chandler1's version of wxPython has some enhancements
+# (especially to wx.grid.Grid) that aren't present in
+# the wxPythons that ship on many systems. So, we use
+# the following global to check for this (until Chandler1's
+# changes get accepted upstream).
+#
+EXTENDED_WX = hasattr(wxGrid.Grid, 'ScaleWidthToFit')
 
 logger = logging.getLogger(__name__)
 
@@ -138,9 +145,9 @@ class TablePresentation(trellis.Component, wxGrid.PyGridTableBase):
             grid.SetColLabelValue(index, column.label)
             grid.SetColSize(index, column.hints.get('width', 120))
 
-            # @@@ [grant] Chandler wxPython extension
-            scaleColumn = grid.GRID_COLUMN_SCALABLE if column.hints.get('scalable') else grid.GRID_COLUMN_NON_SCALABLE
-            grid.ScaleColumn(index, scaleColumn)
+            if EXTENDED_WX:
+                scaleColumn = grid.GRID_COLUMN_SCALABLE if column.hints.get('scalable') else grid.GRID_COLUMN_NON_SCALABLE
+                grid.ScaleColumn(index, scaleColumn)
             if column is self.table.select_column:
                 grid.SetSelectedCol(index)
 
@@ -294,9 +301,8 @@ class Table(wxGrid.Grid):
         self.AutoSizeRows()
         self.DisableDragRowSize()
         self.SetDefaultCellBackgroundColour(wx.WHITE)
-        self.ScaleWidthToFit(True)
-
         if EXTENDED_WX:
+            self.ScaleWidthToFit(True)
             self.EnableCursor(False)
             self.SetLightSelectionBackground()
         self.SetScrollLineY(self.GetDefaultRowSize())
