@@ -27,6 +27,9 @@ build:
 install:
 	for proj in $(PROJECTS); do (cd "$$proj" && $(PYTHON) setup.py install $(SETUP_OPTS)); done
 
+uninstall:
+	for proj in $(PROJECTS); do (cd "$$proj" && $(PYTHON) setup.py develop -u $(SETUP_OPTS)); done
+
 develop:
 	for proj in $(PROJECTS); do (cd "$$proj" && $(PYTHON) setup.py develop $(SETUP_OPTS)); done
 
