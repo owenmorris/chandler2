@@ -8,13 +8,31 @@ imageCache = {}
 
 __all__ = ('get_raw_image', 'get_image')
 
-def get_raw_image(name, copy=True):
+def get_raw_image(name, dist_name, copy=True):
     """
-    Return None if image isn't found, otherwise return the raw image.
-    Also look first for platform specific images.
+    Search for the image named 'name' inside the distribution
+    named 'dist_name', and return a wx.Image if one can be
+    found and created. Otherwise, return C{None}. Note that
+    this function also searches for platform-specific variants
+    by first checking for image resources called name-platform.
+
+    @param name: The name of the image to search for.
+    @type name: C{basestring}
+
+    @param dist_name: The name of the distribution to search
+                      for the given image.
+    @type dist_name: C{basestring}
+
+    @keyword copy: Whether or not to Copy the returned image
+                   (i.e. C{True} if you want to tweak it
+                   in-memory).
+    @type copy: C{bool}
+
+    @rtype: C{wx.Image} (or ${None).
     """
+
     global imageCache
-    entry = imageCache.get(name)
+    entry = imageCache.get((name, dist_name))
     if entry is not None:
         image = entry[0]
         if image is not None and copy:
@@ -23,9 +41,7 @@ def get_raw_image(name, copy=True):
 
     root, extension = os.path.splitext(name)
     
-    # This hardcodes the resources/images path that's specified in
-    # resources.ini inside the Chandler_App.egg-info.
-    dist = pkg_resources.get_distribution("Chandler_App")
+    dist = pkg_resources.get_distribution(dist_name)
     
     def readData(path):
         try:
@@ -38,11 +54,11 @@ def get_raw_image(name, copy=True):
         data = readData("resources/images/%s" % name)
     
     if data is None:
-        imageCache[name] = [None]
+        imageCache[(name, dist_name)] = [None]
         return None
 
     image = wx.ImageFromStream(cStringIO.StringIO(data))
-    imageCache[name] = [image]
+    imageCache[(name, dist_name)] = [image]
     if copy:
         image = image.Copy()
     return image
@@ -52,7 +68,7 @@ def get_image(name):
     Return None if image isn't found, otherwise loads a bitmap.
     Looks first for platform specific bitmaps.
     """
-    rawImage = get_raw_image(name, copy=False)
+    rawImage = get_raw_image(name, dist_name, copy=False)
     if rawImage is not None:
         return wx.BitmapFromImage(rawImage)
     else:
