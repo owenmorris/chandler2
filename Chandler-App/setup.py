@@ -30,6 +30,8 @@ setup(
     interaction = chandler.main:load_interaction
     [chandler.launch.wxui]
     wxui = chandler.wxui:load_wxui
+    [chandler.wxui.table.extensions]
+    SidebarIcon = chandler.sidebar:extend_table
     [console_scripts]
     chandler-demo = chandler.main:main
     """
