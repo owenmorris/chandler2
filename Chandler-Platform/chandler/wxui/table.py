@@ -19,6 +19,7 @@ import wx
 import wx.grid as wxGrid
 
 import peak.events.trellis as trellis
+import peak.util.plugins as plugins
 import chandler.core as core
 
 #import Styles
@@ -291,9 +292,13 @@ class Table(wxGrid.Grid):
     else:
         defaultStyle = wx.BORDER_STATIC
         
+    TABLE_EXTENSIONS = plugins.Hook('chandler.wxui.table.extensions')
+
     def __init__(self, parent, tableData, *arguments, **keywords):
         super(Table, self).__init__(parent, style=self.defaultStyle, *arguments, **keywords)
 
+        # Register extensions
+        self.TABLE_EXTENSIONS.notify(self)
         # Generic table setup
         self.SetColLabelAlignment(wx.ALIGN_LEFT, wx.ALIGN_CENTRE)
         self.SetRowLabelSize(0)
