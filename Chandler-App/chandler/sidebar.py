@@ -1,6 +1,7 @@
 import peak.events.trellis as trellis
 import chandler.core as core
 import chandler.event as event
+import chandler.starred as starred
 import itertools
 from peak import context
 
@@ -75,12 +76,20 @@ class Sidebar(core.Table):
                 core.ChoiceItem(
                     label=u'All',
                     help=u'View all items',
-                    value=lambda item: True),
+                    value=lambda item: True,
+                    hints={'icon': 'ApplicationBarAll.png'}),
                 core.ChoiceItem(
                     label=u'Calendar',
                     help=u'View events',
-                    value=event.Event.installed_on),
-            ])
+                    value=event.Event.installed_on,
+                    hints={'icon': 'ApplicationBarEvent.png'}),
+                core.ChoiceItem(
+                    label=u'Starred',
+                    help=u'View Starred Items',
+                    value=starred.Starred.installed_on,
+                    hints={'icon': 'ApplicationBarStarred.png'}),
+            ]),
+            hints={'toolbar': True},
         )
 
 import wx
