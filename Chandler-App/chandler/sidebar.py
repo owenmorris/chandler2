@@ -2,18 +2,29 @@ import peak.events.trellis as trellis
 import chandler.core as core
 import chandler.event as event
 import itertools
+from peak import context
+
+class Cycler(context.Service):
+    """Cycle through hues and increment sort_key."""
+    def __init__(self):
+        self._ITER_HUES = itertools.cycle((210, 120, 0, 30, 50, 300, 170, 330, 270))
+        self._ITER_SORT_KEY = itertools.count(1)
+
+    def next_hue(self):
+        return self._ITER_HUES.next()
+
+    def next_sort_key(self):
+        return self._ITER_SORT_KEY.next()
 
 class SidebarEntry(trellis.Component):
-    _ITER_HUES = itertools.cycle((210, 120, 0, 30, 50, 300, 170, 330, 270))
-    _ITER_SORT_KEY = itertools.count(1)
 
     @trellis.make(writable=True, optional=False)
     def sort_key(self):
-        return self._ITER_SORT_KEY.next()
+        return Cycler.next_sort_key()
 
     @trellis.make(writable=True, optional=False)
     def hsv_color(self):
-        return (self._ITER_HUES.next(), 0, 0)
+        return (Cycler.next_hue(), 0.5, 1.0)
 
     @trellis.make(writable=True)
     def collection(self):

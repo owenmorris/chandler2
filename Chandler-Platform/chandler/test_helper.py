@@ -2,20 +2,19 @@ import doctest
 from peak.events import activity
 from peak.util import plugins
 from copy import deepcopy
+from peak import context
 
 import pkg_resources
 from setuptools.command.test import ScanningLoader
 
 def setUp(test_case):
-    # use a different Time for each test, so time changes don't
-    # trigger unnecessary recalculations in previous tests
-    test_case.time_context = activity.Time.new()
-    test_case.time_context.__enter__()
+    test_case.empty_context = context.empty()
+    test_case.empty_context.__enter__()
     # don't let a test's registered hooks affect other tests
     test_case._implementations = deepcopy(plugins._implementations)
 
 def tearDown(test_case):
-    test_case.time_context.__exit__(None, None, None)
+    test_case.empty_context.__exit__(None, None, None)
     plugins._implementations = test_case._implementations
 
 # silence annoying logger warnings

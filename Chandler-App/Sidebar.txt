@@ -45,11 +45,11 @@ affect its display:
   are cycled through a standard sequence:
 
   >>> entry.hsv_color
-  (210, 0, 0)
+  (210, 0.5, 1.0)
   >>> keyword_entry.hsv_color
-  (120, 0, 0)
+  (120, 0.5, 1.0)
   >>> [SidebarEntry().hsv_color for i in xrange(9)]
-  [(0, 0, 0), (30, 0, 0), (50, 0, 0), (300, 0, 0), (170, 0, 0), (330, 0, 0), (270, 0, 0), (210, 0, 0), (120, 0, 0)]
+  [(0, 0.5, 1.0), (30, 0.5, 1.0), (50, 0.5, 1.0), (300, 0.5, 1.0), (170, 0.5, 1.0), (330, 0.5, 1.0), (270, 0.5, 1.0), (210, 0.5, 1.0), (120, 0.5, 1.0)]
 
 - :attr:`~SidebarEntry.sort_key` is an ``int`` that is used for
   sorting the entries at the Interaction layer.

@@ -12,7 +12,10 @@ class ChandlerApplication(runtime.Application):
 
     top_level = trellis.make(trellis.Set)
 
-runtime.Application <<= ChandlerApplication
+def useChandlerApplication():
+    runtime.Application <<= ChandlerApplication
+
+useChandlerApplication()
 
 class ChandlerFrame(core.Frame):
     model = trellis.make(trellis.Set, writable=True)
