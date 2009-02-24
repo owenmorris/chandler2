@@ -12,7 +12,7 @@ setup(
     test_suite = 'test_suite',
     test_loader = 'test_suite:TestLoader',
     packages = find_packages(),
-    namespace_packages = ['chandler', 'chandler.sharing'],
+    namespace_packages = ['chandler', 'chandler.sharing', 'chandler.wxui'],
     install_requires=[
         'simplegeneric>=0.6,==dev',
     ],
@@ -29,7 +29,7 @@ setup(
     [chandler.launch.app]
     interaction = chandler.main:load_interaction
     [chandler.launch.wxui]
-    wxui = chandler.wxui:load_wxui
+    wxui = chandler.wxui.presentation:load_wxui
     [chandler.wxui.table.extensions]
     SidebarIcon = chandler.sidebar:extend_table
     [console_scripts]

@@ -1,4 +1,5 @@
 import chandler.core as core
+import chandler.wxui.image as image
 from simplegeneric import generic
 import wx
 import peak.events.trellis as trellis
@@ -28,8 +29,6 @@ def _push_to_tool(choice):
 
 @core.present.when_type(core.Choice)
 def present_choice(choice_component, ui_parent=None):
-    import chandler.wxui.image as image
-
     if isinstance(ui_parent, wx.ToolBar):
         WxAddOn(choice_component).widget = ui_parent
         for choice in choice_component.choices:
