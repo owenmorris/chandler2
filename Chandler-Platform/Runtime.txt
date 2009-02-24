@@ -31,17 +31,18 @@ These names and the loading order are subject to change.
 Application Object
 ==================
 
-``runtime.Application`` is an extensible component with a ``run()`` method
-that accepts optional extensions to run before and after the
-``chandler.launch.app`` hook.
+``runtime.Application`` is a Contextual_ service, so there's only one
+global ``Application`` in use at a time.  It's also an extensible
+component with a ``run()`` method that accepts optional extensions to
+run before and after the ``chandler.launch.app`` hook.
 
 This allows you to do something like this::
 
-    Application().run(
+    Application.run(
         before = runtime.use_wx_twisted,
         after = plugins.Hook('myapp.launch')
     )
-    
+
 ...to set up a wx+Twisted main loop before the ``chandler.launch.app`` hook
 is run, and to run the ``myapp.launch`` hook after it.  The `before`
 and `after` arguments can be 1-argument callables or (optionally nested)
@@ -56,4 +57,4 @@ since it invokes the ``chandler.launch.reactor`` hook, which may cause
 the import of modules that use the reactor directly.  (And once the
 reactor has been imported, it can't be replaced.)
 
-
+.. _Contextual: http://pypi.python.org/pypi/Contextual

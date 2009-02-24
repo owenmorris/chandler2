@@ -72,10 +72,6 @@ class Sidebar(core.Table):
             ])
         )
 
-
-def load_interaction(app):
-    app.sidebar = Sidebar(model=app.collections)
-
 import wx
 import chandler.wxui.table as table
 import chandler.wxui.drawing as drawing

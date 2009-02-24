@@ -1,14 +1,18 @@
 import optparse
 import peak.events.trellis as trellis
+import peak.context as context
 from chandler import runtime, core, keyword
 import chandler.sidebar as sidebar
+from chandler.sharing import eim
 
-class ChandlerApplication(runtime.Application, trellis.Component):
+class ChandlerApplication(runtime.Application):
     """The Chandler Application"""
+    context.replaces(runtime.Application)
     sidebar_entries = trellis.make(trellis.Set, writable=True)
 
     top_level = trellis.make(trellis.Set)
 
+runtime.Application <<= ChandlerApplication
 
 class ChandlerFrame(core.Frame):
     model = trellis.make(trellis.Set, writable=True)
@@ -17,15 +21,15 @@ class ChandlerFrame(core.Frame):
     def sidebar(self):
         return sidebar.Sidebar(scope=self, model=self.model)
 
-def load_domain(app):
+def load_domain():
     """Load up the domain model for ChandlerApplication"""
-    app.sidebar_entries = trellis.Set(
+    ChandlerApplication.sidebar_entries = trellis.Set(
             sidebar.SidebarEntry(collection=keyword.Keyword(name))
             for name in (u"Home", u"Work")
         )
 
 def load_interaction(app):
-    load_domain(app)
+    load_domain()
 
     # IM-specific stuff here
     app.top_level.add(ChandlerFrame(model=app.sidebar_entries,
@@ -56,6 +60,6 @@ def main():
 
     options, arguments = parser.parse_args()
     if options.headless:
-        ChandlerApplication().run(after=_headless)
+        ChandlerApplication.run(after=_headless)
     else:
-        ChandlerApplication().run(after=runtime.use_wx_twisted)
+        ChandlerApplication.run(after=runtime.use_wx_twisted)
