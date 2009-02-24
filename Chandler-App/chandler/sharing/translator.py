@@ -25,6 +25,8 @@ from chandler.event import Event
 from chandler.recurrence import Recurrence, Occurrence, ModificationMask
 from chandler.triage import Triage
 from chandler.reminder import ReminderList
+from chandler.main import ChandlerApplication
+from chandler.sidebar import SidebarEntry
 
 from itertools import chain
 import os
@@ -679,11 +681,31 @@ class DumpTranslator(SharingTranslator):
         if not isinstance(collection, Collection):
             raise TypeError("An Item was created instead of a Collection")
 
-        # XXX need to assign color to appropriate SidebarEntries
+        for sidebar_entry in ChandlerApplication.sidebar_entries:
+            if sidebar_entry.collection is collection:
+                break
+        else:
+            sidebar_entry = SidebarEntry(collection=collection)
+            ChandlerApplication.sidebar_entries.add(sidebar_entry)
+
+        rgb = []
+        for color in 'Red', 'Green', 'Blue':
+            value = getattr(record, 'color' + color)
+            if not isinstance(value, (int, float)):
+                break
+            rgb.append(value/255.0)
+        else:
+            h, s, v = colorsys.rgb_to_hsv(*rgb)
+            sidebar_entry.hsv_color = h*360.0, s, v
 
     @eim.exporter(Collection)
     def export_collection(self, collection):
         red = green = blue = alpha = None
+        for sidebar_entry in ChandlerApplication.sidebar_entries:
+            if sidebar_entry.collection is collection:
+                h, s, v = sidebar_entry.hsv_color
+                h = float(h) / 360.0
+                red, green, blue = [int(f*255) for f in colorsys.hsv_to_rgb(h, s, v)]
 
         yield model.ItemRecord(
             collection,                                  # uuid

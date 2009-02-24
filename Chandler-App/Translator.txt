@@ -475,7 +475,7 @@ Collections
     >>> d.startExport()
     >>> for record in eim.sort_records(d.exportItem(collection)):
     ...     print record
-    CollectionRecord('d3ba7961-c9b4-4e73-a860-cc8cbb40acc7', 0, None, None, None, None, 0)
+    CollectionRecord('d3ba7961-c9b4-4e73-a860-cc8cbb40acc7', 0, 0, 0, 0, None, 0)
     ItemRecord('d3ba7961-c9b4-4e73-a860-cc8cbb40acc7', u'Interesting Collection Title', ...)
 
 

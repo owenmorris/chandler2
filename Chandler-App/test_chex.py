@@ -4,9 +4,11 @@ import os
 from chandler.core import Item, Collection
 from chandler.event import Event
 from chandler.time_services import TimeZone
+from chandler.main import ChandlerApplication
 from chandler.sharing.dumpreload import reload, dump
 from chandler.sharing.eim import _items_by_uuid, get_item_for_uuid
 from chandler.sharing.translator import str_uuid_for
+from chandler.sidebar import SidebarEntry
 import pkg_resources
 
 class ChexTestCase(unittest.TestCase):
@@ -23,10 +25,18 @@ class ChexTestCase(unittest.TestCase):
     def _load(self, name):
         return pkg_resources.resource_stream(__name__, name)
 
+    def _find_sidebar_entry(self, collection):
+        for entry in ChandlerApplication.sidebar_entries:
+            if entry.collection is collection:
+                return entry
+        self.fail("The collection didn't have a sidebar entry created.")
+
+
     def _after_import_tests(self):
         item = get_item_for_uuid(self.event_uuid)
         work_collection = get_item_for_uuid(self.work_collection_uuid)
         self.assertEqual(len(work_collection.items), 3)
+        self._find_sidebar_entry(work_collection)
         self.assertEqual(tuple(item.collections), (work_collection,) )
         self.assertNotEqual(item, None)
         self.assertEqual(item.title, 'Office supplies order')
@@ -41,6 +51,8 @@ class ChexTestCase(unittest.TestCase):
         reload(self._load('chex_chandler1.gz'), gzip=True)
         self.assertEqual(len(_items_by_uuid), 49)
         self._after_import_tests()
+        entry = self._find_sidebar_entry(get_item_for_uuid(self.work_collection_uuid))
+        self.assertEqual(entry.hsv_color[0], 210.0)
 
     def test_new_chex_import(self):
         """Success when importing new style chex files."""
@@ -52,6 +64,7 @@ class ChexTestCase(unittest.TestCase):
     def test_chex_export(self):
         """Export a simple Event and collection."""
         collection = Collection(title="Fun")
+        ChandlerApplication.sidebar_entries.add(SidebarEntry(collection=collection))
         item = Item(title="OK")
         collection.add(item)
         Event(item).add(base_start=self.jan_ninth)
