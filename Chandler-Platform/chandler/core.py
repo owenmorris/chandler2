@@ -479,6 +479,9 @@ class InteractionComponent(trellis.Component):
     
     hints = trellis.make(dict)
 
+    def __iter__(self):
+        yield self
+
 
 class Feature(InteractionComponent):
     value = trellis.attr(None)
@@ -510,6 +513,13 @@ class Scope(InteractionComponent):
                     yield feature
             return tuple(iter_features())
         return trellis.CellAttribute(rule=rule)
+
+    def __iter__(self):
+        yield self
+
+        for child in self.subcomponents:
+            for value in child:
+                yield value
 
 
 class Text(Feature):
