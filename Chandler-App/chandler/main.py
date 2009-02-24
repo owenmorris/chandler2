@@ -3,7 +3,9 @@ import peak.events.trellis as trellis
 import peak.context as context
 from chandler import runtime, core, keyword
 import chandler.sidebar as sidebar
-from chandler.sharing import eim
+from os.path import isfile, expanduser
+
+EIM_PERSISTENCE_FILE = expanduser("~/chandler2.chex.gz")
 
 class ChandlerApplication(runtime.Application):
     """The Chandler Application"""
@@ -17,6 +19,15 @@ def useChandlerApplication():
 
 useChandlerApplication()
 
+
+def make_ready_for_eim():
+    """Add the EIM extension to sidebar_entries. """
+    # eventually, also add items in these collections, too
+    from chandler.sharing import eim
+    for entry in ChandlerApplication.sidebar_entries:
+        if not eim.EIM.installed_on(entry.collection):
+            eim.EIM(entry).add()
+
 class ChandlerFrame(core.Frame):
     model = trellis.make(trellis.Set, writable=True)
 
@@ -26,10 +37,14 @@ class ChandlerFrame(core.Frame):
 
 def load_domain():
     """Load up the domain model for ChandlerApplication"""
-    ChandlerApplication.sidebar_entries = trellis.Set(
-            sidebar.SidebarEntry(collection=keyword.Keyword(name))
-            for name in (u"Home", u"Work")
-        )
+    if not isfile(EIM_PERSISTENCE_FILE):
+        ChandlerApplication.sidebar_entries = trellis.Set(
+                sidebar.SidebarEntry(collection=keyword.Keyword(name))
+                for name in (u"Home", u"Work")
+            )
+    else:
+        from chandler.sharing import dumpreload
+        dumpreload.reload(EIM_PERSISTENCE_FILE, gzip=True)
 
 def load_interaction(app):
     load_domain()
