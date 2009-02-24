@@ -63,7 +63,7 @@ def get_raw_image(name, dist_name, copy=True):
         image = image.Copy()
     return image
 
-def get_image(name):
+def get_image(name, dist_name):
     """
     Return None if image isn't found, otherwise loads a bitmap.
     Looks first for platform specific bitmaps.
