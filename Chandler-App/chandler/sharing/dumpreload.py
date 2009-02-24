@@ -133,6 +133,24 @@ def dump(stream, uuids, serializer=PickleSerializer, obfuscate=False, gzip=False
 
     del dump
 
+def overwrite_rename(from_path, to_path):
+    """Move file in from_path to to_path, deleting to_path if it already exists.
+
+    On non-windows platforms, this is equivalent to
+    os.rename(from_path, to_path), but on Windows this will fail if
+    to_path already exists, so delete to_path first.
+
+    """
+    if platform.system() == 'Windows':
+        try:
+            os.remove(to_path)
+        except OSError, err:
+            if err.errno != 2:
+                logger.exception("Unable to remove %s", path)
+                raise
+
+    os.rename(from_path, to_path)
+
 
 def dump_to_path(path, uuids=None, serializer=PickleSerializer, obfuscate=False, gzip=False):
     """
@@ -168,20 +186,7 @@ def dump_to_path(path, uuids=None, serializer=PickleSerializer, obfuscate=False,
         completedpath = os.path.splitext(temppath)[0]
         os.rename(temppath, completedpath)
         temppath = None
-
-        # Now, on Windows, where a rename on top of an existing file
-        # will fail, remove the target file. At least we have a backup
-        # at this point ...
-        if platform.system() == 'Windows':
-            try:
-                os.remove(path)
-            except OSError, err:
-                if err.errno != 2:
-                    logger.exception("Unable to remove %s", path)
-                    raise
-
-        # Now, rename the temporary .chex file to the actual
-        os.rename(completedpath, path)
+        overwrite_rename(completedpath, path)
         completedpath = None
 
     except:
@@ -193,7 +198,6 @@ def dump_to_path(path, uuids=None, serializer=PickleSerializer, obfuscate=False,
                 logger.exception("Unable to remove %s -- ignoring", temppath)
 
         raise
-
 
 def reload(filename_or_stream, serializer=PickleSerializer, gzip=False):
     """ Loads EIM records from a file and applies them """

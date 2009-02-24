@@ -9,6 +9,7 @@ and shutdown hooks, and wx/Twisted main loops.
    single: hook; chandler.launch.reactor
    single: hook; chandler.launch.wxui
    single: hook; chandler.launch.app
+   single: hook; chandler.shutdown.app
 
 Startup Hook Names
 ==================
@@ -21,6 +22,10 @@ chandler.launch.wxui
 
 chandler.launch.app
     Called after all environment-specific services are initialized
+
+chandler.shutdown.app
+    Called just before the application exits
+
 
 Implementations registered for these hooks should be 1-argument callables
 accepting a ``runtime.Application`` instance.

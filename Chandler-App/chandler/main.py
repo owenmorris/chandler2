@@ -1,6 +1,7 @@
 import optparse
 import peak.events.trellis as trellis
 import peak.context as context
+from peak.util import plugins
 from chandler import runtime, core, keyword
 import chandler.sidebar as sidebar
 from os.path import isfile, expanduser
@@ -18,15 +19,6 @@ def useChandlerApplication():
     runtime.Application <<= ChandlerApplication
 
 useChandlerApplication()
-
-
-def make_ready_for_eim():
-    """Add the EIM extension to sidebar_entries. """
-    # eventually, also add items in these collections, too
-    from chandler.sharing import eim
-    for entry in ChandlerApplication.sidebar_entries:
-        if not eim.EIM.installed_on(entry.collection):
-            eim.EIM(entry).add()
 
 class ChandlerFrame(core.Frame):
     model = trellis.make(trellis.Set, writable=True)
@@ -53,6 +45,25 @@ def load_interaction(app):
     app.top_level.add(ChandlerFrame(model=app.sidebar_entries,
                                     label=u'Chandler2 Demo'))
 
+def uuids_to_export():
+    """Add the EIM extension to sidebar_entries, return uuids to export."""
+    # eventually, also add items in these collections, too
+    from chandler.sharing import eim
+    uuids = []
+    for entry in ChandlerApplication.sidebar_entries:
+        eim_entry = eim.EIM(entry.collection)
+        if not eim.EIM.installed_on(entry.collection):
+            eim_entry.add()
+        uuids.append(eim_entry.uuid)
+    return uuids
+
+def save_all(*args):
+    from chandler.sharing import dumpreload
+    if isfile(EIM_PERSISTENCE_FILE):
+        dumpreload.overwrite_rename(EIM_PERSISTENCE_FILE,
+                                    EIM_PERSISTENCE_FILE + '~')
+    dumpreload.dump_to_path(EIM_PERSISTENCE_FILE, uuids_to_export(), gzip=True)
+
 def _headless(app):
     banner = """
 Welcome!This is the headless (no wx) version of Chandler,
@@ -75,8 +86,13 @@ The variable 'app' is set to the ChandlerApplication instance.
 def main():
     parser = optparse.OptionParser()
     parser.add_option("-H", "--headless", action="store_true", dest="headless")
+    parser.add_option("-s", "--save",     action="store_true", dest="save",
+                      help="Save data on quit to %s" % EIM_PERSISTENCE_FILE)
 
     options, arguments = parser.parse_args()
+    if options.save:
+        plugins.Hook('chandler.shutdown.app').register(save_all)
+
     if options.headless:
         ChandlerApplication.run(after=_headless)
     else:

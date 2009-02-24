@@ -11,6 +11,7 @@ import peak.context as context
 APP_START    = plugins.Hook('chandler.launch.app')
 REACTOR_INIT = plugins.Hook('chandler.launch.reactor')
 WXUI_START   = plugins.Hook('chandler.launch.wxui')
+APP_SHUTDOWN = plugins.Hook('chandler.shutdown.app')
 
 class Application(plugins.Extensible, trellis.Component, context.Service):
     """Base class for applications"""
@@ -21,7 +22,10 @@ class Application(plugins.Extensible, trellis.Component, context.Service):
         """Run app, loading `before` and `after` hooks around ``APP_START``"""
         self.extend_with = before, self.extend_with, after
         self.load_extensions()
-        activity.EventLoop.run()
+        try:
+            activity.EventLoop.run()
+        finally:
+            APP_SHUTDOWN.notify()
 
 def use_wx_twisted(app):
     """Run `app` with a wx+Twisted event loop"""
