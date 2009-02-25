@@ -69,5 +69,6 @@ def present_frame(frame, ui_parent=None):
     wxframe.SetSizer(sizer)
     wxframe.SetAutoLayout(True)
     sizer.Fit(wxframe)
+    wxframe.CenterOnScreen()
     wxframe.Show()
     return frame
