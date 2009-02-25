@@ -138,28 +138,37 @@ class TriageColumn(AppColumn):
 class Dashboard(core.Table):
     @trellis.maintain
     def star_column(self):
-        return AppColumn(scope=self, label=u'*', app_attr='is_starred')
+        return AppColumn(scope=self, label=u'*', app_attr='is_starred',
+                         hints={'width': 20})
 
     @trellis.maintain
     def title_column(self):
         return core.TableColumn(scope=self, label='Title',
-                                get_value=lambda entry:entry.subject.what)
+                                get_value=lambda entry:entry.subject.what,
+                                hints={'width':160, 'scalable':True})
 
     @trellis.maintain
     def event_reminder_column(self):
-        return AppColumn(scope=self, label='(( ))', app_attr='event_reminder_combined')
+        return AppColumn(scope=self, label='(( ))',
+                         app_attr='event_reminder_combined',
+                         hints={'width': 36})
 
     @trellis.maintain
     def when_column(self):
-        return AppColumn(scope=self, label='Date', app_attr='when')
+        return AppColumn(scope=self, label='Date', app_attr='when',
+                         hints={'width':120})
 
     @trellis.maintain
     def triage_column(self):
-        return TriageColumn(scope=self)
+        return TriageColumn(scope=self, hints={'width': 60})
 
     @trellis.make
     def columns(self):
         return trellis.List([self.star_column, self.title_column,
                              self.event_reminder_column, self.when_column,
                              self.triage_column])
+
+    @trellis.make
+    def hints(self):
+        return { 'column_headers': True }
 

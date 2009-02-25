@@ -142,6 +142,11 @@ class TablePresentation(trellis.Component, wxGrid.PyGridTableBase):
         grid.SetTable(self, selmode=wxGrid.Grid.SelectRows)
         self.SetView(grid)
 
+        if self.table.hints.get('column_headers'):
+            grid.SetColLabelSize(wxGrid.GRID_DEFAULT_COL_LABEL_HEIGHT)
+        else:
+            grid.SetColLabelSize(0)
+
         for index, column in enumerate(self.table.columns or ()):
             grid.SetColLabelValue(index, column.label)
             grid.SetColSize(index, column.hints.get('width', 120))
@@ -201,7 +206,7 @@ class TablePresentation(trellis.Component, wxGrid.PyGridTableBase):
         return self.table.columns[col].label
 
     def GetColLabelBitmap(self, col):
-        return self.table.columns[col].bitmap
+        pass
 
     def OnRangeSelect(self, event):
         """
