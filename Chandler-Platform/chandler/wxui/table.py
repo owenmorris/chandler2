@@ -80,22 +80,20 @@ def GetRectFromOffsets(rect, offsets):
 
 class TablePresentation(trellis.Component, wxGrid.PyGridTableBase):
     table = trellis.make(core.Table, writable=True)
-    
-    @trellis.maintain
-    def switchColumn(self):
-        """
-        if (self.activeColumn is not None and
-            self.activeColumn.sortKey is not None):
-            setattr(self.table.items, 'sort_key', self.activeColumn.sortKey)
-            
-        self.View.SetUseColSortArrows(self.activeColumn is not None and
-                                      self.activeColumn.useSortArrows)
-        """
-    
+
     @trellis.perform
-    def updateGrid(self):
+    def update_column_selection(self):
+        for index, column in enumerate(self.table.columns):
+            if column is self.table.sort_column:
+                show_arrows = column.hints.get('sort_arrows', True)
+                self.View.SetSelectedCol(index)
+                self.View.SetUseColSortArrows(show_arrows)
+                break
+
+    @trellis.perform
+    def update_grid(self):
         view = self.GetView()
-        
+
         view.BeginBatch()
         for start, end, newLen in self.table.items.changes:
             oldLen = end - start
@@ -123,14 +121,14 @@ class TablePresentation(trellis.Component, wxGrid.PyGridTableBase):
 
         for row in view.GetSelectedRows():
             index = self.RowToIndex(row)
-            if self.table.items[index] is self.table.selected_item:
-                trellis.on_commit(view.DeselectRow, row)
+            if self.table.items[index] is not self.table.selected_item:
+                trellis.on_commit(view.DeselectRow, index)
 
         for index, item in enumerate(self.table.items):
             row = self.IndexToRow(index)
             if item is self.table.selected_item:
-                trellis.on_commit(view.SelectRow, row, True)
-    
+                trellis.on_commit(view.SelectRow, index, True)
+
     defaultRWAttribute = wxGrid.GridCellAttr()
     defaultROAttribute = wxGrid.GridCellAttr()
     defaultROAttribute.SetReadOnly(True)
@@ -154,8 +152,6 @@ class TablePresentation(trellis.Component, wxGrid.PyGridTableBase):
             if EXTENDED_WX:
                 scaleColumn = grid.GRID_COLUMN_SCALABLE if column.hints.get('scalable') else grid.GRID_COLUMN_NON_SCALABLE
                 grid.ScaleColumn(index, scaleColumn)
-            if column is self.table.select_column:
-                grid.SetSelectedCol(index)
 
         grid.Bind(wxGrid.EVT_GRID_RANGE_SELECT, self.OnRangeSelect)
         grid.Bind(wxGrid.EVT_GRID_LABEL_LEFT_CLICK, self.OnLabelLeftClicked)
@@ -165,10 +161,10 @@ class TablePresentation(trellis.Component, wxGrid.PyGridTableBase):
 
     def GetNumberCols(self):
         return len(self.table.columns)
-        
+
     def RowToIndex(self, row):
         return row
-        
+
     def IndexToRow(self, index):
         return index
 
@@ -180,16 +176,16 @@ class TablePresentation(trellis.Component, wxGrid.PyGridTableBase):
 
     def IsEmptyCell(self, row, col):
         return False
-    
+
     def CanClick(self, row, col):
         return False
-        
+
     def OnClick(self, row, col):
         pass
 
     def TrackMouse(self, row, col):
         return False
-    
+
     def GetToolTipString(self, row, col):
         pass
 
@@ -223,7 +219,7 @@ class TablePresentation(trellis.Component, wxGrid.PyGridTableBase):
             for item in selChange:
                 self.table.items.selected_item = item
         else:
-            if (firstRow == 0 and lastRow != 0 
+            if (firstRow == 0 and lastRow != 0
                 and lastRow == self.GetNumberRows() - 1):
                 # this is a special "deselection" event that the
                 # grid sends us just before selecting another
@@ -235,7 +231,8 @@ class TablePresentation(trellis.Component, wxGrid.PyGridTableBase):
                 pass
 
             if self.table.selected_item in selChange:
-                self.table.selected_item is None
+                #self.table.selected_item = None
+                pass
 
         event.Skip()
 
@@ -249,7 +246,7 @@ class TablePresentation(trellis.Component, wxGrid.PyGridTableBase):
         # This is O(N) tsk
         for index, item in enumerate(self.table.items):
             itemSelected = (item is self.table.selected_item)
-            
+
             if itemSelected:
                 if lastRow is None:
                     lastRow = self.IndexToRow(index)
@@ -258,19 +255,16 @@ class TablePresentation(trellis.Component, wxGrid.PyGridTableBase):
             elif lastRow is not None:
                 yield lastRow, self.IndexToRow(index-1)
                 lastRow = None
-                
+
         if lastRow is not None:
             yield lastRow, self.IndexToRow(len(self.table.items) - 1)
 
     def OnLabelLeftClicked(self, event):
         assert (event.GetRow() == -1) # Currently Table only supports column headers
         column = self.table.columns[event.GetCol()]
-        
-        if column is self.activeColumn:
-            self.table.items.reverse = not self.table.items.reverse
-        else:
-            self.table.select_column = column
-
+        # A "receiver" style cell: it will take care of toggling
+        # the sort, etc.
+        self.table.select_column = column
 
     def GetTypeName(self, row, column):
         return self.table.columns[column].hints.get('type', 'String')
@@ -288,7 +282,7 @@ class TablePresentation(trellis.Component, wxGrid.PyGridTableBase):
         return attribute
 
 class Table(wxGrid.Grid):
-    
+
     overRowCol = None
     clickRowCol = None
 
@@ -296,7 +290,7 @@ class Table(wxGrid.Grid):
         defaultStyle = wx.BORDER_SIMPLE
     else:
         defaultStyle = wx.BORDER_STATIC
-        
+
     TABLE_EXTENSIONS = plugins.Hook('chandler.wxui.table.extensions')
 
     def __init__(self, parent, tableData, *arguments, **keywords):
@@ -305,7 +299,7 @@ class Table(wxGrid.Grid):
         # Register extensions
         self.TABLE_EXTENSIONS.notify(self)
         # Generic table setup
-        self.SetColLabelAlignment(wx.ALIGN_LEFT, wx.ALIGN_CENTRE)
+        self.SetColLabelAlignment(wx.ALIGN_CENTRE, wx.ALIGN_CENTRE)
         self.SetRowLabelSize(0)
         self.SetColLabelSize(0)
         self.AutoSizeRows()
@@ -315,9 +309,8 @@ class Table(wxGrid.Grid):
             self.ScaleWidthToFit(True)
             self.EnableCursor(False)
             self.SetLightSelectionBackground()
+            self.SetUseVisibleColHeaderSelection(True)
         self.SetScrollLineY(self.GetDefaultRowSize())
-        #self.SetUseVisibleColHeaderSelection(True)
-        #self.SetUseColSortArrows(True)
         self.EnableGridLines(False) # should customize based on hints
         # wxSidebar is subclassed from wxTable and depends on the binding of
         # OnLoseFocus so it can override OnLoseFocus in wxTable
@@ -336,7 +329,6 @@ class Table(wxGrid.Grid):
         # It appears that wxGrid gobbles all the mouse events so we never get
         # context menu events. So bind right down to the context menu handler
         #gridWindow.Bind(wx.EVT_RIGHT_DOWN, wx.GetApp().OnContextMenu)
-        
 
 
     def Destroy(self):
@@ -390,7 +382,6 @@ class Table(wxGrid.Grid):
 
         # other keys should just get propagated up
         event.Skip()
-        
 
     def SetLightSelectionBackground(self):
         background = wx.SystemSettings.GetColour(wx.SYS_COLOUR_HIGHLIGHT)
@@ -401,7 +392,7 @@ class Table(wxGrid.Grid):
 
     def InvalidateSelection(self):
         numColumns = self.GetNumberCols()
-        
+
         for rowStart, rowEnd in self.Table.SelectedRowRanges():
             dirtyRect = self.GetRectForCellRange(rowStart, 0,
                                                  rowEnd - rowStart + 1, numColumns)
@@ -409,13 +400,12 @@ class Table(wxGrid.Grid):
 
     def GetRectForCellRange(self, startRow, startCol, numRows=1, numCols=1):
         resultRect = self.CellToRect(startRow, startCol)
-        
+
         if numRows > 1 or numCols > 1:
             endRect = self.CellToRect(startRow + numRows - 1,
                                       startCol + numCols - 1)
             resultRect.SetTopRight(endRect.GetTopRight())
-            
-        
+
         resultRect.OffsetXY(self.GetRowLabelSize(), self.GetColLabelSize())
         left, top = self.CalcScrolledPosition(resultRect.GetLeft(), resultRect.GetTop())
         resultRect.SetLeft(left)
@@ -430,7 +420,7 @@ class Table(wxGrid.Grid):
         row = self.YToRow(unscrolledY)
         col = self.XToCol(unscrolledX)
         return (row, col)
-        
+
     def RebuildSections(self):
         # If sections change, forget that we were over a cell.
         self.overRowCol = None
@@ -452,16 +442,16 @@ class Table(wxGrid.Grid):
         toolTipString = None
         oldOverRowCol = self.overRowCol
         outsideGrid = (-1 in (row, col))
-        
+
         refreshRowCols = set()
-        
+
         if outsideGrid:
             self.overRowCol = None
-            
+
         if event.LeftUp():
             refreshRowCols.add(self.clickRowCol)
             refreshRowCols.add(oldOverRowCol)
-            
+
             if self.clickRowCol == (row, col):
                 self.Table.OnClick(row, col)
             self.overRowCol = None
@@ -516,7 +506,6 @@ class Table(wxGrid.Grid):
         for cell in refreshRowCols:
             if cell is not None:
                 self.RefreshRect(self.GetRectForCellRange(*cell))
-            
 
     def OnMouseCaptureLost(self, event):
         if hasattr(self, 'mouseCaptured'):
@@ -531,9 +520,9 @@ class Table(wxGrid.Grid):
         gridWindow = self.GetGridWindow()
         if gridWindow.HasCapture():
             gridWindow.ReleaseMouse()
-            
+
         event.Skip()
-        
+
     def IndexRangeToRowRange(self, indexRanges):
         """
         Given a list of index ranges, [(a,b), (c,d), ...], generate
@@ -557,19 +546,19 @@ class IconRenderer(wxGrid.PyGridCellRenderer):
     """
     bitmapCache = None
     bitmapProvider = staticmethod(get_image)
-    
+
     def __init__(self, **kw):
         super(IconRenderer, self).__init__()
-        
+
         bitmapCache = kw.pop('bitmapCache', None)
-        
+
         if bitmapCache is not None:
             self.bitmapCache = bitmapCache
 
         if self.bitmapCache is None:
             cls = type(self)
             cls.bitmapCache = multi_state.MultiStateBitmapCache()
-    
+
             cls.bitmapCache.AddStates(multibitmaps=list(self.getStateInfos()),
                                       bitmapProvider=self.bitmapProvider)
 
@@ -591,7 +580,7 @@ class IconRenderer(wxGrid.PyGridCellRenderer):
         READ_ONLY | ROLLED_OVER: "normal",
         READ_ONLY | SELECTED: "selected",
         READ_ONLY | SELECTED | ROLLED_OVER: 'selected',
-        READ_ONLY | MOUSE_DOWN: 'normal', 
+        READ_ONLY | MOUSE_DOWN: 'normal',
         READ_ONLY | MOUSE_DOWN | ROLLED_OVER: 'normal',
         READ_ONLY | MOUSE_DOWN | SELECTED: 'selected',
         READ_ONLY | MOUSE_DOWN | SELECTED | ROLLED_OVER: 'selected',
@@ -616,7 +605,7 @@ class IconRenderer(wxGrid.PyGridCellRenderer):
         """
         # By default, we use the value as the icon state as-is.
         return value
-    
+
     def advanceValue(self, value):
         return value
 
@@ -629,18 +618,16 @@ class IconRenderer(wxGrid.PyGridCellRenderer):
         dc.DrawRectangleRect(rect)
 
         dc.SetBackgroundMode(wx.TRANSPARENT)
-        
+
         value = grid.Table.GetValue(row, col)
-        
+
         mouseDown = (row, col) == grid.clickRowCol
         if mouseDown:
             value = self.advanceValue(value)
 
         state = self.mapValueToIconState(value)
-        
+
         mouseOver = mouseDown or (row, col) == grid.overRowCol
-        
-        
         variation = self.getVariation(False, isSelected, mouseDown, mouseOver)
 
         imageSet = self.bitmapCache[state]
