@@ -206,7 +206,7 @@ class TablePresentation(trellis.Component, wxGrid.PyGridTableBase):
         return self.table.columns[col].label
 
     def GetColLabelBitmap(self, col):
-        pass
+        return getattr(self.table.columns[col], 'bitmap', None)
 
     def OnRangeSelect(self, event):
         """

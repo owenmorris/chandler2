@@ -6,6 +6,7 @@ from chandler.reminder import ReminderList
 from chandler.triage import Triage, TriagePosition, NOW
 from chandler.time_services import is_past, timestamp, fromtimestamp
 import chandler.core as core
+import chandler.wxui.image as image
 
 class AppDashboardEntry(addons.AddOn, trellis.Component):
     trellis.attrs(
@@ -125,7 +126,14 @@ class AppColumn(core.TableColumn):
 
     def get_value(self, entry):
         return getattr(entry, self.app_attr)
-
+    
+    @trellis.compute
+    def bitmap(self):
+        name = self.hints.get('header_icon')
+        if name:
+            return image.get_image(name, "Chandler_App")
+        else:
+            return None
 
 class TriageColumn(AppColumn):
     label = trellis.attr('Triage')
@@ -139,7 +147,7 @@ class Dashboard(core.Table):
     @trellis.maintain
     def star_column(self):
         return AppColumn(scope=self, label=u'*', app_attr='is_starred',
-                         hints={'width': 20})
+                         hints={'width': 20, 'header_icon':'ColHStarred.png'})
 
     @trellis.maintain
     def title_column(self):
@@ -151,7 +159,8 @@ class Dashboard(core.Table):
     def event_reminder_column(self):
         return AppColumn(scope=self, label='(( ))',
                          app_attr='event_reminder_combined',
-                         hints={'width': 36})
+                         hints={'width': 36,
+                                'header_icon':'ColHEventReminder.png'})
 
     @trellis.maintain
     def when_column(self):
@@ -160,7 +169,9 @@ class Dashboard(core.Table):
 
     @trellis.maintain
     def triage_column(self):
-        return TriageColumn(scope=self, hints={'width': 60})
+        return TriageColumn(scope=self, hints={'width': 60,
+                                        'header_icon':'ColHTriage.png'})
+
 
     @trellis.make
     def columns(self):
