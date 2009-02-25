@@ -38,6 +38,21 @@ XXX This is a catch-all project for now; as it grows we will likely
 
    Chandler-App/README
 
+Sharing
+-------
+
+Sharing doctests are more focused on testing and less on being
+instructive, so they're separated out from the main Chandler-Platform
+and Chandler-App documents.
+
+.. toctree::
+   :maxdepth: 2
+
+   Chandler-Platform/EIM
+   Chandler-App/Sharing
+   Chandler-App/Translator
+
+
 Chandler-Development
 --------------------
 

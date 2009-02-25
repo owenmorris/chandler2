@@ -62,7 +62,7 @@ release = '2.0'
 
 # List of directories, relative to source directory, that shouldn't be searched
 # for source files.
-exclude_trees = ['.build', 'Chandler-App/Chandler_App.egg-info', 'Chandler-Platform/Chandler_Platform.egg-info']
+exclude_trees = ['.build', 'Chandler-App/Chandler_App.egg-info', 'Chandler-Platform/Chandler_Platform.egg-info', 'Chandler-Development/Chandler_Development.egg-info']
 
 # The reST default role (used for this markup: `text`) to use for all documents.
 #default_role = None
