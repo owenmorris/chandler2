@@ -124,7 +124,7 @@ class AppColumn(core.TableColumn):
                                    self.app_attr)
 
     def get_value(self, entry):
-        return getattr(AppDashboardEntry(entry), self.app_attr)
+        return getattr(entry, self.app_attr)
 
 
 class TriageColumn(AppColumn):
@@ -143,7 +143,7 @@ class Dashboard(core.Table):
     @trellis.maintain
     def title_column(self):
         return core.TableColumn(scope=self, label='Title',
-                                get_value=lambda entry:entry.what)
+                                get_value=lambda entry:entry.subject.what)
 
     @trellis.maintain
     def event_reminder_column(self):
