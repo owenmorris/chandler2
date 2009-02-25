@@ -4,6 +4,7 @@ import peak.context as context
 from peak.util import plugins
 from chandler import runtime, core, keyword
 import chandler.sidebar as sidebar
+import chandler.dashboard as dashboard
 from os.path import isfile, expanduser
 
 EIM_PERSISTENCE_FILE = expanduser("~/chandler2.chex.gz")
@@ -26,6 +27,10 @@ class ChandlerFrame(core.Frame):
     @trellis.maintain
     def sidebar(self):
         return sidebar.Sidebar(scope=self, model=self.model)
+
+    @trellis.maintain
+    def dashboard(self):
+        return dashboard.Dashboard(scope=self, model=dashboard.AppEntryAggregate(input=self.sidebar.filtered_items))
 
 def load_domain():
     """Load up the domain model for ChandlerApplication"""
