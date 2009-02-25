@@ -44,9 +44,11 @@ def present_choice(choice_component, ui_parent=None):
 def present_frame(frame, ui_parent=None):
     wxframe = wx.Frame(None, -1, title=frame.label)
     sizer = wx.BoxSizer(wx.VERTICAL)
-    sizer.AddSpacer((0, 3))
-    sizer.SetMinSize((200, 400))
-    core.present_scope(frame, wxframe)
+    sizer.SetMinSize((500, 300))
+    
+    splitter = wx.SplitterWindow(wxframe, -1, style=wx.SP_LIVE_UPDATE | wx.NO_BORDER | wx.SP_3DSASH)
+    core.present(frame.sidebar, splitter)
+    core.present(frame.dashboard, splitter)
 
     # Find all actions that want to be included in
     # the toolbar
@@ -54,13 +56,16 @@ def present_frame(frame, ui_parent=None):
     for cmd in frame:
         if cmd.hints.get('toolbar'):
             if toolbar is None:
-                toolbar = wxframe.CreateToolBar()
+                style = (wx.TB_HORIZONTAL |
+                         getattr(wx, 'TB_MAC_NATIVE_SELECT', 0) |
+                         wx.TB_3DBUTTONS | wx.TB_TEXT)
+                toolbar = wxframe.CreateToolBar(style=style)
             core.present(cmd, toolbar)
     if toolbar is not None:
         toolbar.Realize()
 
-    for child in wxframe.Children:
-        sizer.Add(child, 1, wx.EXPAND|wx.BOTTOM|wx.TOP)
+    sizer.Add(splitter, 1, wx.EXPAND|wx.BOTTOM|wx.TOP)
+    splitter.SplitVertically(splitter.Children[0], splitter.Children[1], 0.3 * sizer.MinSize.width)
     wxframe.SetSizer(sizer)
     wxframe.SetAutoLayout(True)
     sizer.Fit(wxframe)
