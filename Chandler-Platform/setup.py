@@ -25,7 +25,7 @@ setup(
     long_description = open('README.txt').read(), # get_description(),
     install_requires=[
         'DecoratorTools>=1.6', #'Presentable>=0.1a1dev-r2439',
-        'Trellis>=0.7a3dev-r2595,==dev',
+        'Trellis>=0.7a3dev-r2599,==dev',
         'Plugins>=0.5a1dev-r2404,>=0.5a1dev,==dev',
         'Importing>=1.9.2',
         'AddOns==dev,>=0.7dev-r2409',
