@@ -88,6 +88,7 @@ class TablePresentation(trellis.Component, wxGrid.PyGridTableBase):
                 show_arrows = column.hints.get('sort_arrows', True)
                 self.View.SetSelectedCol(index)
                 self.View.SetUseColSortArrows(show_arrows)
+                self.View.SetColSortAscending(self.table.items.reverse)
                 break
 
     @trellis.perform
@@ -308,8 +309,8 @@ class Table(wxGrid.Grid):
         if EXTENDED_WX:
             self.ScaleWidthToFit(True)
             self.EnableCursor(False)
-            self.SetLightSelectionBackground()
-            self.SetUseVisibleColHeaderSelection(True)
+        self.SetLightSelectionBackground()
+        self.SetUseVisibleColHeaderSelection(True)
         self.SetScrollLineY(self.GetDefaultRowSize())
         self.EnableGridLines(False) # should customize based on hints
         # wxSidebar is subclassed from wxTable and depends on the binding of
@@ -330,6 +331,80 @@ class Table(wxGrid.Grid):
         # context menu events. So bind right down to the context menu handler
         #gridWindow.Bind(wx.EVT_RIGHT_DOWN, wx.GetApp().OnContextMenu)
 
+        if not EXTENDED_WX:
+            # Use of GetGridColLabelWindow() and triangle drawing code below
+            # from:
+            #    <http://wiki.wxpython.org/index.cgi/DrawingOnGridColumnLabel>
+            # trap the column label's paint event:
+            columnLabelWindow = self.GetGridColLabelWindow()
+            columnLabelWindow.Bind(wx.EVT_PAINT, self.OnColumnHeaderPaint)
+
+    if not EXTENDED_WX:
+        _use_visible_col_header = False
+        _selected_col = -1
+        _ascending_arrows = False
+
+        def GetUseVisibleColHeaderSelection(self, use):
+            return self._use_visible_col_header
+
+        def SetUseVisibleColHeaderSelection(self, use):
+            self._use_visible_col_header = use
+            self.GetGridColLabelWindow().Refresh()
+
+        def GetSelectedCol(self):
+            return self._selected_col
+
+        def SetSelectedCol(self, colnum):
+            self._selected_col = colnum
+            self.GetGridColLabelWindow().Refresh()
+
+        def GetColSortDescending(self):
+            return self._ascending_arrows
+
+        def SetColSortAscending(self, ascending):
+            self._ascending_arrows = ascending
+            self.GetGridColLabelWindow().Refresh()
+
+        def GetUseColSortArrows(self):
+            return self._use_sort_arrows
+
+        def SetUseColSortArrows(self, useArrows):
+            self._use_sort_arrows = useArrows
+            self.GetGridColLabelWindow().Refresh()
+
+        def OnColumnHeaderPaint(self, event):
+            event.Skip() # Let the regular paint handler do its thing
+
+            if self._use_visible_col_header or self._use_sort_arrows:
+
+                w = event.EventObject
+                dc = wx.PaintDC(w)
+                clientRect = w.GetClientRect()
+                font = dc.GetFont()
+
+                # For each column, draw its rectangle, its column name,
+                # and its sort indicator, if appropriate:
+                totColSize = -self.GetViewStart()[0]*self.GetScrollPixelsPerUnit()[0] # Thanks Roger Binns
+                for col in range(self.GetNumberCols()):
+                    colSize = self.GetColSize(col)
+                    rect = (totColSize, 0, colSize, w.GetSize().height)
+                    totColSize += colSize
+
+                    if col == self._selected_col:
+                        # draw a triangle, pointed up or down, at the
+                        # top left of the column.
+                        if self._use_sort_arrows:
+                            left = rect[0] + 3
+                            top = rect[1] + 3
+
+                            dc.SetBrush(wx.Brush(wx.BLACK, wx.SOLID))
+                            if self._ascending_arrows:
+                                dc.DrawPolygon([(left,top), (left+6,top), (left+3,top+4)])
+                            else:
+                                dc.DrawPolygon([(left+3,top), (left+6, top+4), (left, top+4)])
+                        if self._use_visible_col_header:
+                            dc.SetBrush(wx.Brush(wx.BLACK, wx.SOLID))
+                            dc.DrawRectangle(rect[0] + 4, rect[3] - 4, colSize - 8, 2)
 
     def Destroy(self):
         # Release the mouse capture, if we had it
@@ -549,7 +624,6 @@ class IconRenderer(wxGrid.PyGridCellRenderer):
 
     def __init__(self, **kw):
         super(IconRenderer, self).__init__()
-
         bitmapCache = kw.pop('bitmapCache', None)
 
         if bitmapCache is not None:
@@ -558,7 +632,6 @@ class IconRenderer(wxGrid.PyGridCellRenderer):
         if self.bitmapCache is None:
             cls = type(self)
             cls.bitmapCache = multi_state.MultiStateBitmapCache()
-
             cls.bitmapCache.AddStates(multibitmaps=list(self.getStateInfos()),
                                       bitmapProvider=self.bitmapProvider)
 
