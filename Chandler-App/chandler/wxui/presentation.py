@@ -44,8 +44,8 @@ def present_choice(choice_component, ui_parent=None):
 def present_frame(frame, ui_parent=None):
     wxframe = wx.Frame(None, -1, title=frame.label)
     sizer = wx.BoxSizer(wx.VERTICAL)
-    sizer.SetMinSize((500, 300))
-    
+    sizer.SetMinSize((600, 300))
+
     splitter = wx.SplitterWindow(wxframe, -1, style=wx.SP_LIVE_UPDATE | wx.NO_BORDER | wx.SP_3DSASH)
     core.present(frame.sidebar, splitter)
     core.present(frame.dashboard, splitter)
@@ -65,7 +65,7 @@ def present_frame(frame, ui_parent=None):
         toolbar.Realize()
 
     sizer.Add(splitter, 1, wx.EXPAND|wx.BOTTOM|wx.TOP)
-    splitter.SplitVertically(splitter.Children[0], splitter.Children[1], 0.3 * sizer.MinSize.width)
+    splitter.SplitVertically(splitter.Children[0], splitter.Children[1], 0.24 * sizer.MinSize.width)
     wxframe.SetSizer(sizer)
     wxframe.SetAutoLayout(True)
     sizer.Fit(wxframe)
