@@ -181,7 +181,9 @@ class AggregatedSet(trellis.sets.ImmutableSet, trellis.Component):
             kw.update(input=trellis.Set(iterable))
         trellis.Component.__init__(self, **kw)
 
-    input = trellis.make(trellis.Set, writable=True)
+    @trellis.maintain
+    def input(self):
+        return trellis.Set()
 
     _added = trellis.todo(dict)
     _removed = trellis.todo(dict)
@@ -250,14 +252,10 @@ class AggregatedSet(trellis.sets.ImmutableSet, trellis.Component):
 
         return (added - removed, removed - added)
 
-    @trellis.maintain(initially=None)
+    @trellis.maintain(make=dict)
     def _data(self):
         """The dictionary containing the set cells."""
-        if self._data is None: # could change make for this case
-            data = dict()
-            added = self.input
-            removed = ()
-        elif self._new_input:
+        if self._new_input:
             data = self._data
             added = iter(x for x in self._new_input if not x in self._data)
             removed = set(x for x in self._data if not x in self._new_input)
@@ -267,51 +265,58 @@ class AggregatedSet(trellis.sets.ImmutableSet, trellis.Component):
             removed = self.input.removed
 
         for item in added:
-            cell = self._create_cell(item)
-            data[item] = cell
-            self.to_add[item] = cell.value
+            cell = data.get(item, None)
+            if cell is None:
+                rule = self._create_cell_rule(item, data)
+                cell = trellis.Cell(rule=rule, value=rule())
+                trellis.on_undo(data.pop, item, None)
+                data[item] = cell
+                trellis.mark_dirty()
         for item in removed:
             cell = data.get(item, None)
             if cell is not None:
                 self.to_remove[item] = cell.value
+                trellis.on_undo(setattr, cell, 'rule', cell.rule)
+                cell.rule = lambda:()
+                trellis.on_undo(data.__setitem__, item, data[item])
                 del data[item]
+                trellis.mark_dirty()
         return data
 
     @trellis.compute(resetting_to=None)
     def _new_input(self):
         return self.input
 
-    def _maintain_one_cell(self, item):
-        """This maintains the cell corresponding to item in _data"""
+    def _create_cell_rule(self, item, data):
+        def maintain_rule():
+            """This maintains the cell corresponding to item in _data"""
 
-        # Figure out the new value; this also causes the
-        # trellis to calculate the cell's dependencies, and
-        # thereby trigger later changes if necessary.
-        new_value = self.get_values(item)
+            # Figure out the new value; this also causes the
+            # trellis to calculate the cell's dependencies, and
+            # thereby trigger later changes if necessary.
+            new_value = self.get_values(item)
 
-        # If we were a real @maintain rule it would be
-        # easy to figure out the old value here. Instead,
-        # we have to track down the cell from self._data
-        # (the same way that a @maintain rule eventually gets
-        # it from component.__cells__).
-        if self._data is None:
+            # If we were a real @maintain rule it would be
+            # easy to figure out the old value here. Instead,
+            # we have to track down the cell from self._data
+            # (the same way that a @maintain rule eventually gets
+            # it from component.__cells__).
+
+            if data is None:
+                return new_value
+
+            old_cell = data.get(item, None)
+            old_value = getattr(old_cell, 'value', ())
+
+            if old_value != new_value:
+                self.to_add[item] = tuple(e for e in new_value
+                                          if not e in old_value)
+                self.to_remove[item] = tuple(e for e in old_value
+                                             if not e in new_value)
+
             return new_value
 
-        old_cell = self._data.get(item, None)
-        old_value = getattr(old_cell, 'value', ())
-
-        if old_value != new_value:
-            self.to_add[item] = tuple(e for e in new_value
-                                      if not e in old_value)
-            self.to_remove[item] = tuple(e for e in old_value
-                                         if not e in new_value)
-
-        return new_value
-
-    def _create_cell(self, item):
-        def rule():
-            return self._maintain_one_cell(item)
-        return trellis.Cell(rule=rule, value=rule())
+        return maintain_rule
 
 
 class FilteredSubset(AggregatedSet):
@@ -589,15 +594,13 @@ class Table(Scope):
     sort_column = trellis.attr(None)
     select_column = trellis.attr(resetting_to=None)
 
-    @trellis.make(optional=False)
+    @trellis.maintain
     def items(self):
         return collections.SortedSet(data=self.model)
 
-    @trellis.maintain(initially=None)
+    @trellis.make(writable=True)
     def model(self):
-        if self.model is None:
-            return trellis.Set()
-        return self.model
+        return trellis.Set()
 
     @staticmethod
     def default_sort_key(item):
