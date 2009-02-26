@@ -48,6 +48,8 @@ class EIM(Extension):
     @trellis.modifier
     def add(self, name=None, **kw):
         super(EIM, self).add(**kw)
+        if name is None:
+            name = getattr(self._item, 'well_known_name', None)
         if name is not None:
             self._well_known_name = name
             set_item_for_name(name, self.item)
@@ -68,6 +70,12 @@ def get_item_for_uuid(uuid):
 
 def get_item_for_name(name):
     return _well_known_names.get(name)
+
+def get_for_name_or_uuid(name_or_uuid):
+    named = get_item_for_name(name_or_uuid)
+    if named:
+        return named
+    return get_item_for_uuid(name_or_uuid)
 
 def item_for_uuid(uuid):
     """Return existing Item, or create and return a new Item."""
@@ -1069,7 +1077,7 @@ class Translator:
             setattr(ob, attr, val)
 
     def getItemForAlias(self, alias):
-        return get_item_for_uuid(alias)
+        return get_for_name_or_uuid(alias)
 
     def getAliasForItem(self, item):
         return str(EIM(item).uuid)

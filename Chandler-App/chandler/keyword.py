@@ -1,10 +1,12 @@
 import peak.events.trellis as trellis
-from chandler.core import ItemAddOn
+from chandler.core import ItemAddOn, Entity
 from weakref import ref
 
 _keywords = {}
 
-class _Keyword(trellis.Component):
+KEYWORD_PREFIX = "@keyword:"
+
+class _Keyword(Entity):
     word = trellis.attr()
     items = trellis.make(trellis.Set)
 
@@ -25,6 +27,10 @@ class _Keyword(trellis.Component):
     def title(self):
         return "Tag: %s" % self.word
 
+    @trellis.compute
+    def well_known_name(self):
+        return KEYWORD_PREFIX + self.word
+
 # factory to produce _Keyword objects since strings aren't
 # weak-referencable and thus AddOns won't work cleanly
 def Keyword(word):
@@ -36,6 +42,10 @@ def Keyword(word):
             del _keywords[word]
         _keywords[word] = ref(keyword, del_keyword_ref)
         return keyword
+
+def keyword_for_id(keyword_id):
+    if keyword_id.startswith(KEYWORD_PREFIX):
+        return Keyword(keyword_id[len(KEYWORD_PREFIX):])
 
 class ItemKeywords(ItemAddOn):
     keyword_strings = trellis.make(trellis.Set)

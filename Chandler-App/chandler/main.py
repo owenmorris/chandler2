@@ -52,14 +52,14 @@ def load_interaction(app):
 
 def uuids_to_export():
     """Add the EIM extension to sidebar_entries, return uuids to export."""
-    # eventually, also add items in these collections, too
+    # this exports items in the collections, but not recurrence modifications
     from chandler.sharing import eim
     uuids = []
     for entry in ChandlerApplication.sidebar_entries:
         eim_entry = eim.EIM(entry.collection)
         if not eim.EIM.installed_on(entry.collection):
             eim_entry.add()
-        uuids.append(eim_entry.uuid)
+        uuids.append(eim_entry.well_known_name or eim_entry.uuid)
     return uuids
 
 def save_all(*args):

@@ -13,7 +13,7 @@
 #   limitations under the License.
 
 from chandler.sharing import (
-    eim, eimml, legacy_model as model
+    eim, eimml, legacy_model as model, new_model
 )
 
 from chandler.sharing.utility import (
@@ -27,6 +27,7 @@ from chandler.triage import Triage
 from chandler.reminder import ReminderList
 from chandler.main import ChandlerApplication
 from chandler.sidebar import SidebarEntry
+from chandler.keyword import _Keyword, keyword_for_id
 
 from itertools import chain
 import os
@@ -265,7 +266,6 @@ def all_empty(obj, *attr_names):
 
 eim.add_converter(model.aliasableUUID, Item, getAliasForItem)
 eim.add_converter(model.aliasableUUID, Collection, getAliasForItem)
-# eim.add_converter(model.aliasableUUID, pim.Stamp, getAliasForItem)
 
 
 # Hopefully someday we will be able to remove the following converters:
@@ -305,10 +305,15 @@ class SharingTranslator(eim.Translator):
             return text
 
     def getItemForAlias(self, alias):
+        if alias.startswith("@"):
+            # a well-known-name
+            return super(SharingTranslator, self).getItemForAlias(alias)
+
         uuid, recurrence_id = splitUUID(alias)
         if not recurrence_id:
             return super(SharingTranslator, self).getItemForAlias(alias)
 
+        # a modification
         master = eim.item_for_uuid(uuid)
         return Recurrence(master).get_occurrence(recurrence_id)
 
@@ -674,6 +679,55 @@ class DumpTranslator(SharingTranslator):
             yield record
 
 
+    # Color helpers - - - -
+    def record_rgb_to_hsv(self, record):
+        rgb = []
+        for color in 'Red', 'Green', 'Blue':
+            value = getattr(record, 'color' + color)
+            if not isinstance(value, (int, float)):
+                return None
+            rgb.append(value/255.0)
+        h, s, v = colorsys.rgb_to_hsv(*rgb)
+        return h*360.0, s, v
+
+    def hsv_to_rgb(self, hsv):
+        h, s, v = hsv
+        h = float(h) / 360.0
+        return tuple(int(f*255) for f in colorsys.hsv_to_rgb(h, s, v))
+
+    # - - Keyword  - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    @new_model.KeywordRecord.importer
+    def import_keyword(self, record):
+        keyword = keyword_for_id(record.keywordID)
+        if not eim.EIM.installed_on(keyword):
+            eim.EIM(keyword).add()
+        for sidebar_entry in ChandlerApplication.sidebar_entries:
+            if sidebar_entry.collection is keyword:
+                break
+        else:
+            sidebar_entry = SidebarEntry(collection=keyword)
+            ChandlerApplication.sidebar_entries.add(sidebar_entry)
+
+        hsv = self.record_rgb_to_hsv(record)
+        if hsv:
+            sidebar_entry.hsv_color = hsv
+
+    @eim.exporter(_Keyword)
+    def export_keyword(self, keyword):
+        red = green = blue = alpha = None
+        for sidebar_entry in ChandlerApplication.sidebar_entries:
+            if sidebar_entry.collection is keyword:
+                red, green, blue = self.hsv_to_rgb(sidebar_entry.hsv_color)
+
+        yield new_model.KeywordRecord(
+            keyword.well_known_name,
+            red,
+            green,
+            blue,
+            alpha,
+            0 # checked
+        )
+
     # - - Collection  - - - - - - - - - - - - - - - - - - - - - - - - - - -
     @model.CollectionRecord.importer
     def import_collection(self, record):
@@ -688,24 +742,16 @@ class DumpTranslator(SharingTranslator):
             sidebar_entry = SidebarEntry(collection=collection)
             ChandlerApplication.sidebar_entries.add(sidebar_entry)
 
-        rgb = []
-        for color in 'Red', 'Green', 'Blue':
-            value = getattr(record, 'color' + color)
-            if not isinstance(value, (int, float)):
-                break
-            rgb.append(value/255.0)
-        else:
-            h, s, v = colorsys.rgb_to_hsv(*rgb)
-            sidebar_entry.hsv_color = h*360.0, s, v
+        hsv = self.record_rgb_to_hsv(record)
+        if hsv:
+            sidebar_entry.hsv_color = hsv
 
     @eim.exporter(Collection)
     def export_collection(self, collection):
         red = green = blue = alpha = None
         for sidebar_entry in ChandlerApplication.sidebar_entries:
             if sidebar_entry.collection is collection:
-                h, s, v = sidebar_entry.hsv_color
-                h = float(h) / 360.0
-                red, green, blue = [int(f*255) for f in colorsys.hsv_to_rgb(h, s, v)]
+                red, green, blue = self.hsv_to_rgb(sidebar_entry.hsv_color)
 
         yield model.ItemRecord(
             collection,                                  # uuid

@@ -107,7 +107,7 @@ def dump(stream, uuids, serializer=PickleSerializer, obfuscate=False, gzip=False
 
     if not uuids:
         uuids = ()
-    aliases = [trans.getAliasForItem(eim.get_item_for_uuid(u)) for u in uuids]
+    aliases = uuids
 
     # Sort on alias so masters are dumped before occurrences
     aliases.sort()

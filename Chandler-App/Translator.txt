@@ -16,7 +16,7 @@ records.
     >>> from chandler.time_services import TimeZone
     >>> TimeZone.default = TimeZone.pacific
 
-    >>> from chandler.sharing import translator, legacy_model, eim
+    >>> from chandler.sharing import translator, legacy_model, eim, new_model
     >>> t = translator.SharingTranslator()
 
 
@@ -477,6 +477,31 @@ Collections
     ...     print record
     CollectionRecord('d3ba7961-c9b4-4e73-a860-cc8cbb40acc7', 0, 0, 0, 0, None, 0)
     ItemRecord('d3ba7961-c9b4-4e73-a860-cc8cbb40acc7', u'Interesting Collection Title', ...)
+
+Keywords
+--------
+
+Keywords are imported and exported from the sidebar using KeywordRecord.
+
+    >>> d = translator.DumpTranslator()
+
+    >>> rec1 = new_model.KeywordRecord(
+    ...         "@keyword:Stuff",
+    ...         127, 127, 127, 0
+    ... )
+
+    >>> rs = eim.Diff([rec1])
+    >>> d.startImport()
+    >>> d.importRecords(rs)
+    >>> d.finishImport()
+    >>> keyword = eim.get_for_name_or_uuid("@keyword:Stuff")
+    >>> keyword
+    <Keyword: Stuff>
+
+    >>> d.startExport()
+    >>> for record in eim.sort_records(d.exportItem(keyword)):
+    ...     print record
+    KeywordRecord(u'@keyword:Stuff', 127, 127, 127, None, 0)
 
 
 Collection Membership
