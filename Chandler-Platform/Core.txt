@@ -155,6 +155,7 @@ Removing an item from the base set that isn't the subset doesn't cause
 a change to be propagated:
 
 >>> input.remove(9)
+contents: [0, 2, 4, 6, 8]
 
 Removing a matching member of the base set does cause a notification,
 of course:

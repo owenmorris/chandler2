@@ -320,7 +320,9 @@ class ComputedSetTestCase(unittest.TestCase):
             union.input.add(set_wrapper(s3))
 
         self.failUnlessEqual(set(union), set([0, 2, 4, 6]))
-        self.failUnlessRecordMatches(record)
+        self.failUnlessRecordMatches(record,
+                                     (set([0, 2, 4, 6]), set(), set()),
+                                    )
 
         with self.record_changes(union) as record:
             union.input = trellis.Set([set_wrapper(s2)])
