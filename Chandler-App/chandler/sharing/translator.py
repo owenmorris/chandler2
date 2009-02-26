@@ -305,7 +305,7 @@ class SharingTranslator(eim.Translator):
             return text
 
     def getItemForAlias(self, alias):
-        if alias.startswith("@"):
+        if str(alias).startswith("@"):
             # a well-known-name
             return super(SharingTranslator, self).getItemForAlias(alias)
 
