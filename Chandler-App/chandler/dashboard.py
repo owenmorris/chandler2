@@ -63,8 +63,9 @@ class AppDashboardEntry(addons.AddOn, trellis.Component):
             l.append((fixed_trigger, 'reminder'))
         if self.is_event:
             event_start = Event(self._item).start
-            l = past if is_past(event_start) else future
-            l.append((event_start, 'event'))
+            if event_start:
+                l = past if is_past(event_start) else future
+                l.append((event_start, 'event'))
         past.sort()
         future.sort()
         if future:
@@ -80,7 +81,7 @@ class AppDashboardEntry(addons.AddOn, trellis.Component):
         elif self._when_source == 'reminder':
             return self._reminder.trigger
         else:
-            return self._item.created
+            return fromtimestamp(self._item.created)
 
     @trellis.compute
     def reminder_scheduled(self):

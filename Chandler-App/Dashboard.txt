@@ -22,7 +22,7 @@ Chandler's Application code expands on :ref:`basic dashboard entries
 >>> import chandler.core as core
 >>> from chandler.event import Event
 >>> from chandler.reminder import ReminderList
->>> from chandler.time_services import TimeZone, getNow, setNow, nowTimestamp
+>>> from chandler.time_services import TimeZone, getNow, setNow, nowTimestamp, fromtimestamp
 >>> from datetime import datetime, timedelta
 >>> november_first = datetime(2008, 11, 1, 16, tzinfo=TimeZone.eastern)
 >>> setNow(november_first)
@@ -46,7 +46,7 @@ There are also a few more complicated fields,
 False
 >>> app_entry.event_reminder_combined
 ''
->>> event = Event(item).add()
+>>> event = Event(item).add(base_start=november_first, tzinfo=TimeZone.eastern)
 >>> app_entry.is_event
 True
 >>> app_entry.triage_status
@@ -67,26 +67,45 @@ it's not a reminder, and the entry is an event,
 :attr:`~AppDashboardEntry.event_reminder_combined` will be 'event',
 otherwise it'll be the empty string.
 
+The :attr:`~AppDashboardEntry.when` column is a datetime.  Possible dates
+include fixed reminder fire time (relative reminders aren't included),
+and event start.  The precedence is youngest future, then oldest past.
+If no other date is available, the datetime corresponding to
+:attr:`~chandler.core.Item.created` is used.
+
+>>> app_entry.when == event.start
+True
 >>> reminder = ReminderList(item).add_reminder()
 >>> app_entry.reminder_scheduled
 False
 >>> app_entry.event_reminder_combined
 'event'
+>>> app_entry.when == event.start
+True
 >>> reminder.fixed_trigger = november_first + timedelta(days=1)
 >>> app_entry.reminder_scheduled
 True
 >>> app_entry.event_reminder_combined
 'reminder'
+>>> app_entry.when == reminder.fixed_trigger
+True
 >>> reminder.fixed_trigger = november_first - timedelta(days=1)
 >>> app_entry.reminder_scheduled
 False
 >>> app_entry.event_reminder_combined
 'event'
+>>> app_entry.when == event.start
+True
 >>> Event(item).remove()
 >>> app_entry.event_reminder_combined
 'reminder'
-
-XXX add tests of when...
+>>> app_entry.when == reminder.fixed_trigger
+True
+>>> ReminderList(item).remove_all_reminders()
+>>> app_entry.event_reminder_combined
+''
+>>> app_entry.when == fromtimestamp(item.created)
+True
 
 TODO
 ====
@@ -201,10 +220,3 @@ TODO
 - demonstrate sorting
 - extending the Dashboard
 - (LATER) sections
-
-
-when column
-===========
-nearest future, or last past, of fixed_trigger/event_start
-ignore delta reminders
-otherwise, fall back to created

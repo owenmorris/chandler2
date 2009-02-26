@@ -15,6 +15,9 @@ class ReminderList(ItemAddOn):
         self.reminders.append(reminder)
         return reminder
 
+    def remove_all_reminders(self):
+        self.reminders[:] = []
+
 class Reminder(trellis.Component):
     trellis.attrs(
         item=None,

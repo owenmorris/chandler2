@@ -75,8 +75,8 @@ If a :class:`Reminder` has both a :attr:`~Reminder.delta` and a
 >>> rem.trigger
 datetime.datetime(2006, 4, 1, 12, 5, tzinfo=<ICUtzinfo: US/Eastern>)
 
-Shortcut Method
-===============
+Shortcut Methods
+================
 
 Rather than creating a :class:`Reminder` and setting its
 :attr:`~Reminder.item`, you can use :func:`ReminderList.add_reminder`.
@@ -92,6 +92,14 @@ You can pass in cell values for the new reminder, too:
 >>> rem3 = ReminderList(item).add_reminder(delta=timedelta(days=2))
 >>> rem3.delta
 datetime.timedelta(2)
+
+You can also remove all reminders:
+
+>>> len(ReminderList(item).reminders)
+3
+>>> ReminderList(item).remove_all_reminders()
+>>> len(ReminderList(item).reminders)
+0
 
 .. index:: hook; chandler.domain.triage (registered by chandler.reminder)
 .. _reminder-triage:
