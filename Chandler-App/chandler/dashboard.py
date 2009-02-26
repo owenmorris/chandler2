@@ -141,8 +141,7 @@ class TriageColumn(AppColumn):
     app_attr = trellis.attr('triage_status')
 
     def sort_key(self, entry):
-        app = AppDashboardEntry(entry)
-        return app.triage_section, app.triage_position
+        return entry.triage_section, entry.triage_position
 
 class Dashboard(core.Table):
     @trellis.maintain
