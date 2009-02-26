@@ -42,7 +42,8 @@ class SidebarEntry(trellis.Component):
         if isinstance(other, SidebarEntry):
             return cmp(self.sort_key, other.sort_key)
         else:
-            return super(SidebarEntry, self).__cmp__(other)
+            return cmp(super(SidebarEntry, self), other)
+
 
 class Sidebar(core.Table):
     @trellis.maintain
