@@ -661,7 +661,7 @@ class Table(Scope):
             if selection is None:
                 if new_sel is None:
                     new_sel = ()
-                return trellis.SubSet(new_sel, base=self.model)
+                return collections.SubSet(new_sel, base=self.model)
             if new_sel is not None:
                 _change_set(selection, new_sel)
 
