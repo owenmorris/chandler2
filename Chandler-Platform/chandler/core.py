@@ -505,7 +505,9 @@ class Scope(InteractionComponent):
     subcomponents = Many(inverse=InteractionComponent.scope)
 
     def make_model_cell(self, attr):
-        return _RuleCell(lambda: trellis.Cells(self.model)[attr])
+        def get_cell():
+            return trellis.Cells(self.model)[attr]
+        return _RuleCell(get_cell)
 
     @staticmethod
     def feature_cells(**kw):
@@ -622,10 +624,39 @@ class Table(Scope):
             self.items.sort_key = self.sort_column.sort_key
             self.items.reverse = not self.sort_column.sort_ascending
 
+    new_selection = trellis.attr(resetting_to=None)
+    single_item_selection = trellis.attr(True)
+
+    @trellis.maintain(initially=None, optional=True)
+    def selection(self):
+        if self.single_item_selection:
+            return trellis.Set([self.selected_item])
+        selection = self.selection
+        new_selected_items = self.new_selection
+
+        if selection is None:
+            if new_selected_items is None:
+                new_selected_items = ()
+            selection = collections.SubSet(new_selected_items, base=self.model)
+        elif new_selected_items is not None:
+            # We are going to do some set arithmetic here to try
+            # to try to make sure we do an update with one
+            # atomic operation
+            diff = set(new_selected_items) # i.e. allow any iterable
+            diff = diff.difference(selection).union(selection.difference(diff))
+            selection.symmetric_difference_update(diff)
+
+        return selection
+
     @trellis.maintain(initially=None, optional=True)
     def selected_item(self):
-        if self.selected_item is None or not self.selected_item in self.items:
-            return self.items[0] if self.items else None
+        if self.new_selection is not None:
+            return self.new_selection
+        elif self.selected_item is None:
+            try:
+                return iter(self.items).next()
+            except StopIteration, TypeError:
+                pass # i.e. return None
         return self.selected_item
 
     def get_cell_value(self, (row, col)):

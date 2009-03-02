@@ -302,6 +302,60 @@ So, here we have a fifth item that became visible, as well as a blank
 line corresponding to the empty part of the scroll area of our
 hypothetical table.
 
+Row selections
+--------------
+By default, a :class:`Table` allows a single selected item, accessible via
+the :attr:`~Table.selected_item` API:
+
+>>> table.selected_item.lastName
+u'Topalov'
+>>> table.selected_item is table.items[0]
+True
+
+Note that :attr:`~Table.selected_item` is an optional attribute, so
+it's only set up when you access it. It's initialized by default to be
+the first element in :attr:`~Table.items`.
+
+We can change the selected item by assigning :attr:`~Table.selected_item`:
+
+>>> table.selected_item = players[0]
+>>> table.selected_item.lastName
+u'Morozevich'
+
+It's common enough that you want a :class:`Table` to allow more than
+one selected item, of course. There's an attribute to change that,
+:attr:`~Table.single_item_selection`, which defaults to ``True``
+
+>>> table.single_item_selection
+True
+
+but can be changed:
+
+>>> table.single_item_selection = False
+
+In this case, :attr:`~Table.selection` becomes a
+:class:`~peak.events.collections.SubSet` of items, and
+is empty by default:
+
+>>> table.selection
+SubSet([])
+
+>>> table.selection.update((players[1], players[2]))
+>>> sorted(p.lastName for p in table.selection)
+[u'Anand', u'Topalov']
+
+>>> table.selection.remove(players[1])
+>>> list(table.selection) == [players[2]]
+True
+
+Note that it's OK to use :attr:`~Table.selection` in the
+case of :attr:`~Table.single_item_selection` being ``True``:
+
+>>> table.single_item_selection = True
+>>> list(table.selection) == [table.selected_item]
+True
+
+
 TODO
 ----
 
