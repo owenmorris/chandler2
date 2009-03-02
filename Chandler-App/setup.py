@@ -32,6 +32,7 @@ setup(
     wxui = chandler.wxui.presentation:load_wxui
     [chandler.wxui.table.extensions]
     SidebarIcon = chandler.sidebar:extend_table
+    DashboardIcons = chandler.dashboard:extend_table
     [console_scripts]
     chandler-demo = chandler.main:main
     """

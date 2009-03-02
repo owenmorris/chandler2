@@ -147,7 +147,8 @@ class Dashboard(core.Table):
     @trellis.maintain
     def star_column(self):
         return AppColumn(scope=self, label=u'*', app_attr='is_starred',
-                         hints={'width': 20, 'header_icon':'ColHStarred.png'})
+                         hints={'width': 20, 'header_icon':'ColHStarred.png',
+                                'type': 'DashboardStar'})
 
     @trellis.maintain
     def title_column(self):
@@ -183,3 +184,35 @@ class Dashboard(core.Table):
     def hints(self):
         return { 'column_headers': True }
 
+
+import chandler.wxui.table as table
+import chandler.wxui.multi_state as multi_state
+from chandler.wxui.image import get_image
+
+class StarRenderer(table.IconRenderer):
+    def bitmapProvider(self, name):
+        return get_image(name, "Chandler_App")
+
+    def getStateInfos(self):
+        cls = type(self)
+
+        for (state, normal, selected) in (
+            (False, "pixel", "pixel"),
+            (True, "StarStamped", "StarStampedSelected")
+        ):
+            bmInfo = multi_state.BitmapInfo()
+            bmInfo.stateName = state
+            bmInfo.normal = normal
+            bmInfo.selected = selected
+            bmInfo.rollover = "StarRollover"
+            bmInfo.rolloverselected = "StarRolloverSelected"
+            bmInfo.mousedown = "StarMousedown"
+            bmInfo.mousedownselected = "StarMousedownSelected"
+            yield bmInfo
+
+    def advanceValue(self, value):
+        # "advance" == "toggle"
+        return not value
+
+def extend_table(table):
+    table.RegisterDataType("DashboardStar", StarRenderer(), None)
