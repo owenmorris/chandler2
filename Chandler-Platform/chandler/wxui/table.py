@@ -122,12 +122,12 @@ class TablePresentation(trellis.Component, wxGrid.PyGridTableBase):
 
         for row in view.GetSelectedRows():
             index = self.RowToIndex(row)
-            if self.table.items[index] is not self.table.selected_item:
+            if not self.table.items[index] in self.table.selection:
                 trellis.on_commit(view.DeselectRow, index)
 
         for index, item in enumerate(self.table.items):
             row = self.IndexToRow(index)
-            if item is self.table.selected_item:
+            if item in self.table.selection:
                 trellis.on_commit(view.SelectRow, index, True)
 
     defaultRWAttribute = wxGrid.GridCellAttr()
@@ -205,40 +205,53 @@ class TablePresentation(trellis.Component, wxGrid.PyGridTableBase):
     def GetColLabelBitmap(self, col):
         return getattr(self.table.columns[col], 'bitmap', None)
 
+    _deselected_all = False
+
     def OnRangeSelect(self, event):
         """
-        Synchronize the grid's selection back into the ListModel
+        Synchronize the grid's selection back into the Table
         """
         firstRow = event.TopRow
         lastRow = event.BottomRow
         indexStart, indexEnd = self.RangeToIndex(firstRow, lastRow)
         selecting = event.Selecting()
 
-        indices = xrange(indexStart, indexEnd + 1)
-        selChange = set(self.table.items[index] for index in indices)
-        if selecting:
-            for item in selChange:
-                self.table.items.selected_item = item
+        if (not selecting and firstRow == 0 and lastRow != 0
+            and lastRow == self.GetNumberRows() - 1):
+            # this is a special "deselection" event that the
+            # grid sends us just before selecting another
+            # single item. This happens just before a user
+            # simply clicks from one item to another.
+            self._deselected_all = True
+
+            # [@@@] grant: Need to avoid broadcasting a
+            # selection change in this case.
+            return
+
+        if selecting and self.table.single_item_selection:
+            new_selection = self.table.items[indexEnd]
+            if self.table.selected_item != new_selection:
+                self.table.selected_item = new_selection
         else:
-            if (firstRow == 0 and lastRow != 0
-                and lastRow == self.GetNumberRows() - 1):
-                # this is a special "deselection" event that the
-                # grid sends us just before selecting another
-                # single item. This happens just before a user
-                # simply clicks from one item to another.
+            items = set(self.table.items[index]
+                        for index in xrange(indexStart, indexEnd + 1))
 
-                # [@@@] grant: Need to avoid broadcasting a
-                # selection change in this case.
-                pass
+            if selecting:
+                if self._deselected_all:
+                    self.table.new_selection = items
+                else:
+                    items.difference_update(self.table.selection)
+                    self.table.selection.update(items)
+            else:
+                self.table.selection.difference_update(items)
 
-            if self.table.selected_item in selChange:
-                #self.table.selected_item = None
-                pass
+        if self._deselected_all:
+            del self._deselected_all
 
         event.Skip()
 
     def SelectedRowRanges(self):
-        # @@@ [grant] Move this (or something similar) to ListModel!
+        # @@@ [grant] Move this (or something similar) to Table
         """
         Uses IndexRangeToRowRange to convert the selected indexes to
         selected rows
@@ -246,7 +259,7 @@ class TablePresentation(trellis.Component, wxGrid.PyGridTableBase):
         lastRow = None
         # This is O(N) tsk
         for index, item in enumerate(self.table.items):
-            itemSelected = (item is self.table.selected_item)
+            itemSelected = (item in self.table.selection)
 
             if itemSelected:
                 if lastRow is None:
