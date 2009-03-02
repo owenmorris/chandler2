@@ -160,7 +160,7 @@ class Dashboard(core.Table):
     def event_reminder_column(self):
         return AppColumn(scope=self, label='(( ))',
                          app_attr='event_reminder_combined',
-                         hints={'width': 36,
+                         hints={'width': 36, 'type': 'DashboardReminder',
                                 'header_icon':'ColHEventReminder.png'})
 
     @trellis.maintain
@@ -189,13 +189,12 @@ import chandler.wxui.table as table
 import chandler.wxui.multi_state as multi_state
 from chandler.wxui.image import get_image
 
-class StarRenderer(table.IconRenderer):
+class DashboardIconRenderer(table.IconRenderer):
     def bitmapProvider(self, name):
         return get_image(name, "Chandler_App")
 
+class StarRenderer(DashboardIconRenderer):
     def getStateInfos(self):
-        cls = type(self)
-
         for (state, normal, selected) in (
             (False, "pixel", "pixel"),
             (True, "StarStamped", "StarStampedSelected")
@@ -214,5 +213,23 @@ class StarRenderer(table.IconRenderer):
         # "advance" == "toggle"
         return not value
 
+class ReminderRenderer(DashboardIconRenderer):
+    def getStateInfos(self):
+        kw = dict(rollover="DBReminderRollover",
+                  rolloverselected="DBReminderRolloverSelected",
+                  mousedown="DBReminderMousedown",
+                  mousedownselected="DBReminderMousedownSelected")
+
+        for (state, normal, selected) in (
+            ("", "pixel", "pixel"),
+            ("event", "DBEvent", "DBEventSelected"),
+            ("reminder", "DBReminder", "DBReminderSelected"),
+        ):
+            kw.update(stateName=state, normal=normal, selected=selected)
+            bmInfo = multi_state.BitmapInfo(**kw)
+
+            yield bmInfo
+
 def extend_table(table):
     table.RegisterDataType("DashboardStar", StarRenderer(), None)
+    table.RegisterDataType("DashboardReminder", ReminderRenderer(), None)
