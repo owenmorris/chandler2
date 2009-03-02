@@ -9,12 +9,12 @@ import chandler.core as core
 import chandler.wxui.image as image
 
 class AppDashboardEntry(addons.AddOn, trellis.Component):
-    trellis.attrs(
-        subject = None,
-    )
+    @trellis.make
+    def subject(self):
+        return None
 
     def __init__(self, subject, **kw):
-        self.subject = subject
+        kw.update(subject=subject)
         trellis.Component.__init__(self, **kw)
 
     @trellis.compute

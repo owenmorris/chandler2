@@ -481,7 +481,7 @@ class InteractionComponent(trellis.Component):
         visible=True,
         help=None,
     )
-    
+
     hints = trellis.make(dict)
 
     def __iter__(self):
@@ -590,6 +590,12 @@ class Choice(Feature):
     new_choice = trellis.attr(resetting_to=None)
 
 
+@trellis.modifier
+def _change_set(s, contents):
+    s.clear()
+    s.update(contents)
+
+    single_item_selection = trellis.attr(True)
 class Table(Scope):
     """A Table is responsible for managing the display of a C{trellis.Set}"""
     columns = trellis.make(trellis.List)
@@ -627,24 +633,37 @@ class Table(Scope):
     new_selection = trellis.attr(resetting_to=None)
     single_item_selection = trellis.attr(True)
 
+    def _make_selection(self):
+        contents = self.new_selection
+        if self.single_item_selection:
+            if contents is not None:
+                contents  = (contents,)
+            elif self.selected_item is not None:
+                contents = (self.selected_item,)
+
+        if contents is None:
+            contents = ()
+        return collections.SubSet(contents, base=self.model)
+
     @trellis.maintain(initially=None, optional=True)
     def selection(self):
+        new_sel = self.new_selection
         if self.single_item_selection:
-            return trellis.Set([self.selected_item])
-        selection = self.selection
-        new_selected_items = self.new_selection
-
-        if selection is None:
-            if new_selected_items is None:
-                new_selected_items = ()
-            selection = collections.SubSet(new_selected_items, base=self.model)
-        elif new_selected_items is not None:
-            # We are going to do some set arithmetic here to try
-            # to try to make sure we do an update with one
-            # atomic operation
-            diff = set(new_selected_items) # i.e. allow any iterable
-            diff = diff.difference(selection).union(selection.difference(diff))
-            selection.symmetric_difference_update(diff)
+            if new_sel is None:
+                new_sel = self.selected_item
+            if new_sel is not None:
+                items = (new_sel,)
+            else:
+                items = ()
+            selection = trellis.Set(items)
+        else:
+            selection = self.selection
+            if selection is None:
+                if new_sel is None:
+                    new_sel = ()
+                return trellis.SubSet(new_sel, base=self.model)
+            if new_sel is not None:
+                _change_set(selection, new_sel)
 
         return selection
 

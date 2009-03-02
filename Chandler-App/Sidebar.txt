@@ -95,9 +95,23 @@ for :attr:`SidebarEntry.sort_key` will be used for "special"
 Interaction Model: The Sidebar
 ------------------------------
 
-The Sidebar itself is a :class:`chandler.core.Table` subclass.
+The Sidebar itself is a :class:`chandler.core.Table` subclass.  Its
+:attr:`~chandler.core.Table.model` consists of :class:`SidebarEntry`
+objects, so for demonstration purposes, let's create a couple of
+collections, throw some items in them, and add them to the Sidebar:
 
->>> sidebar = Sidebar()
+>>> import chandler.event as event
+>>> home = core.Collection(title=u'Home')
+>>> work = core.Collection(title=u'Work')
+>>> model = trellis.Set(SidebarEntry(collection=c) for c in (home, work))
+>>> hello = core.Item(title=u'Hello, World!',
+...                  collections=(home, work))
+>>> meeting = event.Event(core.Item(title=u'Meeting', collections=(work,)))
+>>> meeting.add()
+<chandler.event.Event object at 0x...>
+
+
+>>> sidebar = Sidebar(model=model)
 >>> sidebar.icon_column
 <TableColumn "Icon">
 >>> sidebar.name_column
@@ -113,19 +127,6 @@ By default, the "All" filter (i.e. include all items) is selected:
 
 >>> sidebar.filters.chosen_item.label
 u'All'
-
-For demonstration purposes, let's create a couple of collections,
-throw some items in them, and add them to the Sidebar:
-
->>> import chandler.event as event
->>> home = core.Collection(title=u'Home')
->>> work = core.Collection(title=u'Work')
->>> sidebar.model.update(SidebarEntry(collection=c) for c in (home, work))
->>> hello = core.Item(title=u'Hello, World!',
-...                  collections=(home, work))
->>> meeting = event.Event(core.Item(title=u'Meeting', collections=(work,)))
->>> meeting.add()
-<chandler.event.Event object at 0x...>
 
 Now, we're ready to see how filtering and the Sidebar work. First, the
 :attr:`~Sidebar.selected_item` attribute tells us the currently

@@ -62,10 +62,25 @@ class Sidebar(core.Table):
     def columns(self):
         return trellis.List([self.icon_column, self.name_column])
 
-    @trellis.make
+    def _selection_cell(self):
+        def get_selection_cell():
+            cells = trellis.Cells(self)
+            try:
+                return cells['selection']
+            except KeyError:
+                self.selection
+                return cells['selection']
+        return core._RuleCell(get_selection_cell)
+
+    @trellis.maintain
+    def all_items(self):
+        return core.AggregatedSet(input=self._selection_cell(),
+                                  get_values=lambda entry:entry.collection.items)
+
+    @trellis.maintain
     def filtered_items(self):
         return core.FilteredSubset(
-            input=trellis.Cell(lambda: self.selected_item.collection.items),
+            input=self.all_items,
             predicate=trellis.Cell(lambda:self.filters.value))
 
     @trellis.maintain
