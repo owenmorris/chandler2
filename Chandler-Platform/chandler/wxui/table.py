@@ -156,6 +156,7 @@ class TablePresentation(trellis.Component, wxGrid.PyGridTableBase):
 
         grid.Bind(wxGrid.EVT_GRID_RANGE_SELECT, self.OnRangeSelect)
         grid.Bind(wxGrid.EVT_GRID_LABEL_LEFT_CLICK, self.OnLabelLeftClicked)
+        grid.Bind(wxGrid.EVT_GRID_SELECT_CELL, lambda event: None)
 
     def GetNumberRows(self):
         return len(self.table.items)
@@ -311,6 +312,7 @@ class Table(wxGrid.Grid):
         super(Table, self).__init__(parent, style=self.defaultStyle, *arguments, **keywords)
 
         # Register extensions
+        self.RegisterDataType('String', StringRenderer(), None)
         self.TABLE_EXTENSIONS.notify(self)
         # Generic table setup
         self.SetColLabelAlignment(wx.ALIGN_CENTRE, wx.ALIGN_CENTRE)
@@ -322,6 +324,9 @@ class Table(wxGrid.Grid):
         if EXTENDED_WX:
             self.ScaleWidthToFit(True)
             self.EnableCursor(False)
+        # The following disables drawing a black box around the
+        # last-clicked cell.
+        self.SetCellHighlightPenWidth(0)
         self.SetLightSelectionBackground()
         self.SetUseVisibleColHeaderSelection(True)
         self.SetScrollLineY(self.GetDefaultRowSize())
@@ -626,6 +631,21 @@ class Table(wxGrid.Grid):
             # not sure when the -1 case would happen?
             if -1 not in (topRow, bottomRow):
                 yield (topRow, bottomRow)
+
+class StringRenderer(wxGrid.PyGridCellRenderer):
+    def Draw(self, grid, attr, dc, rect, row, col, isSelected):
+        drawing.SetTextColorsAndFont(grid, attr, dc, isSelected)
+
+        dc.SetBackgroundMode(wx.SOLID)
+        dc.SetPen(wx.TRANSPARENT_PEN)
+
+        dc.DrawRectangleRect(rect)
+
+        dc.SetFont(attr.GetFont())
+        text = unicode(grid.Table.GetValue(row, col))
+        dc.SetClippingRect(rect.Get())
+        drawing.DrawClippedTextWithDots(dc, text, rect)
+        dc.DestroyClippingRegion()
 
 class IconRenderer(wxGrid.PyGridCellRenderer):
     """
