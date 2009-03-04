@@ -1,3 +1,5 @@
+__import__('pkg_resources').declare_namespace(__name__)
+
 """Debugging Tools"""
 
 from peak.util import addons, imports
