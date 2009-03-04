@@ -53,23 +53,23 @@ def DrawClippedTextWithDots(dc, text, rect, alignRight=False, top=None):
     rectX = rect.x + 1
     rectY = rect.y
     rowHeight = rect.GetHeight()
-        
+
     # test for flicker by drawing a random character first each time we draw
     # line = chr(ord('a') + random.randint(0,25)) + line
-    
+
     lineWidth, lineHeight = dc.GetTextExtent(text)
     if alignRight:
         x = rect.x + rect.width - lineWidth - 1
     else:
         x = rectX
-    
+
     if top is None:
         y = rectY + (rowHeight - lineHeight) / 2
     else:
         y = rectY + top
-        
+
     dc.DrawText(text, x, y)
-    
+
     # If the text doesn't fit within the box we want to clip it and
     # put '...' at the end.  This method may chop a character in half,
     # but is a lot faster than doing the proper calculation of where
@@ -82,14 +82,14 @@ def DrawClippedTextWithDots(dc, text, rect, alignRight=False, top=None):
         dc.DrawRectangle(x, y, width + 1, height)
         dc.DrawText('...', x, y)
         lineWidth = 0 # note that we filled it.
-        
+
     return lineWidth
 
 
 def DrawWrappedText(dc, text, rect):
     """
     Simple wordwrap - draws the text into the current DC
-    
+
     returns the height of the text that was written
 
     measurements is a FontMeasurements object as returned by
@@ -106,8 +106,8 @@ def DrawWrappedText(dc, text, rect):
 
     # we hit this if you narrow the main window enough:
     # assert rectHeight >= lineHeight, "Don't have enough room to write anything (have %d, need %d)" % (rectHeight, lineHeight)
-    if rectHeight < lineHeight: return 0 # Can't draw anything    
-    
+    if rectHeight < lineHeight: return 0 # Can't draw anything
+
     for line in text.splitlines():
         x = rectX
         # accumulate text to be written on a line
@@ -116,7 +116,7 @@ def DrawWrappedText(dc, text, rect):
             width = dc.GetTextExtent(word)[0]
 
             # if we wrapped but we still can't fit the word,
-            # just truncate it    
+            # just truncate it
             if (width > rectWidth and x == rectX):
                 assert thisLine == u'', "Should be drawing first long word"
                 DrawClippedText(dc, word, rectX, y, rectWidth, width)
@@ -131,7 +131,7 @@ def DrawWrappedText(dc, text, rect):
                     thisLine = u''
                 y += lineHeight
                 x = rectX
-            
+
             # if we're out of vertical space, just return
             if (y + lineHeight > rectBottom):
                 assert thisLine == u'', "shouldn't have any more to draw"
@@ -148,10 +148,10 @@ def DrawWrappedText(dc, text, rect):
                 # rather than draw it, just accumulate it
                 thisLine += word + u' '
                 x += width + spaceWidth
-        
+
         # draw the last words on this line, if any
         if thisLine:
-            dc.DrawText(thisLine, rectX, y)        
+            dc.DrawText(thisLine, rectX, y)
         y += lineHeight
     #return y - rectY # total height
 
@@ -312,12 +312,12 @@ class Gradients(object):
             imageBuffer[bufferX:bufferX+3] = pack('BBB', *color)
 
             bufferX += 3
-            
+
         # and now we have to go from Image -> Bitmap. Yuck.
         brush = wx.Brush(wx.WHITE, wx.STIPPLE)
         brush.SetStipple(wx.BitmapFromImage(image))
         return brush
-        
+
     def GetGradientBrush(self, offset, width, leftColor, rightColor,
                          orientation="Horizontal"):
         """

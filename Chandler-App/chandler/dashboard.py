@@ -130,7 +130,7 @@ class AppColumn(core.TableColumn):
 
     def get_value(self, entry):
         return getattr(entry, self.app_attr)
-    
+
     @trellis.compute
     def bitmap(self):
         name = self.hints.get('header_icon')
@@ -248,7 +248,7 @@ class TriageRenderer(table.wxGrid.PyGridCellRenderer):
         self.font = font
     
     _triage_map = None
-    
+
     def _get_display_values(self, triage_value):
         if self._triage_map is None:
             triage_map = dict()
@@ -262,18 +262,18 @@ class TriageRenderer(table.wxGrid.PyGridCellRenderer):
 
     def _wx_Color(self, value, variant):
         h, s, v = self._get_display_values(value)[1]
-        
+
         if "rollover" in variant:
             v = v + 0.33 * (1.0 - v)
             s = 0.65 * s
-        
+
         if "mousedown" in variant:
             v = 0.67 * v
-        
+
         if "border" in variant:
             v = v + 0.5 * (1.0 - v)
             s = 0.5 * s
-        
+
         h = float(h)/360.0
         r, g, b = map(lambda val: (int)(val * 255 + 0.5), hsv_to_rgb(h, s, v))
         return wx.Colour(r, g, b)
@@ -281,30 +281,30 @@ class TriageRenderer(table.wxGrid.PyGridCellRenderer):
 
     def Draw(self, grid, attr, dc, rect, row, col, isSelected):
         value = grid.Table.GetValue(row, col)
-        
+
         if grid.clickRowCol == (row, col):
             variant = ('mousedown',)
         elif grid.overRowCol == (row, col):
             variant = ('rollover',)
         else:
             variant = ()
-    
+
         gc = wx.GraphicsContext.Create(dc)
-        
+
         text = self._get_display_values(value)[0]
-    
+
         bgColor = self._wx_Color(value, variant)
         borderColor = self._wx_Color(value, variant + ("border",))
 
         textXOffset = 0
         textYOffset = 1
-    
+
         gc.SetBrush(wx.Brush(bgColor, wx.SOLID))
         gc.SetPen(wx.Pen(borderColor))
         gc.DrawRectangle(rect.X, rect.Y, rect.Width, rect.Height)
-    
+
         gc.SetFont(self.font, wx.WHITE)
-            
+
         width, height, descent, leading = gc.GetFullTextExtent(text)
         textLeft = rect.Left + int((rect.Width - width) / 2) - textXOffset
         textTop = rect.Top + int((height - descent) / 2) - textYOffset
