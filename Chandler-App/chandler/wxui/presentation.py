@@ -44,7 +44,7 @@ def present_choice(choice_component, ui_parent=None):
 def present_frame(frame, ui_parent=None):
     wxframe = wx.Frame(None, -1, title=frame.label)
     sizer = wx.BoxSizer(wx.VERTICAL)
-    sizer.SetMinSize((600, 300))
+    sizer.SetMinSize((700, 300))
 
     splitter = wx.SplitterWindow(wxframe, -1, style=wx.SP_LIVE_UPDATE | wx.NO_BORDER | wx.SP_3DSASH)
     core.present(frame.sidebar, splitter)

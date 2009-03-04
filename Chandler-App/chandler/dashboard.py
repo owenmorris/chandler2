@@ -4,7 +4,8 @@ from chandler.event import Event
 from chandler.starred import Starred
 from chandler.reminder import ReminderList
 import chandler.triage as triage
-from chandler.time_services import is_past, timestamp, fromtimestamp
+from chandler.time_services import (TimeZone, is_past, timestamp, fromtimestamp,
+                                    getNow)
 import chandler.core as core
 import chandler.wxui.image as image
 from chandler.i18n import _
@@ -79,12 +80,38 @@ class AppDashboardEntry(addons.AddOn, trellis.Component):
 
     @trellis.compute
     def when(self):
+        return self._when_and_is_day[0]
+
+    @trellis.compute
+    def _when_and_is_day(self):
         if self._when_source == 'event':
-            return Event(self._item).start
+            event = Event(self._item)
+            return event.start, event.is_day
         elif self._when_source == 'reminder':
-            return self._reminder.trigger
+            return self._reminder.trigger, False
         else:
-            return fromtimestamp(self._item.created)
+            return fromtimestamp(self._item.created), False
+
+    @trellis.compute
+    def display_date(self):
+        when, is_day = self._when_and_is_day
+
+        when = when.astimezone(TimeZone.default)
+        when_date = when.date()
+
+        # [@@@] Real date format support rather than strftime
+        time_part = when.strftime("%X") if not is_day else ""
+
+        # [@@@] Probably time_services should offer a today cell here
+        since_today = (when_date - getNow().date()).days
+        if since_today == -1:
+            return _(u"Yesterday"), time_part
+        elif since_today == 0:
+            return _(u"Today"), time_part
+        elif since_today == 1:
+            return _(u"Tomorrow"), time_part
+        else:
+            return when.strftime("%x"), time_part
 
     @trellis.compute
     def reminder_scheduled(self):
@@ -167,9 +194,10 @@ class Dashboard(core.Table):
                                 'header_icon':'ColHEventReminder.png'})
 
     @trellis.maintain
-    def when_column(self):
-        return AppColumn(scope=self, label='Date', app_attr='when',
-                         hints={'width':120})
+    def date_column(self):
+        return AppColumn(scope=self, label='Date', app_attr='display_date',
+                         hints={'width':220, 'type':'DashboardDate'},
+                         sort_key=lambda value:value._when_and_is_day)
 
     @trellis.maintain
     def triage_column(self):
@@ -181,7 +209,7 @@ class Dashboard(core.Table):
     @trellis.make
     def columns(self):
         return trellis.List([self.star_column, self.title_column,
-                             self.event_reminder_column, self.when_column,
+                             self.event_reminder_column, self.date_column,
                              self.triage_column])
 
     @trellis.make
@@ -320,7 +348,33 @@ def triage_presentation_values():
     )
 
 
+class DateRenderer(table.wxGrid.PyGridCellRenderer):
+
+    def Draw(self, grid, attr, dc, rect, row, col, isSelected):
+        date, time = grid.Table.GetValue(row, col)
+        
+        vAlign = attr.GetAlignment()[1]
+        
+        if isSelected:
+            bg = grid.GetSelectionBackground()
+            fg = grid.GetSelectionForeground()
+        else:
+            bg = attr.GetBackgroundColour()
+            fg = attr.GetTextColour()
+
+        dc.SetTextBackground(bg)
+        dc.SetTextForeground(fg)
+        
+        dc.SetBrush(wx.Brush(bg, wx.SOLID))
+        dc.SetPen(wx.TRANSPARENT_PEN)
+        dc.DrawRectangleRect(rect)
+        
+        grid.DrawTextRectangle(dc, date, rect, wx.ALIGN_LEFT, vAlign)
+        grid.DrawTextRectangle(dc, time, rect, wx.ALIGN_RIGHT, vAlign)
+
+
 def extend_table(table):
     table.RegisterDataType("DashboardStar", StarRenderer(), None)
     table.RegisterDataType("DashboardReminder", ReminderRenderer(), None)
     table.RegisterDataType("DashboardTriage", TriageRenderer(), None)
+    table.RegisterDataType("DashboardDate", DateRenderer(), None)

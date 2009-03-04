@@ -67,50 +67,113 @@ it's not a reminder, and the entry is an event,
 :attr:`~AppDashboardEntry.event_reminder_combined` will be 'event',
 otherwise it'll be the empty string.
 
-The :attr:`~AppDashboardEntry.when` column is a datetime.  Possible dates
-include fixed reminder fire time (relative reminders aren't included),
-and event start.  The precedence is youngest future, then oldest past.
-If no other date is available, the datetime corresponding to
-:attr:`~chandler.core.Item.created` is used.
+The :attr:`~AppDashboardEntry.when` attribute is a datetime. This can be:
 
->>> app_entry.when == event.start
+   1. a fixed reminder fire time (relative reminders aren't included)
+   2. an event start
+   3. the datetime corresponding to :attr:`~chandler.core.Item.created`
+      is used if now other date is available.
+
+The precedence here between 1 and 2 is youngest future, then oldest past.
+
+A closely related attribute is
+:attr:`~AppDashboardEntry.display_date`. This is is a 2-element tuple
+of strings used to display the "Date" column. The first element is the
+date, possibly using one of the special values 'Today', 'Yesterday'
+and 'Tomorrow'. The second string is the time of day. (Both of these are
+determined using the default timezone).
+
+Let's set up a performer cell to display the values of these attributes, to
+show how this works:
+
+>>> def print_date_values():
+...     print "When: %r" % (app_entry.when,)
+...     print "Display Date: %s" % (app_entry.display_date,)
+...     print "Event/Reminder: %s" % (app_entry.event_reminder_combined,)
+
+For a vanilla :class:`~chandler.events.Event`, :attr:`~AppDashboardEntry.when` and :attr:`~AppDashboardEntry.display_date` are just the ``start``:
+
+>>> p = trellis.Performer(print_date_values)
+When: datetime.datetime(2008, 11, 1, 16, 0, tzinfo=<ICUtzinfo: US/Eastern>)
+Display Date: (u'Today', '13:00:00')
+Event/Reminder: event
+>>> event.start == app_entry.when
 True
+
+For ``is_day`` events, the time-of-day element of
+:attr:`~AppDashboardEntry.display_date` is empty:
+
+>>> event.all_day = True
+When: datetime.datetime(2008, 11, 1, 0, 0, tzinfo=FloatingTZ(<ICUtzinfo: US/Pacific>))
+Display Date: (u'Today', '')
+Event/Reminder: event
+
+>>> event.all_day = False
+When: datetime.datetime(2008, 11, 1, 16, 0, tzinfo=<ICUtzinfo: US/Eastern>)
+Display Date: (u'Today', '13:00:00')
+Event/Reminder: event
+
+If we add a reminder, but don't schedule it, then the event start
+will still determine :attr:`~AppDashboardEntry.when`:
+
 >>> reminder = ReminderList(item).add_reminder()
+
+Note that our performer cell wasn't triggered here, because nothing
+changed. Just to confirm, we see:
+
 >>> app_entry.reminder_scheduled
 False
 >>> app_entry.event_reminder_combined
 'event'
->>> app_entry.when == event.start
-True
->>> reminder.fixed_trigger = november_first + timedelta(days=1)
->>> app_entry.reminder_scheduled
-True
->>> app_entry.event_reminder_combined
-'reminder'
->>> app_entry.when == reminder.fixed_trigger
-True
->>> reminder.fixed_trigger = november_first - timedelta(days=1)
->>> app_entry.reminder_scheduled
-False
->>> app_entry.event_reminder_combined
-'event'
->>> app_entry.when == event.start
-True
+>>> app_entry.when
+datetime.datetime(2008, 11, 1, 16, 0, tzinfo=<ICUtzinfo: US/Eastern>)
+
+If we schedule a reminder a day into the future, then that will be
+what's reflected in :attr:`~AppDashboardEntry.when`:
+
+>>> reminder.fixed_trigger = november_first + timedelta(days=1, hours=1)
+When: datetime.datetime(2008, 11, 2, 17, 0, tzinfo=<ICUtzinfo: US/Eastern>)
+Display Date: (u'Tomorrow', '14:00:00')
+Event/Reminder: reminder
+
+A past reminder will cause event start to be used again:
+
+>>> reminder.fixed_trigger = november_first - timedelta(days=2)
+When: datetime.datetime(2008, 11, 1, 16, 0, tzinfo=<ICUtzinfo: US/Eastern>)
+Display Date: (u'Today', '13:00:00')
+Event/Reminder: event
+
+If we remove event-ness and reminders, then we end up with :attr:`~Item.created`
+being displayed:
+
 >>> Event(item).remove()
->>> app_entry.event_reminder_combined
-'reminder'
->>> app_entry.when == reminder.fixed_trigger
-True
+When: datetime.datetime(2008, 10, 30, 16, 0, tzinfo=<ICUtzinfo: US/Eastern>)
+Display Date: ('10/30/08', '13:00:00')
+Event/Reminder: reminder
+
 >>> ReminderList(item).remove_all_reminders()
->>> app_entry.event_reminder_combined
-''
+When: datetime.datetime(2008, 11, 1, 13, 0, tzinfo=<ICUtzinfo: US/Pacific>)
+Display Date: (u'Today', '13:00:00')
+Event/Reminder: 
+
 >>> app_entry.when == fromtimestamp(item.created)
 True
+
+Note that the date and time in the
+:attr:`~AppDashboardEntry.display_date` attribute are always
+calculated using the default timezone. So, changing it will change
+these values:
+
+>>> TimeZone.default = TimeZone.eastern
+When: datetime.datetime(2008, 11, 1, 13, 0, tzinfo=<ICUtzinfo: US/Pacific>)
+Display Date: (u'Today', '16:00:00')
+Event/Reminder: 
 
 TODO
 ====
 - add created/edited/new/updated
 - add status (unread, mainly)
+- add a "today" cell to TimeService, and check that it works here.
 
 AppEntryAggregate: Mapping sets of Items to sets of DashboardEntries
 --------------------------------------------------------------------
@@ -210,7 +273,7 @@ subclass, :class:`AppColumn` which get values from a particular
 >>> db.star_column
 <AppColumn "*" (is_starred)>
 >>> list(db.columns)
-[<AppColumn "*" (is_starred)>, <TableColumn "Title">, <AppColumn "(( ))" (event_reminder_combined)>, <AppColumn "Date" (when)>, <TriageColumn "Triage" (triage_status)>]
+[<AppColumn "*" (is_starred)>, <TableColumn "Title">, <AppColumn "(( ))" (event_reminder_combined)>, <AppColumn "Date" (display_date)>, <TriageColumn "Triage" (triage_status)>]
 
 :class:`TriageColumn` is an :class:`AppColumn` subclass that defines a
 special sort for triage.
