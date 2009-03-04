@@ -3,10 +3,13 @@ from peak.util import addons, plugins
 from chandler.event import Event
 from chandler.starred import Starred
 from chandler.reminder import ReminderList
-from chandler.triage import Triage, TriagePosition, NOW
+import chandler.triage as triage
 from chandler.time_services import is_past, timestamp, fromtimestamp
 import chandler.core as core
 import chandler.wxui.image as image
+from chandler.i18n import _
+
+TRIAGE_PRESENTATION_HOOK  = plugins.Hook('chandler.presentation.triage')
 
 class AppDashboardEntry(addons.AddOn, trellis.Component):
     @trellis.make
@@ -23,15 +26,15 @@ class AppDashboardEntry(addons.AddOn, trellis.Component):
 
     @trellis.compute
     def triage_status(self):
-        return Triage(self._item).calculated
+        return triage.Triage(self._item).calculated
 
     @trellis.compute
     def triage_position(self):
-        return TriagePosition(self._item).position
+        return triage.TriagePosition(self._item).position
 
     @trellis.compute
     def triage_section(self):
-        return TriagePosition(self._item).triage_section
+        return triage.TriagePosition(self._item).triage_section
 
     @trellis.compute
     def is_event(self):
@@ -171,7 +174,8 @@ class Dashboard(core.Table):
     @trellis.maintain
     def triage_column(self):
         return TriageColumn(scope=self, hints={'width': 60,
-                                        'header_icon':'ColHTriage.png'})
+                                        'header_icon':'ColHTriage.png',
+                                        'type':'DashboardTriage'})
 
 
     @trellis.make
@@ -185,9 +189,11 @@ class Dashboard(core.Table):
         return { 'column_headers': True }
 
 
+import wx
 import chandler.wxui.table as table
 import chandler.wxui.multi_state as multi_state
 from chandler.wxui.image import get_image
+from colorsys import hsv_to_rgb
 
 class DashboardIconRenderer(table.IconRenderer):
     def bitmapProvider(self, name):
@@ -230,6 +236,91 @@ class ReminderRenderer(DashboardIconRenderer):
 
             yield bmInfo
 
+
+class TriageRenderer(table.wxGrid.PyGridCellRenderer):
+
+    def __init__(self, font=None):
+        if font is None:
+            defaultFont = wx.SystemSettings_GetFont(wx.SYS_DEFAULT_GUI_FONT)
+            font = wx.Font(11, wx.DEFAULT, wx.NORMAL, wx.BOLD, False,
+                           defaultFont.FaceName)
+        super(TriageRenderer, self).__init__()
+        self.font = font
+    
+    _triage_map = None
+    
+    def _get_display_values(self, triage_value):
+        if self._triage_map is None:
+            triage_map = dict()
+            for iterable in TRIAGE_PRESENTATION_HOOK.query():
+                for triage_value, name, hsv in iterable:
+                    triage_map[triage_value] = (name, hsv)
+
+            type(self)._triage_map = triage_map
+        return self._triage_map[triage_value]
+
+
+    def _wx_Color(self, value, variant):
+        h, s, v = self._get_display_values(value)[1]
+        
+        if "rollover" in variant:
+            v = v + 0.33 * (1.0 - v)
+            s = 0.65 * s
+        
+        if "mousedown" in variant:
+            v = 0.67 * v
+        
+        if "border" in variant:
+            v = v + 0.5 * (1.0 - v)
+            s = 0.5 * s
+        
+        h = float(h)/360.0
+        r, g, b = map(lambda val: (int)(val * 255 + 0.5), hsv_to_rgb(h, s, v))
+        return wx.Colour(r, g, b)
+
+
+    def Draw(self, grid, attr, dc, rect, row, col, isSelected):
+        value = grid.Table.GetValue(row, col)
+        
+        if grid.clickRowCol == (row, col):
+            variant = ('mousedown',)
+        elif grid.overRowCol == (row, col):
+            variant = ('rollover',)
+        else:
+            variant = ()
+    
+        gc = wx.GraphicsContext.Create(dc)
+        
+        text = self._get_display_values(value)[0]
+    
+        bgColor = self._wx_Color(value, variant)
+        borderColor = self._wx_Color(value, variant + ("border",))
+
+        textXOffset = 0
+        textYOffset = 1
+    
+        gc.SetBrush(wx.Brush(bgColor, wx.SOLID))
+        gc.SetPen(wx.Pen(borderColor))
+        gc.DrawRectangle(rect.X, rect.Y, rect.Width, rect.Height)
+    
+        gc.SetFont(self.font, wx.WHITE)
+            
+        width, height, descent, leading = gc.GetFullTextExtent(text)
+        textLeft = rect.Left + int((rect.Width - width) / 2) - textXOffset
+        textTop = rect.Top + int((height - descent) / 2) - textYOffset
+        gc.DrawText(text, textLeft, textTop)
+        del gc
+
+
+def triage_presentation_values():
+    return (
+        (triage.NOW, _('NOW'), (120, 1.00, 0.80)),
+        (triage.LATER, _('LATER'), (48, 1.00, 1.00)),
+        (triage.DONE, _('DONE'), (0, 0.0, 0.33)),
+    )
+
+
 def extend_table(table):
     table.RegisterDataType("DashboardStar", StarRenderer(), None)
     table.RegisterDataType("DashboardReminder", ReminderRenderer(), None)
+    table.RegisterDataType("DashboardTriage", TriageRenderer(), None)

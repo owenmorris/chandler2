@@ -20,7 +20,8 @@ setup(
     [chandler.domain.triage]
     event = chandler.event:event_triage
     reminder = chandler.reminder:reminder_triage
-
+    [chandler.presentation.triage]
+    dashboard = chandler.dashboard:triage_presentation_values
     [chandler.domain.item_addon]
     triage = chandler.triage:Triage
     triage_position = chandler.triage:TriagePosition
