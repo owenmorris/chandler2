@@ -733,6 +733,8 @@ class TableColumn(InteractionComponent):
         sort_ascending=False,
     )
 
+    action = None
+
     def __repr__(self):
         return '<%s "%s">' % (type(self).__name__, self.label)
 

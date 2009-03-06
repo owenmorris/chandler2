@@ -45,6 +45,13 @@ class AppDashboardEntry(addons.AddOn, trellis.Component):
     def is_starred(self):
         return Starred.installed_on(self._item)
 
+    @trellis.modifier
+    def toggle_star(self):
+        if Starred.installed_on(self._item):
+            Starred(self._item).remove()
+        else:
+            Starred(self._item).add()
+
     @trellis.compute
     def _reminder(self):
         for reminder in ReminderList(self._item).reminders:
@@ -173,12 +180,20 @@ class TriageColumn(AppColumn):
     def sort_key(self, entry):
         return entry.triage_section, entry.triage_position
 
+class StarredColumn(AppColumn):
+    @staticmethod
+    def action(selection):
+        for app_entry in selection:
+            app_entry.toggle_star()
+
+
 class Dashboard(core.Table):
     @trellis.maintain
     def star_column(self):
-        return AppColumn(scope=self, label=u'*', app_attr='is_starred',
-                         hints={'width': 20, 'header_icon':'ColHStarred.png',
-                                'type': 'DashboardStar'})
+        return StarredColumn(scope=self, label=u'*', app_attr='is_starred',
+                             hints={'width': 20,
+                                    'header_icon':'ColHStarred.png',
+                                    'type': 'DashboardStar'})
 
     @trellis.maintain
     def title_column(self):
@@ -274,7 +289,7 @@ class TriageRenderer(table.wxGrid.PyGridCellRenderer):
                            defaultFont.FaceName)
         super(TriageRenderer, self).__init__()
         self.font = font
-    
+
     _triage_map = None
 
     def _get_display_values(self, triage_value):
@@ -352,9 +367,9 @@ class DateRenderer(table.wxGrid.PyGridCellRenderer):
 
     def Draw(self, grid, attr, dc, rect, row, col, isSelected):
         date, time = grid.Table.GetValue(row, col)
-        
+
         vAlign = attr.GetAlignment()[1]
-        
+
         if isSelected:
             bg = grid.GetSelectionBackground()
             fg = grid.GetSelectionForeground()
@@ -364,11 +379,11 @@ class DateRenderer(table.wxGrid.PyGridCellRenderer):
 
         dc.SetTextBackground(bg)
         dc.SetTextForeground(fg)
-        
+
         dc.SetBrush(wx.Brush(bg, wx.SOLID))
         dc.SetPen(wx.TRANSPARENT_PEN)
         dc.DrawRectangleRect(rect)
-        
+
         grid.DrawTextRectangle(dc, date, rect, wx.ALIGN_LEFT, vAlign)
         grid.DrawTextRectangle(dc, time, rect, wx.ALIGN_RIGHT, vAlign)
 

@@ -180,10 +180,12 @@ class TablePresentation(trellis.Component, wxGrid.PyGridTableBase):
         return False
 
     def CanClick(self, row, col):
-        return False
+        column = self.table.columns[col]
+        return column.action is not None
 
     def OnClick(self, row, col):
-        pass
+        selection = [self.table.items[self.RowToIndex(row)]]
+        self.table.columns[col].action(selection)
 
     def TrackMouse(self, row, col):
         return False
