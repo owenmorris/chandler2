@@ -148,7 +148,9 @@ class TablePresentation(trellis.Component, wxGrid.PyGridTableBase):
 
         for index, column in enumerate(self.table.columns or ()):
             grid.SetColLabelValue(index, column.label)
-            grid.SetColSize(index, column.hints.get('width', 120))
+            width = column.hints.get('width', 120)
+            grid.SetColMinimalWidth(index, width)
+            grid.SetColSize(index, width)
 
             if EXTENDED_WX:
                 scaleColumn = grid.GRID_COLUMN_SCALABLE if column.hints.get('scalable') else grid.GRID_COLUMN_NON_SCALABLE
@@ -188,7 +190,7 @@ class TablePresentation(trellis.Component, wxGrid.PyGridTableBase):
         self.table.columns[col].action(selection)
 
     def TrackMouse(self, row, col):
-        return False
+        return True
 
     def GetToolTipString(self, row, col):
         pass
@@ -549,6 +551,10 @@ class Table(wxGrid.Grid):
 
             if self.clickRowCol == (row, col):
                 self.Table.OnClick(row, col)
+                # @@@ The manual refresh here is only needed
+                # because we're not using the visible_rows
+                # feature of the core.Table yet.
+                self.RefreshRect(self.GetRectForCellRange(row, col))
             self.overRowCol = None
             self.clickRowCol = None
 
