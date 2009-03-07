@@ -131,12 +131,12 @@ class TablePresentation(trellis.Component, wxGrid.PyGridTableBase):
         for row in view.GetSelectedRows():
             index = self.RowToIndex(row)
             if not self.table.items[index] in self.table.selection:
-                trellis.on_commit(view.DeselectRow, index)
+                trellis.on_commit(view.DeselectRow, row)
 
         for index, item in enumerate(self.table.items):
             row = self.IndexToRow(index)
             if item in self.table.selection:
-                trellis.on_commit(view.SelectRow, index, True)
+                trellis.on_commit(view.SelectRow, row, True)
 
     defaultRWAttribute = wxGrid.GridCellAttr()
     defaultROAttribute = wxGrid.GridCellAttr()
@@ -167,7 +167,6 @@ class TablePresentation(trellis.Component, wxGrid.PyGridTableBase):
         grid.Bind(wxGrid.EVT_GRID_RANGE_SELECT, self.OnRangeSelect)
         grid.Bind(wxGrid.EVT_GRID_LABEL_LEFT_CLICK, self.OnLabelLeftClicked)
         grid.Bind(wx.EVT_SIZE, self.OnSize)
-        #import pdb; pdb.set_trace()
         grid.Bind(wx.EVT_SCROLLWIN, self.OnScroll)
 
     def GetNumberRows(self):
@@ -206,13 +205,14 @@ class TablePresentation(trellis.Component, wxGrid.PyGridTableBase):
         pass
 
     def ReadOnly(self, row, col):
-        return False
+        return self.table.columns[col].set_text_value is None
 
     def GetValue(self, row, col):
         return self.table.get_cell_value((row, col))
 
     def SetValue(self, row, col, value):
-        self.table.items[self.RowToIndex(row)].displayName = value
+        obj = self.table.items[self.RowToIndex(row)]
+        self.table.columns[col].set_text_value(obj, value)
 
     def GetColLabelValue(self, col):
         return self.table.columns[col].label
@@ -362,7 +362,8 @@ class Table(wxGrid.Grid):
         super(Table, self).__init__(parent, style=self.defaultStyle, *arguments, **keywords)
 
         # Register extensions
-        self.RegisterDataType('String', StringRenderer(), None)
+        self.RegisterDataType('String', StringRenderer(),
+                               self.GetDefaultEditorForType('String'))
         self.TABLE_EXTENSIONS.notify(self)
         # Generic table setup
         self.SetColLabelAlignment(wx.ALIGN_CENTRE, wx.ALIGN_CENTRE)
@@ -387,7 +388,7 @@ class Table(wxGrid.Grid):
         self.Bind(wx.EVT_SET_FOCUS, self.OnGainFocus)
         # @@@ [grant] Not sure we need to support [Enter] to edit, which
         # is what the following binding is for
-        #self.Bind(wx.EVT_KEY_DOWN, self.OnKeyDown)
+        self.Bind(wx.EVT_KEY_DOWN, self.OnKeyDown)
         self.Bind(wxGrid.EVT_GRID_CELL_BEGIN_DRAG, self.OnItemDrag)
         self.GetGridWindow().Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy)
 
@@ -495,20 +496,45 @@ class Table(wxGrid.Grid):
     def OnGainFocus(self, event):
         self.SetSelectionBackground(wx.SystemSettings.GetColour(wx.SYS_COLOUR_HIGHLIGHT))
         self.InvalidateSelection()
+        event.Skip()
 
     def OnLoseFocus(self, event):
-        self.SetLightSelectionBackground()
-        self.InvalidateSelection()
+        if not self.IsCellEditControlEnabled():
+            self.SetLightSelectionBackground()
+            self.InvalidateSelection()
+        event.Skip()
+
+    def EditCell(self, row, col):
+        self.MakeCellVisible(row, col)
+        self.SetGridCursor(row, col)
+        self.EnableCellEditControl()
+            
+        # @@@ AIIIEEE: WTF. Sometimes Grid seems to have
+        # an editor, but not actually Show() it.
+        cellAttr = self.Table.GetAttr(row, col, wxGrid.GridCellAttr.Any)
+        control = cellAttr.GetEditor(self, row, col).Control
+        if not control.IsShown():
+            control.Show()
+            control.SetFocus()
+            control.SelectAll()
 
     def OnKeyDown(self, event):
-
         # default grid behavior is to move to the "next" cell,
         # whatever that may be. We want to edit instead.
         if event.GetKeyCode() == wx.WXK_RETURN:
-            defaultEditableAttribute = self.defaultEditableAttribute
-            if defaultEditableAttribute is not None:
-                self.EditAttribute(defaultEditableAttribute)
+            if self.IsCellEditControlEnabled():
+                self.SaveEditControlValue()
+                self.EnableCellEditControl(False)
                 return
+            selected = self.Table.table.selection
+            if len(selected) == 1:
+                for index, item in enumerate(self.Table.table.items):
+                    if item in selected:
+                        row = self.Table.IndexToRow(index)
+                        for col in xrange(self.Table.GetNumberCols()):
+                            if not self.Table.ReadOnly(row, col):
+                                self.EditCell(row, col)
+                                return
 
         # other keys should just get propagated up
         event.Skip()
@@ -559,7 +585,8 @@ class Table(wxGrid.Grid):
         """
           This code is tricky, tread with care -- DJA
         """
-        event.Skip() #Let the grid also handle the event by default
+        if not event.LeftDClick():
+            event.Skip() #Let the grid also handle the event by default
 
         gridWindow = self.GetGridWindow()
 
@@ -590,6 +617,8 @@ class Table(wxGrid.Grid):
         elif event.LeftDClick():
             # Stop hover if we're going to edit
             self.overRowCol = None
+            if not self.Table.ReadOnly(row, col):
+                self.EditCell(row, col)
 
         elif event.LeftDown() and not outsideGrid:
             refreshRowCols.add(oldOverRowCol)

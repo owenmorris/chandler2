@@ -733,7 +733,9 @@ class TableColumn(InteractionComponent):
         sort_ascending=False,
     )
 
+    # @@@ [grant] Need to document these ...
     action = None
+    set_text_value = None
 
     def __repr__(self):
         return '<%s "%s">' % (type(self).__name__, self.label)
