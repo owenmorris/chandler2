@@ -45,11 +45,17 @@ class SidebarEntry(trellis.Component):
             return cmp(super(SidebarEntry, self), other)
 
 
+@trellis.modifier
+def update_checked(selection):
+    for entry in selection:
+        entry.checked = not entry.checked
+
 class Sidebar(core.Table):
     @trellis.maintain
     def icon_column(self):
         return core.TableColumn(scope=self, label=u'Icon',
             get_value=lambda entry: (entry.hsv_color, entry.checked),
+            action=update_checked,
             hints={'type':'SidebarIcon', 'width':20})
 
     @trellis.maintain
