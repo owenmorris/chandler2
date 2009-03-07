@@ -118,6 +118,14 @@ class TablePresentation(trellis.Component, wxGrid.PyGridTableBase):
                     view.ProcessTableMessage(wxGrid.GridTableMessage(self,
                                       wxGrid.GRIDTABLE_REQUEST_VIEW_GET_VALUES,
                                       start, newLen))
+
+        for key in self.table.observer.changes:
+            row, col = key
+            if row < len(self.table.model):
+                view.ProcessTableMessage(wxGrid.GridTableMessage(self,
+                                      wxGrid.GRIDTABLE_REQUEST_VIEW_GET_VALUES,
+                                      row, 1))
+
         view.EndBatch()
 
         for row in view.GetSelectedRows():
@@ -158,7 +166,9 @@ class TablePresentation(trellis.Component, wxGrid.PyGridTableBase):
 
         grid.Bind(wxGrid.EVT_GRID_RANGE_SELECT, self.OnRangeSelect)
         grid.Bind(wxGrid.EVT_GRID_LABEL_LEFT_CLICK, self.OnLabelLeftClicked)
-        grid.Bind(wxGrid.EVT_GRID_SELECT_CELL, lambda event: None)
+        grid.Bind(wx.EVT_SIZE, self.OnSize)
+        #import pdb; pdb.set_trace()
+        grid.Bind(wx.EVT_SCROLLWIN, self.OnScroll)
 
     def GetNumberRows(self):
         return len(self.table.items)
@@ -212,6 +222,41 @@ class TablePresentation(trellis.Component, wxGrid.PyGridTableBase):
 
     _deselected_all = False
 
+    def OnSize(self, event):
+        event.Skip()
+        # We have to do this because wx will send EVT_SIZE events from
+        # other calls (e.g. View.EndBatch() in our performer)
+        wx.CallAfter(self._update_visible)
+
+    def OnScroll(self, event):
+        event.Skip()
+        wx.CallAfter(self._update_visible)
+
+    @trellis.modifier
+    def _update_visible(self):
+        # We need the check on self.View because we call
+        # this with a wx.CallAfter, and that call will proceed
+        # even if the View has been torn down.
+        if self.View:
+            rect = self.View.GetClientRect()
+            if rect.Height > 0 and rect.Width > 0:
+                x, y = self.View.CalcUnscrolledPosition(rect.X, rect.Y)
+                start_row = max(self.View.YToRow(y), 0)
+                start_col = max(self.View.XToCol(x), 0)
+
+                x, y = self.View.CalcUnscrolledPosition(rect.Right, rect.Bottom)
+                end_row = self.View.YToRow(y)
+                end_col = self.View.XToCol(x)
+
+                if end_row < 0: end_row = len(self.table.model)
+                if end_col < 0: end_col = len(self.table.columns)
+
+                vr = self.table.visible_ranges
+                increments = (start_row - vr[0], (end_row - start_row) - vr[1],
+                              start_col - vr[2], (end_col - start_col) - vr[3])
+
+                self.table.visible_range_increments = increments
+
     def OnRangeSelect(self, event):
         """
         Synchronize the grid's selection back into the Table
@@ -231,6 +276,7 @@ class TablePresentation(trellis.Component, wxGrid.PyGridTableBase):
 
             # [@@@] grant: Need to avoid broadcasting a
             # selection change in this case.
+            event.Skip()
             return
 
         if selecting and self.table.single_item_selection:
@@ -343,6 +389,7 @@ class Table(wxGrid.Grid):
         # is what the following binding is for
         #self.Bind(wx.EVT_KEY_DOWN, self.OnKeyDown)
         self.Bind(wxGrid.EVT_GRID_CELL_BEGIN_DRAG, self.OnItemDrag)
+        self.GetGridWindow().Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy)
 
         gridWindow = self.GetGridWindow()
         # wxSidebar is subclassed from wxTable and depends on the binding of
@@ -428,36 +475,22 @@ class Table(wxGrid.Grid):
                             dc.SetBrush(wx.Brush(wx.BLACK, wx.SOLID))
                             dc.DrawRectangle(rect[0] + 4, rect[3] - 4, colSize - 8, 2)
 
-    def Destroy(self):
-        # Release the mouse capture, if we had it
-        if getattr(self, 'mouseCaptured', False):
-            delattr(self, 'mouseCaptured')
-            gridWindow = self.GetGridWindow()
-            if gridWindow.HasCapture():
-                #logger.debug("wxDashboard.Destroy: ReleaseMouse")
-                gridWindow.ReleaseMouse()
-            #else:
-                #logger.debug("wxDashboard.Destroy: would ReleaseMouse, but not HasCapture.")
+    def OnDestroy(self, event):
+        try:
 
-        return super(Table, self).Destroy()
+            # Release the mouse capture, if we had it
+            if getattr(self, 'mouseCaptured', False):
+                delattr(self, 'mouseCaptured')
+                gridWindow = self.GetGridWindow()
+                if gridWindow.HasCapture():
+                    #logger.debug("wxDashboard.Destroy: ReleaseMouse")
+                    gridWindow.ReleaseMouse()
+                #else:
+                    #logger.debug("wxDashboard.Destroy: would ReleaseMouse, but not HasCapture.")
 
-    def displayContextMenu(self, event):
-        """
-        (column, row) = self.__eventToCell(event)
-        selectedItemIndex = self.RowToIndex(row)
-        blockItem = self.blockItem
-        if selectedItemIndex != -1:
-            # if the row in question is already selected, don't change selection
-            itemRange = (selectedItemIndex, selectedItemIndex)
-            if not blockItem.contents.isSelected(itemRange):
-                blockItem.contents.setSelectionRanges([itemRange])
-                blockItem.PostSelectItems()
-            # Update the screen before showing the context menu
-            theApp = wx.GetApp()
-            theApp.propagateAsynchronousNotifications()
-            theApp.Yield(True)
-        """
-        super(Table, self).displayContextMenu(event)
+        finally:
+            event.Skip()
+
 
     def OnGainFocus(self, event):
         self.SetSelectionBackground(wx.SystemSettings.GetColour(wx.SYS_COLOUR_HIGHLIGHT))
@@ -551,10 +584,6 @@ class Table(wxGrid.Grid):
 
             if self.clickRowCol == (row, col):
                 self.Table.OnClick(row, col)
-                # @@@ The manual refresh here is only needed
-                # because we're not using the visible_rows
-                # feature of the core.Table yet.
-                self.RefreshRect(self.GetRectForCellRange(row, col))
             self.overRowCol = None
             self.clickRowCol = None
 
@@ -765,5 +794,9 @@ class IconRenderer(wxGrid.PyGridCellRenderer):
 @core.present.when_type(core.Table)
 def render_table(table, parent=None):
     wxobj = Table(parent, -1)
+    table.observer # sic: This is an optional attribute, so
+                   # we need to create it here rather than in the
+                   # @performer update_grid. Maybe we should just
+                   # make it non-optional.
     data_source = TablePresentation(wxobj, table=table)
     return wxobj
