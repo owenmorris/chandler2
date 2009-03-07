@@ -88,7 +88,32 @@ Triage
    :ref:`reminder-triage`
       ..
 
+.. index:: hook; chandler.dashboard.triage
+.. _dashboard-triage:
 
+Dashboard Triage Values
+-----------------------
+
+.. describe:: dashboard_triage_callable() -> iterable of (triage_value, name, hsv) tuples
+
+    If you want to extend the list of triage values you can set in
+    Chandler-App's dashboard, then implement the above hook (as a generator,
+    or returning an iterable). The values in each returned triple are:
+
+        `triage_value`: The floating-point Triage value
+
+        `name`: A human-readable string used to display the value in the
+        Dashboard
+
+        `hsv`: A three element tuple of hue, saturation and value (hue
+        ranges from 0 to 360, and saturation and value from 0.0 to 1.0).
+        This will be used as the background color of the cell in
+        the dashboard.
+
+    Note that Chandler-App itself implements this hook to specify how its
+    Triage column displays the standard Triage values (NOW, LATER and DONE).
+
+.. describe:
 .. _setuptools' entry points: http://peak.telecommunity.com/DevCenter/setuptools#entry-points
 .. _Hooks: http://pypi.python.org/pypi/Plugins/
 .. _AddOn: http://pypi.python.org/pypi/AddOns/

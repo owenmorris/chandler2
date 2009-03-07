@@ -278,6 +278,17 @@ subclass, :class:`AppColumn` which get values from a particular
 :class:`TriageColumn` is an :class:`AppColumn` subclass that defines a
 special sort for triage.
 
+Extending the Triage Column
+---------------------------
+
+The :ref:`triage hook <triage-hook>` allows you to customize the
+Triage of an individual Item. If you have new Triage values to display
+(i.e. beyond the standard ``NOW``, ``LATER`` and ``DONE``), there is a
+:ref:`dashboard triage hook <dashboard-triage>` that can be used to
+extend the dashboard so that it can display these, and allow the user
+to select the values by clicking in the Triage column.
+
+
 TODO
 ====
 - demonstrate sorting
