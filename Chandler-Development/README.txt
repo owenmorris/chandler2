@@ -2,26 +2,62 @@
 Chandler Development Plugin
 ===========================
 
-Right now, this plugin just launches a PyCrust window at application startup.
-Later, it'll put things on the Tools menu.  (When there is a Tools menu, and
-a main window to put it in!)
+Right now, this plugin contains a small utility class (useful for
+debugging and testing), and also a GUI extension that launches a
+PyCrust window at application launch.
+
+.. _Viewer-debug-class:
+
+The Viewer utility class
+------------------------
+
+The ``chandler.debug.util`` module contains a small example of the
+`observer pattern`_, useful for doctests and debugging. Here's an
+example of how it works. Let's say we have the following component:
+
+    >>> from peak.events import trellis
+    >>> class MyComponent(trellis.Component):
+    ...     value = trellis.attr(0)
+    ...
+    ...     @trellis.maintain(initially=0)
+    ...     def max_value(self):
+    ...         return max(self.value, self.max_value)
+    ...
+    >>> comp = MyComponent()
+
+Then, we can use a :class:`~chandler.debug.util.Viewer` to print out a
+message whenever some value changes:
+
+    >>> from chandler.debug.util import Viewer
+    >>> viewer = Viewer(component=comp, cell_name='max_value')
+    max_value changed to: 0
+    >>> comp.value = -3
+    >>> comp.value = 12
+    max_value changed to: 12
+
+.. _observer pattern: http://peak.telecommunity.com/DevCenter/Trellis#model-view-controller-and-the-observer-pattern
+
+
+Debugging Widgets
+-----------------
+
+This plugin also launches a PyCrust window at application startup.
+Later, it'll put things on the Tools menu.  (When there is a Tools
+menu, and a main window to put it in!)
 
 The way this works is that an entry point is registered in ``setup.py``, viz::
 
     [chandler.launch.wxui]
     PyCrust = chandler.debug.py_crust:LaunchPyCrust
 
-Thereby registering an implementation for the ``chandler.launch.wxui`` hook, which
-runs after Twisted and wx are initialized, but before the general application
-startup hooks.
+Thereby registering an implementation for the ``chandler.launch.wxui``
+hook, which runs after Twisted and wx are initialized, but before the
+general application startup hooks.
 
-(Note that we are currently *abusing* ``chandler.launch.wxui`` to do this, until
-there is an application-specific wx/ui startup hook that runs *after* general
-application startup.)
+(Note that we are currently *abusing* ``chandler.launch.wxui`` to do
+this, until there is an application-specific wx/ui startup hook that
+runs *after* general application startup.)
 
-
-Debugging Widgets
------------------
 
 The ``chandler-debug`` script that's installed by this plugin can be used to
 specify extensions on the command line, that will be loaded at application

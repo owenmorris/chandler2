@@ -20,7 +20,7 @@ Basic events
 To create an event, add the ``Event`` Extension to an item.
 
 >>> from chandler.event import *
->>> from chandler.core import Item, Viewer
+>>> from chandler.core import Item
 >>> item = Item()
 >>> event = Event(item).add()
 >>> event.start is None
@@ -168,10 +168,10 @@ If an event doesn't have a start time, it's considered started:
 >>> event2.is_started
 True
 
-We'll use a Viewer_ to display when *is_started* changes values.
+We'll use a :ref:`Viewer <Viewer-debug-class>` to display when
+*is_started* changes values.
 
-XXX document Viewer somewhere more appropriate
-
+>>> from chandler.debug.util import Viewer
 >>> viewer = Viewer(component=event2, cell_name="is_started")
 is_started changed to: True
 >>> event2.base_start = next_year + timedelta(minutes=2)
@@ -368,5 +368,4 @@ XXX test add/remove/add Extension doesn't lose start time? this
 is_between
 
 .. _iCalendar: http://tools.ietf.org/html/rfc2445
-.. _Viewer: http://peak.telecommunity.com/DevCenter/Trellis#model-view-controller-and-the-observer-pattern
 

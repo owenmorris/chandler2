@@ -10,6 +10,7 @@ setup(
     long_description = open('README.txt').read(),
     install_requires=['Chandler-Platform'],
     test_suite = 'test_suite',
+    tests_require = ['Chandler-Development'],
     test_loader = 'test_suite:TestLoader',
     packages = find_packages(),
     namespace_packages = ['chandler', 'chandler.sharing', 'chandler.wxui'],

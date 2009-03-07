@@ -203,6 +203,7 @@ separately.  Like a single :class:`~chandler.event.Event`,
 :const:`~chandler.triage.LATER` if start time is in the future,
 otherwise :const:`~chandler.triage.NOW`.
 
+>>> from chandler.debug.util import Viewer
 >>> from chandler.triage import *
 >>> first_viewer = Viewer(component=Triage(first),
 ...                       cell_name="calculated", formatted_name="first")
