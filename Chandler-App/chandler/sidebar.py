@@ -50,6 +50,10 @@ def update_checked(selection):
     for entry in selection:
         entry.checked = not entry.checked
 
+@trellis.modifier
+def set_collection_title(entry, value):
+    entry.collection.title = value
+
 class Sidebar(core.Table):
     @trellis.maintain
     def icon_column(self):
@@ -62,6 +66,7 @@ class Sidebar(core.Table):
     def name_column(self):
         return core.TableColumn(scope=self, label=u'Name',
             get_value=lambda entry:entry.collection.title,
+            set_text_value=set_collection_title,
             hints={'scalable':True})
 
     @trellis.make
