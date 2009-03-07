@@ -10,7 +10,7 @@ import chandler.core as core
 import chandler.wxui.image as image
 from chandler.i18n import _
 
-TRIAGE_PRESENTATION_HOOK  = plugins.Hook('chandler.presentation.triage')
+TRIAGE_HOOK  = plugins.Hook('chandler.dashboard.triage')
 
 class AppDashboardEntry(addons.AddOn, trellis.Component):
     @trellis.make
@@ -180,6 +180,34 @@ class TriageColumn(AppColumn):
     def sort_key(self, entry):
         return entry.triage_section, entry.triage_position
 
+    _triage_values = None
+
+    @property
+    def triage_values(self):
+        if self._triage_values is None:
+            triage_values = []
+            for iterable in TRIAGE_HOOK.query():
+                for value, name, hsv in iterable:
+                    triage_values.append((value, (name, hsv)))
+
+            type(self)._triage_values = tuple(triage_values)
+        return self._triage_values
+
+    @trellis.modifier
+    def action(self, selection):
+        for app_entry in selection:
+            old_value = app_entry.triage_section
+            for index, value in enumerate(self.triage_values):
+                if value[0] == old_value:
+                    if index + 1 < len(self.triage_values):
+                        new_value = self.triage_values[index+1][0]
+                    else:
+                        new_value = self.triage_values[0][0]
+                    break
+            else:
+                new_value = self.triage_values[0][0]
+            triage.Triage(app_entry._item).manual = new_value
+
 class StarredColumn(AppColumn):
     @staticmethod
     def action(selection):
@@ -290,21 +318,8 @@ class TriageRenderer(table.wxGrid.PyGridCellRenderer):
         super(TriageRenderer, self).__init__()
         self.font = font
 
-    _triage_map = None
-
-    def _get_display_values(self, triage_value):
-        if self._triage_map is None:
-            triage_map = dict()
-            for iterable in TRIAGE_PRESENTATION_HOOK.query():
-                for triage_value, name, hsv in iterable:
-                    triage_map[triage_value] = (name, hsv)
-
-            type(self)._triage_map = triage_map
-        return self._triage_map[triage_value]
-
-
-    def _wx_Color(self, value, variant):
-        h, s, v = self._get_display_values(value)[1]
+    def _wx_Color(self, hsv, variant):
+        h, s, v = hsv
 
         if "rollover" in variant:
             v = v + 0.33 * (1.0 - v)
@@ -334,10 +349,15 @@ class TriageRenderer(table.wxGrid.PyGridCellRenderer):
 
         gc = wx.GraphicsContext.Create(dc)
 
-        text = self._get_display_values(value)[0]
+        for tvalue, tparams in grid.Table.table.columns[col].triage_values:
+            if tvalue == value:
+                text, hsv = tparams
+                break
+        else:
+            assert False, "Invalid triage value %s" % (value,)
 
-        bgColor = self._wx_Color(value, variant)
-        borderColor = self._wx_Color(value, variant + ("border",))
+        bgColor = self._wx_Color(hsv, variant)
+        borderColor = self._wx_Color(hsv, variant + ("border",))
 
         textXOffset = 0
         textYOffset = 1
