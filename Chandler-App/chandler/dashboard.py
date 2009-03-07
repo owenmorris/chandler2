@@ -245,6 +245,10 @@ class StarredColumn(AppColumn):
             app_entry.toggle_star()
 
 
+@trellis.modifier
+def set_item_title(entry, value):
+    entry.subject.what = value
+
 class Dashboard(core.Table):
     @trellis.maintain
     def star_column(self):
@@ -257,6 +261,7 @@ class Dashboard(core.Table):
     def title_column(self):
         return core.TableColumn(scope=self, label='Title',
                                 get_value=lambda entry:entry.subject.what,
+                                set_text_value=set_item_title,
                                 hints={'width':160, 'scalable':True})
 
     @trellis.maintain
