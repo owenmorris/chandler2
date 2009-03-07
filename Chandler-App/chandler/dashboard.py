@@ -9,6 +9,7 @@ from chandler.time_services import (TimeZone, is_past, timestamp, fromtimestamp,
 import chandler.core as core
 import chandler.wxui.image as image
 from chandler.i18n import _
+from datetime import datetime, timedelta
 
 TRIAGE_HOOK  = plugins.Hook('chandler.dashboard.triage')
 
@@ -208,6 +209,35 @@ class TriageColumn(AppColumn):
                 new_value = self.triage_values[0][0]
             triage.Triage(app_entry._item).manual = new_value
 
+class ReminderColumn(AppColumn):
+    label = trellis.attr('(( ))')
+    app_attr = trellis.attr('event_reminder_combined')
+
+    def sort_key(self, entry):
+        return entry.triage_section, entry.triage_position
+
+    _triage_values = None
+
+    @trellis.modifier
+    def action(self, selection):
+        for app_entry in selection:
+            old_value = app_entry.event_reminder_combined
+            rlist = ReminderList(app_entry._item)
+            if old_value == 'reminder':
+                rlist.remove_all_reminders()
+            else:
+                trigger = getNow()
+                if trigger.hour < 17:
+                    hour = 17
+                else:
+                    trigger += timedelta(days=1)
+                    hour = 8
+                trigger = trigger.replace(hour=hour, minute=0, second=0,
+                                          microsecond=0)
+                reminder = rlist.add_reminder()
+                reminder.fixed_trigger = trigger
+
+
 class StarredColumn(AppColumn):
     @staticmethod
     def action(selection):
@@ -231,10 +261,9 @@ class Dashboard(core.Table):
 
     @trellis.maintain
     def event_reminder_column(self):
-        return AppColumn(scope=self, label='(( ))',
-                         app_attr='event_reminder_combined',
-                         hints={'width': 36, 'type': 'DashboardReminder',
-                                'header_icon':'ColHEventReminder.png'})
+        return ReminderColumn(scope=self,
+                              hints={'width': 36, 'type': 'DashboardReminder',
+                                     'header_icon':'ColHEventReminder.png'})
 
     @trellis.maintain
     def date_column(self):

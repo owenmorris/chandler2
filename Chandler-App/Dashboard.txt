@@ -273,7 +273,7 @@ subclass, :class:`AppColumn` which get values from a particular
 >>> db.star_column
 <StarredColumn "*" (is_starred)>
 >>> list(db.columns)
-[<StarredColumn "*" (is_starred)>, <TableColumn "Title">, <AppColumn "(( ))" (event_reminder_combined)>, <AppColumn "Date" (display_date)>, <TriageColumn "Triage" (triage_status)>]
+[<StarredColumn "*" (is_starred)>, <TableColumn "Title">, <ReminderColumn "(( ))" (event_reminder_combined)>, <AppColumn "Date" (display_date)>, <TriageColumn "Triage" (triage_status)>]
 
 :class:`TriageColumn` is an :class:`AppColumn` subclass that defines a
 special sort for triage.
